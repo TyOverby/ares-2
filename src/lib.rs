@@ -42,10 +42,12 @@ pub enum Instr {
     /// Push a value onto the stack
     /// Pop a value off of the stack
     Pop,
+    /// Swap the top two values on the stack
+    Swap,
 
-    LoadBoolLit(bool),
-    LoadSymbolLit(Symbol),
-    LoadIntLit(i32),
+    BoolLit(bool),
+    SymbolLit(Symbol),
+    IntLit(i32),
 
     Jump(u32),
 
@@ -56,6 +58,11 @@ pub enum Instr {
     SubInt,
     DivInt,
     MulInt,
+
+    And,
+    Or,
+
+    Eq,
 
     /// Execute a lambda on the top of the stack with
     /// a specified number of arguments
@@ -117,6 +124,15 @@ impl Vm {
         self.stack.pop().expect("Stack had no value to pop")
     }
 
+    pub fn peek(&mut self) -> &mut Value {
+        self.stack.last_mut().unwrap()
+    }
+
+    pub fn peek_n(&mut self, n: usize) -> &mut Value {
+        let len = self.stack.len();
+        self.stack.get_mut(len - n - 1).unwrap()
+    }
+
     pub fn push(&mut self, value: Value) {
         self.stack.push(value);
     }
@@ -138,13 +154,17 @@ impl Vm {
                 &Instr::Pop => {
                     self.pop();
                 }
-                &Instr::LoadBoolLit(b) => {
+                &Instr::Swap => {
+                    let len = self.stack.len();
+                    self.stack.swap(len - 1, len -2);
+                }
+                &Instr::BoolLit(b) => {
                     self.push(Value::Bool(b));
                 },
-                &Instr::LoadSymbolLit(symbol) => {
+                &Instr::SymbolLit(symbol) => {
                     self.push(Value::Symbol(symbol));
                 },
-                &Instr::LoadIntLit(int) => {
+                &Instr::IntLit(int) => {
                     self.push(Value::Int(int as i64));
                 },
                 &Instr::Jump(location) => {
@@ -164,6 +184,21 @@ impl Vm {
                 &Instr::DivInt => {
                     try!(self.binop_int(|a, b| a / b));
                 },
+                &Instr::And => {
+                    let a = try!(self.pop().expect_bool());
+                    let b = try!(self.peek().expect_bool_ref_mut());
+                    *b = a && *b;
+                }
+                &Instr::Or => {
+                    let a = try!(self.pop().expect_bool());
+                    let b = try!(self.peek().expect_bool_ref_mut());
+                    *b = a || *b;
+                }
+                &Instr::Eq => {
+                    let a = self.pop();
+                    let b = self.peek();
+                    *b = Value::Bool(&a == b);
+                }
                 &Instr::Execute(arg_count) => {
                     let lambda = try!(self.pop().expect_lambda());
                     try!(self.execute(&lambda.code[..], arg_count, Some(&lambda.upvars)));
@@ -207,8 +242,8 @@ impl Vm {
 
     fn binop_int<F: FnOnce(i64, i64) -> i64>(&mut self, f: F) -> Result<(), InterpError> {
         let a = try!(self.pop().expect_int());
-        let b = try!(self.pop().expect_int());
-        self.push(Value::Int(f(a, b)));
+        let b = try!(self.peek().expect_int_ref_mut());
+        *b = f(a, *b);
         Ok(())
     }
 
@@ -356,4 +391,94 @@ fn test_if() {
         vm.execute(&[Instr::Ifn, Instr::Jump(3), Instr::Jump(5), Instr::AddInt, Instr::Halt, Instr::SubInt], 3, None).unwrap();
         assert_eq!(vm.pop(), Value::Int(15));
     }
+}
+
+#[test]
+fn test_swap() {
+    let mut vm = Vm::new();
+    vm.push(Value::Int(10));
+    vm.push(Value::Int(5));
+    vm.execute(&[Instr::Swap], 1, None).unwrap();
+    assert_eq!(vm.pop(), Value::Int(10));
+    assert_eq!(vm.pop(), Value::Int(5));
+}
+
+#[test]
+fn test_and() {
+    let mut vm = Vm::new();
+    vm.push(Value::Bool(true));
+    vm.push(Value::Bool(true));
+    vm.execute(&[Instr::And], 2, None).unwrap();
+    assert_eq!(vm.pop(), Value::Bool(true));
+
+    let mut vm = Vm::new();
+    vm.push(Value::Bool(true));
+    vm.push(Value::Bool(false));
+    vm.execute(&[Instr::And], 2, None).unwrap();
+    assert_eq!(vm.pop(), Value::Bool(false));
+
+    let mut vm = Vm::new();
+    vm.push(Value::Bool(false));
+    vm.push(Value::Bool(true));
+    vm.execute(&[Instr::And], 2, None).unwrap();
+    assert_eq!(vm.pop(), Value::Bool(false));
+
+    let mut vm = Vm::new();
+    vm.push(Value::Bool(false));
+    vm.push(Value::Bool(false));
+    vm.execute(&[Instr::And], 2, None).unwrap();
+    assert_eq!(vm.pop(), Value::Bool(false));
+}
+
+#[test]
+fn test_or() {
+    let mut vm = Vm::new();
+    vm.push(Value::Bool(true));
+    vm.push(Value::Bool(true));
+    vm.execute(&[Instr::Or], 2, None).unwrap();
+    assert_eq!(vm.pop(), Value::Bool(true));
+
+    let mut vm = Vm::new();
+    vm.push(Value::Bool(true));
+    vm.push(Value::Bool(false));
+    vm.execute(&[Instr::Or], 2, None).unwrap();
+    assert_eq!(vm.pop(), Value::Bool(true));
+
+    let mut vm = Vm::new();
+    vm.push(Value::Bool(false));
+    vm.push(Value::Bool(true));
+    vm.execute(&[Instr::Or], 2, None).unwrap();
+    assert_eq!(vm.pop(), Value::Bool(true));
+
+    let mut vm = Vm::new();
+    vm.push(Value::Bool(false));
+    vm.push(Value::Bool(false));
+    vm.execute(&[Instr::Or], 2, None).unwrap();
+    assert_eq!(vm.pop(), Value::Bool(false));
+}
+
+#[test]
+fn naive_fib() {
+    let mut vm = Vm::new();
+    vm.push(Value::Int(6));
+    vm.execute(&[
+       Instr::Dup(0),    // [6, 6]
+       Instr::Dup(0),    // [6, 6, 6]
+       Instr::IntLit(0), // [6, 6, 6, 0]
+       Instr::Eq,        // [6, 6, false]
+       Instr::Swap,      // [6, false, 6]
+       Instr::IntLit(1), // [6, false, 6, 0]
+       Instr::Eq,        // [6, false, false]
+       Instr::Or,        // [6, false]
+       Instr::If,        // [6]
+       Instr::Ret,       // done
+       Instr::Dup(0),    // [6, 6]
+       Instr::IntLit(1), // [6, 6, 1]
+       Instr::Sub,       // [6, 5]
+       Instr::Call(0),   // [6, 5]
+       Instr::Swap,      // [5, 6]
+       Instr::IntLit(2), // [5, 4]
+       Instr::Call(0),   // [5, 3]
+       Instr::IntAdd,    // [8]
+       ])
 }
