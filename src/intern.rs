@@ -65,4 +65,3 @@ impl SymbolIntern {
             .unwrap_or_else(|| format!("s{}", id))
     }
 }
-
