@@ -27,23 +27,24 @@ pub struct ReferenceMap {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Return {
-    code_pos: usize,
-}
-
-#[derive(Debug)]
-pub struct Code {
-    id: u32,
-    instructions: Vec<Instr>,
-    captures: ReferenceMap,
+    code_pos: u32,
+    stack_frame: u32
 }
 
 #[derive(Debug)]
 pub struct Vm {
-    stack: Vec<Value>,
+    stack: Stack,
     return_stack: Vec<Return>,
     interner: intern::SymbolIntern,
     globals: ReferenceMap,
-    code: HashMap<u32, Code>,
+    code: Vec<Instr>
+}
+
+#[derive(Debug)]
+pub struct Stack {
+    stack: Vec<Value>,
+    pushes: u64,
+    pops: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -102,6 +103,52 @@ pub enum Instr {
     FetchUpvar(Symbol),
 }
 
+impl Stack {
+    fn get(&self, i: u32) -> Value {
+        self.stack
+            .get(self.stack.len() - i as usize - 1)
+            .expect("Stack had no value for get")
+            .clone()
+    }
+
+    fn pop(&mut self) -> Value {
+        self.pops += 1;
+        self.stack.pop().expect("Stack had no value to pop")
+    }
+
+    fn peek(&mut self) -> &mut Value {
+        self.stack.last_mut().unwrap()
+    }
+
+    fn peek_n(&mut self, n: usize) -> &mut Value {
+        let len = self.stack.len();
+        self.stack.get_mut(len - n - 1).unwrap()
+    }
+
+    fn push(&mut self, value: Value) {
+        self.pushes += 1;
+        self.stack.push(value);
+    }
+
+    fn len(&self) -> u32 {
+        self.stack.len() as u32
+    }
+
+    fn swap(&mut self, a: u32, b: u32) {
+        self.stack.swap(a as usize, b as usize);
+    }
+
+    fn binop_int<F: FnOnce(i64, i64) -> i64>(&mut self, f: F) -> Result<(), InterpError> {
+        println!("{:?}", self);
+        let a = try!(self.pop().expect_int());
+        println!("{:?}", self);
+        let b = try!(self.peek().expect_int_ref_mut());
+        *b = f(a, *b);
+        Ok(())
+    }
+
+}
+
 impl ReferenceMap {
     pub fn new() -> ReferenceMap {
         ReferenceMap { values: HashMap::new() }
@@ -122,72 +169,61 @@ impl ReferenceMap {
 impl Vm {
     pub fn new() -> Vm {
         Vm {
-            stack: Vec::new(),
+            stack: Stack { stack: vec![], pushes: 0, pops: 0},
             interner: intern::SymbolIntern::new(),
             globals: ReferenceMap::new(),
-            code: HashMap::new(),
             return_stack: Vec::new(),
+            code: Vec::new(),
         }
     }
 
-    pub fn get(&self, i: u32) -> Value {
-        self.stack
-            .get(self.stack.len() - i as usize - 1)
-            .expect("Stack had no value for get")
-            .clone()
-    }
-
-    pub fn pop(&mut self) -> Value {
-        self.stack.pop().expect("Stack had no value to pop")
-    }
-
-    pub fn peek(&mut self) -> &mut Value {
-        self.stack.last_mut().unwrap()
-    }
-
-    pub fn peek_n(&mut self, n: usize) -> &mut Value {
-        let len = self.stack.len();
-        self.stack.get_mut(len - n - 1).unwrap()
-    }
-
-    pub fn push(&mut self, value: Value) {
-        self.stack.push(value);
+    pub fn load_and_execute(&mut self, code: &[Instr], arg_count: u32) -> Result<(), InterpError> {
+        let start = self.code.len() as u32;
+        let stackframe = self.stack.len() - arg_count;
+        self.code.extend(code.iter().cloned());
+        self.execute(start, stackframe, None)
     }
 
     pub fn execute(&mut self,
-                   instructions: &[Instr],
                    start_at: u32,
-                   stack_space: u32,
+                   mut stack_frame: u32,
                    upvars: Option<&ReferenceMap>)
                    -> Result<(), InterpError> {
-        let prior_stack_size = self.stack.len() - stack_space as usize;
+        let &mut Vm {
+            ref mut stack,
+            ref mut return_stack,
+            ref mut interner,
+            ref mut globals,
+            ref mut code
+        } = self;
 
         let mut i = start_at;
-        while i < instructions.len() as u32 {
-            let current_instruction = &instructions[i as usize];
+        while i < code.len() as u32 {
+            println!("{}", i);
+            let current_instruction = &code[i as usize];
             match current_instruction {
                 &Instr::Halt => {
                     break;
                 }
                 &Instr::Dup(stack_pos) => {
-                    let value = self.get(stack_pos);
-                    self.push(value);
+                    let value = stack.get(stack_pos);
+                    stack.push(value);
                 }
                 &Instr::Pop => {
-                    self.pop();
+                    stack.pop();
                 }
                 &Instr::Swap => {
-                    let len = self.stack.len();
-                    self.stack.swap(len - 1, len - 2);
+                    let len = stack.len();
+                    stack.swap(len - 1, len - 2);
                 }
                 &Instr::BoolLit(b) => {
-                    self.push(Value::Bool(b));
+                    stack.push(Value::Bool(b));
                 }
                 &Instr::SymbolLit(symbol) => {
-                    self.push(Value::Symbol(symbol));
+                    stack.push(Value::Symbol(symbol));
                 }
                 &Instr::IntLit(int) => {
-                    self.push(Value::Int(int as i64));
+                    stack.push(Value::Int(int as i64));
                 }
                 &Instr::Jump(location) => {
                     // subtract one because we'll be bumping
@@ -195,87 +231,97 @@ impl Vm {
                     i = location.wrapping_sub(1);
                 }
                 &Instr::AddInt => {
-                    try!(self.binop_int(|a, b| a + b));
+                    try!(stack.binop_int(|a, b| a + b));
                 }
                 &Instr::SubInt => {
-                    try!(self.binop_int(|a, b| a - b));
+                    try!(stack.binop_int(|a, b| a - b));
                 }
                 &Instr::MulInt => {
-                    try!(self.binop_int(|a, b| a * b));
+                    try!(stack.binop_int(|a, b| a * b));
                 }
                 &Instr::DivInt => {
-                    try!(self.binop_int(|a, b| a / b));
+                    try!(stack.binop_int(|a, b| a / b));
                 }
                 &Instr::And => {
-                    let a = try!(self.pop().expect_bool());
-                    let b = try!(self.peek().expect_bool_ref_mut());
+                    let a = try!(stack.pop().expect_bool());
+                    let b = try!(stack.peek().expect_bool_ref_mut());
                     *b = a && *b;
                 }
                 &Instr::Or => {
-                    let a = try!(self.pop().expect_bool());
-                    let b = try!(self.peek().expect_bool_ref_mut());
+                    let a = try!(stack.pop().expect_bool());
+                    let b = try!(stack.peek().expect_bool_ref_mut());
                     *b = a || *b;
                 }
                 &Instr::Eq => {
-                    let a = self.pop();
-                    let b = self.peek();
+                    let a = stack.pop();
+                    let b = stack.peek();
                     *b = Value::Bool(&a == b);
                 }
                 &Instr::Execute(arg_count) => {
-                    let lambda = try!(self.pop().expect_lambda());
-                    let code = &self.code[&lambda.code_id];
-                    try!(self.execute(&code.instructions[..], lambda.offset, arg_count, Some(&lambda.upvars)));
+                    let lambda = try!(stack.pop().expect_lambda());
+                    let offset = lambda.code_offset;
+                    return_stack.push(Return {
+                        code_pos: i,
+                        stack_frame: stack_frame
+                    });
+                    i = offset.wrapping_sub(1);
+                    stack_frame = stack.len() as u32 - arg_count as u32;
                 }
                 &Instr::ExecuteN => {
-                    let lambda = try!(self.pop().expect_lambda());
-                    let arg_count = try!(self.pop().expect_int()) as u32;
-                    let code = &self.code[&lambda.code_id];
-                    try!(self.execute(&code.instructions[..], lambda.offset, arg_count, Some(&lambda.upvars)));
+                    let lambda = try!(stack.pop().expect_lambda());
+                    let arg_count = try!(stack.pop().expect_int());
+                    let offset = lambda.code_offset;
+                    return_stack.push(Return {
+                        code_pos: i,
+                        stack_frame: stack_frame
+                    });
+                    i = offset.wrapping_sub(1);
+                    stack_frame = stack.len() as u32 - arg_count as u32;
                 }
                 &Instr::Ret => {
-                    let return_info = self.return_stack.pop();
+                    let return_info = return_stack.pop().expect("Tried to return with no return value.");
+                    i = return_info.code_pos as u32;
+                    stack_frame = return_info.stack_frame;
+                    // TODO: finish implementing this
+                    assert!(stack_frame + 1 == stack.len() as u32,
+                            "execute left the stack at the wrong size: actual: {} vs expected: {}",
+                            stack.len(),
+                            stack_frame + 1);
                 }
                 &Instr::If => {
-                    let b = try!(self.pop().expect_bool());
+                    let b = try!(stack.pop().expect_bool());
                     if !b {
                         i += 1
                     }
                 }
                 &Instr::Ifn => {
-                    let b = try!(self.pop().expect_bool());
+                    let b = try!(stack.pop().expect_bool());
                     if b {
                         i += 1
                     }
                 }
                 &Instr::FetchGlobal(symbol) => {
-                    let value = try!(self.globals.get(symbol, &mut self.interner));
-                    self.push(value);
+                    let value = try!(globals.get(symbol, interner));
+                    stack.push(value);
                 }
                 &Instr::FetchUpvar(symbol) => {
                     if let Some(upvars) = upvars {
-                        let value = try!(upvars.get(symbol, &mut self.interner));
-                        self.push(value);
+                        let value = try!(upvars.get(symbol, interner));
+                        stack.push(value);
                     } else {
                         return Err(InterpError::NoUpvars);
                     }
                 }
             }
-            i += 1;
+
+            i = i.wrapping_add(1);
         }
 
-        let current_stack_size = self.stack.len();
-        assert!(current_stack_size == prior_stack_size + 1,
+        assert!(stack_frame + 1 == stack.len() as u32,
                 "execute left the stack at the wrong size: actual: {} vs expected: {}",
-                current_stack_size,
-                prior_stack_size + 1);
+                stack.len(),
+                stack_frame + 1);
 
-        Ok(())
-    }
-
-    fn binop_int<F: FnOnce(i64, i64) -> i64>(&mut self, f: F) -> Result<(), InterpError> {
-        let a = try!(self.pop().expect_int());
-        let b = try!(self.peek().expect_int_ref_mut());
-        *b = f(a, *b);
         Ok(())
     }
 
@@ -293,30 +339,30 @@ fn assumptions() {
 }
 
 #[test]
-fn basic_addint() {
+fn test_addint() {
     let mut vm = Vm::new();
-    vm.push(Value::Int(5));
-    vm.push(Value::Int(10));
-    vm.execute(&[Instr::AddInt], 2, None).unwrap();
-    let result = vm.pop();
+    vm.stack.push(Value::Int(5));
+    vm.stack.push(Value::Int(10));
+    vm.debug();
+    vm.load_and_execute(&[Instr::AddInt], 2).unwrap();
+    let result = vm.stack.pop();
     assert_eq!(result, Value::Int(15));
 }
 
-//
 // #[test]
 // fn static_arg_count_basic_lambda() {
 // use std::rc::Rc;
 //
 // let mut vm = Vm::new();
-// vm.push(Value::Int(5));  // Number to add
-// vm.push(Value::Int(10)); // Number to add
+// vm.stack.push(Value::Int(5));  // Number to add
+// vm.stack.push(Value::Int(10)); // Number to add
 //
 // let lambda = Lambda::new(ReferenceMap::new(), vec![Instr::AddInt]);
 //
-// vm.push(Value::Lambda(Rc::new(lambda)));
+// vm.stack.push(Value::Lambda(Rc::new(lambda)));
 //
-// vm.execute(&[Instr::Execute(2)], 3, None).unwrap();
-// let result = vm.pop();
+// vm.load_and_execute(&[Instr::Execute(2)], 3).unwrap();
+// let result = vm.stack.pop();
 // assert_eq!(result, Value::Int(15));
 // }
 //
@@ -325,16 +371,16 @@ fn basic_addint() {
 // use std::rc::Rc;
 //
 // let mut vm = Vm::new();
-// vm.push(Value::Int(5));  // Number to add
-// vm.push(Value::Int(10)); // Number to add
-// vm.push(Value::Int(2));  // Argument count
+// vm.stack.push(Value::Int(5));  // Number to add
+// vm.stack.push(Value::Int(10)); // Number to add
+// vm.stack.push(Value::Int(2));  // Argument count
 //
 // let lambda = Lambda::new(ReferenceMap::new(), vec![Instr::AddInt]);
 //
-// vm.push(Value::Lambda(Rc::new(lambda)));
+// vm.stack.push(Value::Lambda(Rc::new(lambda)));
 //
-// vm.execute(&[Instr::ExecuteN], 4, None).unwrap();
-// let result = vm.pop();
+// vm.load_and_execute(&[Instr::ExecuteN], 4).unwrap();
+// let result = vm.stack.pop();
 // assert_eq!(result, Value::Int(15));
 //
 // }
@@ -344,8 +390,8 @@ fn get_global() {
     let mut vm = Vm::new();
     let symbol = vm.interner.intern("hi");
     vm.globals.put(symbol, Value::Int(20));
-    vm.execute(&[Instr::FetchGlobal(symbol)], 0, None).unwrap();
-    let result = vm.pop();
+    vm.load_and_execute(&[Instr::FetchGlobal(symbol)], 0).unwrap();
+    let result = vm.stack.pop();
     assert_eq!(result, Value::Int(20));
 }
 
@@ -354,25 +400,25 @@ fn load_literals() {
     {
         let mut vm = Vm::new();
         let dummy = vm.interner.intern("dummy");
-        vm.execute(&[Instr::LoadSymbolLit(dummy)], 0, None).unwrap();
+        vm.load_and_execute(&[Instr::SymbolLit(dummy)], 0).unwrap();
 
-        let result = vm.pop();
+        let result = vm.stack.pop();
         assert_eq!(result, Value::Symbol(dummy));
     }
 
     {
         let mut vm = Vm::new();
-        vm.execute(&[Instr::LoadBoolLit(true)], 0, None).unwrap();
+        vm.load_and_execute(&[Instr::BoolLit(true)], 0).unwrap();
 
-        let result = vm.pop();
+        let result = vm.stack.pop();
         assert_eq!(result, Value::Bool(true));
     }
 
     {
         let mut vm = Vm::new();
-        vm.execute(&[Instr::LoadIntLit(5)], 0, None).unwrap();
+        vm.load_and_execute(&[Instr::IntLit(5)], 0).unwrap();
 
-        let result = vm.pop();
+        let result = vm.stack.pop();
         assert_eq!(result, Value::Int(5));
     }
 }
@@ -380,11 +426,9 @@ fn load_literals() {
 #[test]
 fn test_jmp() {
     let mut vm = Vm::new();
-    vm.execute(&[Instr::Jump(2), Instr::LoadIntLit(5), Instr::LoadIntLit(10)],
-               0,
-               None)
+    vm.load_and_execute(&[Instr::Jump(2), Instr::IntLit(5), Instr::IntLit(10)], 0)
       .unwrap();
-    assert_eq!(vm.pop(), Value::Int(10));
+    assert_eq!(vm.stack.pop(), Value::Int(10));
     assert!(vm.stack.len() == 0);
 
 }
@@ -393,142 +437,139 @@ fn test_jmp() {
 fn test_if() {
     {
         let mut vm = Vm::new();
-        vm.push(Value::Int(10));
-        vm.push(Value::Int(5));
-        vm.push(Value::Bool(true));
+        vm.stack.push(Value::Int(10));
+        vm.stack.push(Value::Int(5));
+        vm.stack.push(Value::Bool(true));
 
-        vm.execute(&[Instr::If,
+        vm.load_and_execute(&[Instr::If,
                      Instr::Jump(3),
                      Instr::Jump(5),
                      Instr::AddInt,
                      Instr::Halt,
                      Instr::SubInt],
-                   3,
-                   None)
+                   3)
           .unwrap();
-        assert_eq!(vm.pop(), Value::Int(15));
+        assert_eq!(vm.stack.pop(), Value::Int(15));
     }
     {
         let mut vm = Vm::new();
-        vm.push(Value::Int(10));
-        vm.push(Value::Int(5));
-        vm.push(Value::Bool(false));
+        vm.stack.push(Value::Int(10));
+        vm.stack.push(Value::Int(5));
+        vm.stack.push(Value::Bool(false));
 
-        vm.execute(&[Instr::If,
+        vm.load_and_execute(&[Instr::If,
                      Instr::Jump(3),
                      Instr::Jump(5),
                      Instr::AddInt,
                      Instr::Halt,
                      Instr::SubInt],
-                   3,
-                   None)
+                   3)
           .unwrap();
-        assert_eq!(vm.pop(), Value::Int(-5));
+        assert_eq!(vm.stack.pop(), Value::Int(-5));
     }
     {
         let mut vm = Vm::new();
-        vm.push(Value::Int(10));
-        vm.push(Value::Int(5));
-        vm.push(Value::Bool(true));
+        vm.stack.push(Value::Int(10));
+        vm.stack.push(Value::Int(5));
+        vm.stack.push(Value::Bool(true));
 
-        vm.execute(&[Instr::Ifn,
+        vm.load_and_execute(&[Instr::Ifn,
                      Instr::Jump(3),
                      Instr::Jump(5),
                      Instr::AddInt,
                      Instr::Halt,
                      Instr::SubInt],
-                   3,
-                   None)
+                   3)
           .unwrap();
-        assert_eq!(vm.pop(), Value::Int(-5));
+        assert_eq!(vm.stack.pop(), Value::Int(-5));
     }
     {
         let mut vm = Vm::new();
-        vm.push(Value::Int(10));
-        vm.push(Value::Int(5));
-        vm.push(Value::Bool(false));
+        vm.stack.push(Value::Int(10));
+        vm.stack.push(Value::Int(5));
+        vm.stack.push(Value::Bool(false));
 
-        vm.execute(&[Instr::Ifn,
+        vm.load_and_execute(&[Instr::Ifn,
                      Instr::Jump(3),
                      Instr::Jump(5),
                      Instr::AddInt,
                      Instr::Halt,
                      Instr::SubInt],
-                   3,
-                   None)
+                   3)
           .unwrap();
-        assert_eq!(vm.pop(), Value::Int(15));
+        assert_eq!(vm.stack.pop(), Value::Int(15));
     }
 }
 
 #[test]
 fn test_swap() {
     let mut vm = Vm::new();
-    vm.push(Value::Int(10));
-    vm.push(Value::Int(5));
-    vm.execute(&[Instr::Swap], 1, None).unwrap();
-    assert_eq!(vm.pop(), Value::Int(10));
-    assert_eq!(vm.pop(), Value::Int(5));
+    vm.stack.push(Value::Int(10));
+    vm.stack.push(Value::Int(5));
+    vm.load_and_execute(&[Instr::Swap], 1).unwrap();
+    assert_eq!(vm.stack.pop(), Value::Int(10));
+    assert_eq!(vm.stack.pop(), Value::Int(5));
 }
 
 #[test]
 fn test_and() {
     let mut vm = Vm::new();
-    vm.push(Value::Bool(true));
-    vm.push(Value::Bool(true));
-    vm.execute(&[Instr::And], 2, None).unwrap();
-    assert_eq!(vm.pop(), Value::Bool(true));
+    vm.stack.push(Value::Bool(true));
+    vm.stack.push(Value::Bool(true));
+    vm.load_and_execute(&[Instr::And], 2).unwrap();
+    assert_eq!(vm.stack.pop(), Value::Bool(true));
 
     let mut vm = Vm::new();
-    vm.push(Value::Bool(true));
-    vm.push(Value::Bool(false));
-    vm.execute(&[Instr::And], 2, None).unwrap();
-    assert_eq!(vm.pop(), Value::Bool(false));
+    vm.stack.push(Value::Bool(true));
+    vm.stack.push(Value::Bool(false));
+    vm.load_and_execute(&[Instr::And], 2).unwrap();
+    assert_eq!(vm.stack.pop(), Value::Bool(false));
 
     let mut vm = Vm::new();
-    vm.push(Value::Bool(false));
-    vm.push(Value::Bool(true));
-    vm.execute(&[Instr::And], 2, None).unwrap();
-    assert_eq!(vm.pop(), Value::Bool(false));
+    vm.stack.push(Value::Bool(false));
+    vm.stack.push(Value::Bool(true));
+    vm.load_and_execute(&[Instr::And], 2).unwrap();
+    assert_eq!(vm.stack.pop(), Value::Bool(false));
 
     let mut vm = Vm::new();
-    vm.push(Value::Bool(false));
-    vm.push(Value::Bool(false));
-    vm.execute(&[Instr::And], 2, None).unwrap();
-    assert_eq!(vm.pop(), Value::Bool(false));
+    vm.stack.push(Value::Bool(false));
+    vm.stack.push(Value::Bool(false));
+    vm.load_and_execute(&[Instr::And], 2).unwrap();
+    assert_eq!(vm.stack.pop(), Value::Bool(false));
 }
 
 #[test]
 fn test_or() {
     let mut vm = Vm::new();
-    vm.push(Value::Bool(true));
-    vm.push(Value::Bool(true));
-    vm.execute(&[Instr::Or], 2, None).unwrap();
-    assert_eq!(vm.pop(), Value::Bool(true));
+    vm.stack.push(Value::Bool(true));
+    vm.stack.push(Value::Bool(true));
+    vm.load_and_execute(&[Instr::Or], 2).unwrap();
+    assert_eq!(vm.stack.pop(), Value::Bool(true));
 
     let mut vm = Vm::new();
-    vm.push(Value::Bool(true));
-    vm.push(Value::Bool(false));
-    vm.execute(&[Instr::Or], 2, None).unwrap();
-    assert_eq!(vm.pop(), Value::Bool(true));
+    vm.stack.push(Value::Bool(true));
+    vm.stack.push(Value::Bool(false));
+    vm.load_and_execute(&[Instr::Or], 2).unwrap();
+    assert_eq!(vm.stack.pop(), Value::Bool(true));
 
     let mut vm = Vm::new();
-    vm.push(Value::Bool(false));
-    vm.push(Value::Bool(true));
-    vm.execute(&[Instr::Or], 2, None).unwrap();
-    assert_eq!(vm.pop(), Value::Bool(true));
+    vm.stack.push(Value::Bool(false));
+    vm.stack.push(Value::Bool(true));
+    vm.load_and_execute(&[Instr::Or], 2).unwrap();
+    assert_eq!(vm.stack.pop(), Value::Bool(true));
 
     let mut vm = Vm::new();
-    vm.push(Value::Bool(false));
-    vm.push(Value::Bool(false));
-    vm.execute(&[Instr::Or], 2, None).unwrap();
-    assert_eq!(vm.pop(), Value::Bool(false));
+    vm.stack.push(Value::Bool(false));
+    vm.stack.push(Value::Bool(false));
+    vm.load_and_execute(&[Instr::Or], 2).unwrap();
+    assert_eq!(vm.stack.pop(), Value::Bool(false));
 }
 
+/*
 #[test]
 fn naive_fib() {
     let mut vm = Vm::new();
-    vm.push(Value::Int(6));
+    vm.stack.push(Value::Int(6));
     vm.execute(&[Instr::Dup(0), // [6, 6]
                  Instr::Dup(0), // [6, 6, 6]
                  Instr::IntLit(0), // [6, 6, 6, 0]
@@ -547,4 +588,4 @@ fn naive_fib() {
                  Instr::IntLit(2), // [5, 4]
                  Instr::Call(0), // [5, 3]
                  Instr::IntAdd /* [8] */])
-}
+}*/
