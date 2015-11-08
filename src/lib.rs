@@ -1,6 +1,4 @@
 #![allow(dead_code)]
-#![feature(plugin, custom_derive, custom_attribute)]
-#![plugin(gc_plugin)]
 
 extern crate libc;
 
