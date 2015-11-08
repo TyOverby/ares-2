@@ -1,3 +1,4 @@
+use gc::{Trace};
 use {ReferenceMap};
 
 #[derive(Debug, PartialEq, Clone)]
@@ -13,4 +14,10 @@ impl Lambda {
             code_offset: code_offset,
         }
     }
+}
+
+unsafe impl Trace for Lambda {
+    custom_trace!(this, {
+        mark(&this.upvars);
+    });
 }

@@ -1,17 +1,17 @@
-use std::rc::Rc;
+use gc::{Gc, Trace};
 
 use intern::Symbol;
 use {InterpError, Lambda};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone)]
 pub enum Value {
-    List(Rc<Vec<Value>>),
-    String(Rc<String>),
+    List(Gc<Vec<Value>>),
+    String(Gc<String>),
     Float(f64),
     Int(i64),
     Bool(bool),
     Symbol(Symbol),
-    Lambda(Rc<Lambda>),
+    Lambda(Gc<Lambda>),
 }
 
 #[derive(Debug)]
@@ -25,8 +25,45 @@ pub enum ValueKind {
     Lambda,
 }
 
+unsafe impl Trace for Value {
+    custom_trace!(this, {
+        match this {
+            &Value::List(ref gc) => mark(gc),
+            &Value::String(ref gc) => mark(gc),
+            &Value::Lambda(ref gc) => mark(gc),
+            _ => {}
+        }
+    });
+}
+
+impl ::std::fmt::Debug for Value {
+    fn fmt(&self, _formatter: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+        // lol
+        Ok(())
+    }
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Value) -> bool {
+        use ::Value::*;
+
+        match (self, other) {
+            (&List(ref gc1), &List(ref gc2)) =>
+                &**gc1 == &**gc2,
+            (&String(ref gc1), &String(ref gc2)) =>
+                &**gc1 == &**gc2,
+            (&Float(f1), &Float(f2)) => f1 == f2,
+            (&Int(i1), &Int(i2)) => i1 == i2,
+            (&Bool(b1), &Bool(b2)) => b1 == b2,
+            (&Symbol(ref id1), &Symbol(ref id2)) => id1 == id2,
+            //(&Lambda(ref l1, b1), &Lambda(ref l2, b2)) => l1 == l2 && b1 == b2,
+            _ => false,
+        }
+    }
+}
+
 impl Value {
-    pub fn expect_list(self) -> Result<Rc<Vec<Value>>, InterpError> {
+    pub fn expect_list(self) -> Result<Gc<Vec<Value>>, InterpError> {
         match self {
             Value::List(list) => Ok(list),
             other => Err(InterpError::MismatchedType {
@@ -36,7 +73,7 @@ impl Value {
         }
     }
 
-    pub fn expect_string(self) -> Result<Rc<String>, InterpError> {
+    pub fn expect_string(self) -> Result<Gc<String>, InterpError> {
         match self {
             Value::String(string) => Ok(string),
             other => Err(InterpError::MismatchedType {
@@ -86,7 +123,7 @@ impl Value {
         }
     }
 
-    pub fn expect_lambda(self) -> Result<Rc<Lambda>, InterpError> {
+    pub fn expect_lambda(self) -> Result<Gc<Lambda>, InterpError> {
         match self {
             Value::Lambda(lambda) => Ok(lambda),
             other => Err(InterpError::MismatchedType {
@@ -96,7 +133,7 @@ impl Value {
         }
     }
 
-    pub fn expect_list_ref(&self) -> Result<&Rc<Vec<Value>>, InterpError> {
+    pub fn expect_list_ref(&self) -> Result<&Gc<Vec<Value>>, InterpError> {
         match self {
             &Value::List(ref list) => Ok(list),
             other => Err(InterpError::MismatchedType {
@@ -106,7 +143,7 @@ impl Value {
         }
     }
 
-    pub fn expect_string_ref(&self) -> Result<&Rc<String>, InterpError> {
+    pub fn expect_string_ref(&self) -> Result<&Gc<String>, InterpError> {
         match self {
             &Value::String(ref string) => Ok(string),
             other => Err(InterpError::MismatchedType {
@@ -156,7 +193,7 @@ impl Value {
         }
     }
 
-    pub fn expect_lambda_ref(&self) -> Result<&Rc<Lambda>, InterpError> {
+    pub fn expect_lambda_ref(&self) -> Result<&Gc<Lambda>, InterpError> {
         match self {
             &Value::Lambda(ref lambda) => Ok(lambda),
             other => Err(InterpError::MismatchedType {
@@ -166,7 +203,7 @@ impl Value {
         }
     }
 
-    pub fn expect_list_ref_mut(&mut self) -> Result<&mut Rc<Vec<Value>>, InterpError> {
+    pub fn expect_list_ref_mut(&mut self) -> Result<&mut Gc<Vec<Value>>, InterpError> {
         match self {
             &mut Value::List(ref mut list) => Ok(list),
             other => Err(InterpError::MismatchedType {
@@ -176,7 +213,7 @@ impl Value {
         }
     }
 
-    pub fn expect_string_ref_mut(&mut self) -> Result<&mut Rc<String>, InterpError> {
+    pub fn expect_string_ref_mut(&mut self) -> Result<&mut Gc<String>, InterpError> {
         match self {
             &mut Value::String(ref mut string) => Ok(string),
             other => Err(InterpError::MismatchedType {
@@ -226,7 +263,7 @@ impl Value {
         }
     }
 
-    pub fn expect_lambda_ref_mut(&mut self) -> Result<&mut Rc<Lambda>, InterpError> {
+    pub fn expect_lambda_ref_mut(&mut self) -> Result<&mut Gc<Lambda>, InterpError> {
         match self {
             &mut Value::Lambda(ref mut lambda) => Ok(lambda),
             other => Err(InterpError::MismatchedType {

@@ -3,7 +3,7 @@ use interp::*;
 
 fn main () {
     let mut vm = Vm::new();
-    vm.stack.push(Value::Int(30));
+    vm.stack.push(Value::Int(30)).unwrap();
     vm.load_and_execute(
                &[
                Instr::Dup(0),    //  1 [6, 6]

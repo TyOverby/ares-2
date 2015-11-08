@@ -2,3 +2,12 @@
 name = "interp"
 version = "0.1.0"
 authors = ["Ty Overby <ty@pre-alpha.com>"]
+
+[dependencies]
+libc = "*"
+
+[dependencies.gc]
+git = "https://github.com/Manishearth/rust-gc.git"
+
+[dependencies.gc_plugin]
+git = "https://github.com/Manishearth/rust-gc.git"
