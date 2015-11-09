@@ -1,5 +1,5 @@
-extern crate interp;
-use interp::*;
+extern crate ares_vm;
+use ares_vm::*;
 
 fn main () {
     let mut vm = Vm::new();

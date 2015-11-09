@@ -1,9 +1,8 @@
 #![allow(dead_code)]
 
-extern crate libc;
-
 #[macro_use]
 extern crate gc;
+extern crate libc;
 
 mod intern;
 mod lambda;

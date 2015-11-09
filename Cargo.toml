@@ -1,5 +1,5 @@
 [package]
-name = "interp"
+name = "ares-vm"
 version = "0.1.0"
 authors = ["Ty Overby <ty@pre-alpha.com>"]
 
