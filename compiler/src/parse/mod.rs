@@ -6,6 +6,8 @@ mod util;
 use ares_vm::{Symbol, SymbolIntern};
 use parse::tokens::Position;
 
+pub use self::errors::ParseError;
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Span {
     start: Position,
@@ -13,6 +15,12 @@ pub struct Span {
 }
 
 impl Span {
+    pub fn dummy() -> Span {
+        Span {
+            start: Position(0, 0),
+            end: Position(0, 0),
+        }
+    }
     fn from_pos(p1: Position, p2: Position) -> Span {
         if p1 < p2 {
             Span {
@@ -53,10 +61,11 @@ pub enum Ast {
     If(Box<Ast>, Box<Ast>, Box<Ast>, Span),
 }
 
+pub fn parse(s: &str, interner: &mut SymbolIntern) -> Result<Vec<Ast>, errors::ParseError> {
+    parse::parse(s, interner)
+}
+
 impl Ast {
-    pub fn from_st(s: &str, interner: &mut SymbolIntern) -> Result<Vec<Ast>, errors::ParseError> {
-        parse::parse(s, interner)
-    }
     pub fn is_symbol_lit_with(&self, symbol: &Symbol) -> bool {
         if let &Ast::SymbolLit(ref s, _) = self {
             s == symbol
