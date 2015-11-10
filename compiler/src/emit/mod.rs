@@ -3,7 +3,7 @@ use ares_vm::Instr;
 
 fn emit(ast: &Ast, out: &mut Vec<Instr>) {
     match ast {
-        &Ast::Add(ref operands, _, _) => {
+        &Ast::Add(ref operands, _) => {
             for operand in &operands[..] {
                 emit(operand, out);
             }

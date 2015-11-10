@@ -15,21 +15,21 @@ fn one_expr<'a, 'b>(tok: Token,
         TokenType::Number(s) => {
             let as_int: Result<i64, _> = s.parse();
             if let Ok(int) = as_int {
-                Ok(Ast::IntLit(int, tok))
+                Ok(Ast::IntLit(int, tok.span))
             } else {
                 let as_float: Result<f64, _> = s.parse();
                 let as_float = as_float.map_err(|e| ConversionError(s, Box::new(e) as Box<Error>));
-                as_float.map(|flt| Ast::FloatLit(flt, tok))
+                as_float.map(|flt| Ast::FloatLit(flt, tok.span))
             }
         }
         TokenType::Symbol(s) => {
             match &s[..] {
-                "true" => Ok(Ast::BoolLit(true, tok)),
-                "false" => Ok(Ast::BoolLit(false, tok)),
-                other => Ok(Ast::SymbolLit(interner.intern(other), tok))
+                "true" => Ok(Ast::BoolLit(true, tok.span)),
+                "false" => Ok(Ast::BoolLit(false, tok.span)),
+                other => Ok(Ast::SymbolLit(interner.intern(other), tok.span))
             }
         }
-        TokenType::String(s) => Ok(Ast::StringLit(s, tok)),
+        TokenType::String(s) => Ok(Ast::StringLit(s, tok.span)),
         // TODO: understand this
         TokenType::FormLike(_fl) => {
             unimplemented!();
@@ -42,19 +42,19 @@ fn one_expr<'a, 'b>(tok: Token,
             })
             }), */
         }
-        TokenType::Close(close) => Err(ExtraRightDelimiter(close, tok.start)),
+        TokenType::Close(close) => Err(ExtraRightDelimiter(close, tok.span)),
         TokenType::Open(open) => {
             let (mut values, end_tok) = try!(parse_delimited(tok_stream, open, interner));
             match open {
                 Open::LParen => {
                     if values.len() == 0 {
-                        return Ok(Ast::List(values, tok, end_tok))
+                        return Ok(Ast::List(values, tok.span.join(end_tok.span)))
                     }
                     if values[0].is_symbol_lit_with(&interner.precomputed.iff) {
                         let len = values.len();
                         let mut values = values.into_iter();
 
-                        if len != 4 { return Err(UnexpectedIfArity(len, tok.start, end_tok.end)) }
+                        if len != 4 { return Err(UnexpectedIfArity(len, tok.span)) }
                         let _ = values.next();
                         let (cond, tru, fals) =
                             (values.next().unwrap(),
@@ -64,11 +64,10 @@ fn one_expr<'a, 'b>(tok: Token,
                             Box::new(cond),
                             Box::new(tru),
                             Box::new(fals),
-                            tok,
-                            end_tok))
+                            tok.span.join(end_tok.span)))
                     } else if values[0].is_symbol_lit_with(&interner.precomputed.plus) {
                         values.remove(0);
-                        Ok(Ast::Add(values, tok, end_tok))
+                        Ok(Ast::Add(values, tok.span.join(end_tok.span)))
                     } else {
                         unimplemented!();
                     }
@@ -139,7 +138,7 @@ fn parse_delimited<'a, 'b>(tok_stream: &'a mut TokenIter<'b>,
                 TokenType::Close(close) => if close == opener.closed_by() {
                     return Ok((v, tok));
                 } else {
-                    return Err(ExtraRightDelimiter(opener.closed_by(), tok.start));
+                    return Err(ExtraRightDelimiter(opener.closed_by(), tok.span));
                 },
                 _ => v.push(try!(one_expr(tok, tok_stream, interner))),
             }
@@ -197,7 +196,7 @@ mod tests {
                              box Ast::BoolLit(true, _),
                              box Ast::IntLit(1, _),
                              box Ast::IntLit(2, _),
-                             _, _)));
+                             _)));
         assert!(matches!(ok_parse_1("(if true (if false 1 3) 2)"),
                          Ast::If(
                              box Ast::BoolLit(true, _),
@@ -205,32 +204,32 @@ mod tests {
                                  box Ast::BoolLit(false, _),
                                  box Ast::IntLit(1, _),
                                  box Ast::IntLit(3, _),
-                                 _, _),
+                                 _),
                              box Ast::IntLit(2, _),
-                             _, _)));
+                             _)));
     }
 
     #[test]
     fn test_parse_plus() {
         let ast = ok_parse_1("(+ 0 1 2)");
-        if let Ast::Add(v, _, _) = ast {
+        if let Ast::Add(v, _) = ast {
             assert!(v.into_iter().all(|a| matches!(a, Ast::IntLit(_, _))));
         } else {
             panic!("not a plus ast");
         }
 
         let ast = ok_parse_1("(+ 0 1 (+ 2 3))");
-        if let Ast::Add(v, _, _) = ast {
+        if let Ast::Add(v, _) = ast {
             assert!(matches!(&v[0], &Ast::IntLit(0, _)));
             assert!(matches!(&v[1], &Ast::IntLit(1, _)));
-            if let &Ast::Add(ref v, _, _) = &v[2] {
+            if let &Ast::Add(ref v, _) = &v[2] {
                 assert!(matches!(&v[0], &Ast::IntLit(2, _)));
                 assert!(matches!(&v[1], &Ast::IntLit(3, _)));
             } else {
-                panic!("not a plus ast");
+                panic!("nested is not a plus ast");
             }
         } else {
-            panic!("not a plus ast");
+            panic!("top is not a plus ast");
         }
     }
 }

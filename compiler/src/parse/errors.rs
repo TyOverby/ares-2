@@ -1,17 +1,18 @@
 use std::error::Error;
 use std::fmt;
-use parse::tokens::{Position, Close};
+use parse::tokens::Close;
+use parse::Span;
 
 #[derive(Debug)]
 pub enum ParseError {
-    UnexpectedChar(char, Position, String),
-    UnterminatedString(Position),
+    UnexpectedChar(char, Span, String),
+    UnterminatedString(Span),
     ConversionError(String, Box<Error>),
-    BadEscape(Position, String),
+    BadEscape(Span, String),
     MissingRightDelimiter(Close),
-    ExtraRightDelimiter(Close, Position),
-    InvalidMapLiteral(Position),
-    UnexpectedIfArity(usize, Position, Position),
+    ExtraRightDelimiter(Close, Span),
+    InvalidMapLiteral(Span),
+    UnexpectedIfArity(usize, Span),
 }
 
 use self::ParseError::*;
@@ -19,20 +20,20 @@ use self::ParseError::*;
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            UnexpectedChar(c, pos, ref while_doing) =>
-                write!(f, "Unexpected character {} at {}, {}", c, pos, while_doing),
-            UnterminatedString(pos) => write!(f, "Unterminated string beginning at {}", pos),
+            UnexpectedChar(c, span, ref while_doing) =>
+                write!(f, "Unexpected character {} at {}, {}", c, span.start, while_doing),
+            UnterminatedString(span) => write!(f, "Unterminated string beginning at {}", span.start),
             ConversionError(ref s, ref e) => {
                 write!(f, "Could not convert {}: {}", s, e)
             }
-            BadEscape(pos, ref s) =>
-                write!(f, "Invalid escape sequence starting at {}: {}", pos, s),
+            BadEscape(span, ref s) =>
+                write!(f, "Invalid escape sequence starting at {}: {}", span.start, s),
             MissingRightDelimiter(c) => write!(f, "Missing right delimiter {}", c.to_char()),
-            ExtraRightDelimiter(c, pos) =>
-                write!(f, "Extra right delimiter {} at {}", c.to_char(), pos),
-            InvalidMapLiteral(pos) => write!(f, "Map literal at {} is malformed", pos),
-            UnexpectedIfArity(size, start, _end) =>
-                write!(f, "`if` at {} takes {} arguments.  It should take 3", start, size),
+            ExtraRightDelimiter(c, span) =>
+                write!(f, "Extra right delimiter {} at {}", c.to_char(), span.start),
+            InvalidMapLiteral(span) => write!(f, "Map literal at {} is malformed", span.start),
+            UnexpectedIfArity(size, span) =>
+                write!(f, "`if` at {} takes {} arguments.  It should take 3", span.start, size),
         }
     }
 }

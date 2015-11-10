@@ -4,21 +4,53 @@ mod parse;
 mod util;
 
 use ares_vm::{Symbol, SymbolIntern};
-use parse::tokens::Token;
+use parse::tokens::Position;
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct Span {
+    start: Position,
+    end: Position,
+}
+
+impl Span {
+    fn from_pos(p1: Position, p2: Position) -> Span {
+        if p1 < p2 {
+            Span {
+                start: p1,
+                end: p2,
+            }
+        } else {
+            Span {
+                start: p2,
+                end: p1,
+            }
+        }
+    }
+
+    fn join(self, other: Span) -> Span {
+        use std::cmp::{min, max};
+        let lowest = min(self.start, other.start);
+        let highest = max(self.end, other.end);
+        Span {
+            start: lowest,
+            end: highest
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Ast {
-    BoolLit(bool, Token),
-    StringLit(String, Token),
-    IntLit(i64, Token),
-    FloatLit(f64, Token),
-    ListLit(Vec<Ast>, Token, Token),
-    MapLit(Vec<(Ast, Ast)>, Token, Token),
-    SymbolLit(Symbol, Token),
-    Add(Vec<Ast>, Token, Token),
-    Quote(Box<Ast>, Token, Token),
-    List(Vec<Ast>, Token, Token),
-    If(Box<Ast>, Box<Ast>, Box<Ast>, Token, Token),
+    BoolLit(bool, Span),
+    StringLit(String, Span),
+    IntLit(i64, Span),
+    FloatLit(f64, Span),
+    ListLit(Vec<Ast>, Span),
+    MapLit(Vec<(Ast, Ast)>, Span),
+    SymbolLit(Symbol, Span),
+    Add(Vec<Ast>, Span),
+    Quote(Box<Ast>, Span),
+    List(Vec<Ast>, Span),
+    If(Box<Ast>, Box<Ast>, Box<Ast>, Span),
 }
 
 impl Ast {

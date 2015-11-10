@@ -4,8 +4,9 @@ use std::str::CharIndices;
 use std::iter::Peekable;
 use parse::errors::ParseError;
 use parse::errors::ParseError::*;
+use parse::Span;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Position(pub usize, pub usize);
 
 impl<'a> fmt::Display for Position {
@@ -15,6 +16,9 @@ impl<'a> fmt::Display for Position {
 }
 
 impl Position {
+    pub fn into_span(self) -> Span {
+        Span::from_pos(self, self)
+    }
     pub fn advance(&mut self, c: char) {
         if c == '\n' {
             self.0 += 1;
@@ -101,16 +105,14 @@ impl Close {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     pub tt: TokenType,
-    pub start: Position,
-    pub end: Position,
+    pub span: Span
 }
 
 impl Token {
     pub fn new(t: TokenType, start: Position, end: Position) -> Token {
         Token {
             tt: t,
-            start: start,
-            end: end,
+            span: Span::from_pos(start, end)
         }
     }
 
@@ -127,8 +129,7 @@ impl Token {
         } {
             Some(Token {
                 tt: tt,
-                start: start,
-                end: start.next(),
+                span: Span::from_pos(start, start.next()),
             })
         } else {
             None
@@ -256,8 +257,9 @@ impl<'a> TokenIter<'a>
         let (chars, brace) = self.take_until(|c| c == '}');
         let brace = brace.unwrap_or(self.input.len());
         match chars.len() {
-            0 => Err(UnterminatedString(string_start)),
-            l if l > 8 => Err(BadEscape(escape_start, self.input[start..chars[8].0].into())),
+            0 => Err(UnterminatedString(string_start.into_span())),
+            l if l > 8 => Err(BadEscape(escape_start.into_span(),
+                                        self.input[start..chars[8].0].into())),
             l => {
                 if chars[0].1 != '{' ||
                    !(chars.iter()
@@ -265,14 +267,14 @@ impl<'a> TokenIter<'a>
                           .take(l - 1)
                           .map(|&(_, c, _)| c)
                           .all(|c| c.is_digit(16))) {
-                    Err(BadEscape(escape_start, self.input[start..brace + 1].into()))
+                    Err(BadEscape(escape_start.into_span(), self.input[start..brace + 1].into()))
                 } else {
                     let ival = chars.iter()
                                     .skip(1)
                                     .take(l - 1)
                                     .fold(0, |acc, &(_, c, _)| acc * 16 + (c as u32 - '0' as u32));
                     char::from_u32(ival)
-                        .ok_or(BadEscape(escape_start, self.input[start..brace + 1].into()))
+                        .ok_or(BadEscape(escape_start.into_span(), self.input[start..brace + 1].into()))
                 }
             }
         }
@@ -289,21 +291,21 @@ impl<'a> TokenIter<'a>
                                                     self.iter.next().map_or(vec![x], |y| vec![x, y])
                                                 }));
         if v.len() < 2 {
-            Err(UnterminatedString(string_start))
+            Err(UnterminatedString(string_start.into_span()))
         } else {
             let c1 = v[0].1;
             let (end_index, c2, _) = v[1];
             if c1 > '7' || c1 < '0' {
-                Err(BadEscape(escape_start, self.input[start..end_index].into()))
+                Err(BadEscape(escape_start.into_span(), self.input[start..end_index].into()))
             } else {
                 match c2 {
                     '0'...'9' | 'a'...'f' | 'A'...'F' => {
                         let zero = '0' as u32;
                         let ival = (c1 as u32 - zero) * 16 + (c2 as u32 - zero);
                         char::from_u32(ival)
-                            .ok_or(BadEscape(escape_start, self.input[start..end_index].into()))
+                            .ok_or(BadEscape(escape_start.into_span(), self.input[start..end_index].into()))
                     }
-                    _ => Err(BadEscape(escape_start, self.input[start..end_index + 1].into())),
+                    _ => Err(BadEscape(escape_start.into_span(), self.input[start..end_index + 1].into())),
                 }
             }
         }
@@ -323,10 +325,10 @@ impl<'a> TokenIter<'a>
                 '\'' => Ok('\''),
                 '"' => Ok('"'),
                 'n' => Ok('\n'),
-                _ => Err(BadEscape(escape_start, self.input[start..end + 1].into())),
+                _ => Err(BadEscape(escape_start.into_span(), self.input[start..end + 1].into())),
             }
         } else {
-            Err(UnterminatedString(string_start))
+            Err(UnterminatedString(string_start.into_span()))
         }
     }
 
@@ -340,7 +342,7 @@ impl<'a> TokenIter<'a>
         loop {
             let next = self.iter.next();
             match next {
-                None => return Err(UnterminatedString(startpos)),
+                None => return Err(UnterminatedString(startpos.into_span())),
                 Some((j, c, pos)) => {
                     if start.is_none() {
                         start = Some(j);
@@ -358,7 +360,7 @@ impl<'a> TokenIter<'a>
             }
         }
         if let Some(&(_, c, pos)) = self.iter.peek() {
-            delimcheck!(c, pos, startpos, "string");
+            delimcheck!(c, pos.into_span(), startpos, "string");
         }
         Ok(Token::new(TokenType::String(string), startpos, endpos))
     }
@@ -373,7 +375,7 @@ impl<'a> TokenIter<'a>
             if let Some(&(j, c, pos)) = self.iter.peek() {
                 if !is_number_c(c) {
                     stop = j;
-                    delimcheck!(c, pos, startpos, "number");
+                    delimcheck!(c, pos.into_span(), startpos, "number");
                     endpos = pos;
                     break;
                 }
@@ -412,7 +414,7 @@ impl<'a> TokenIter<'a>
                 endpos = pos;
                 if !is_symbol_c(c) {
                     stop = j;
-                    delimcheck!(c, pos, startpos, "symbol");
+                    delimcheck!(c, pos.into_span(), startpos, "symbol");
                     break;
                 }
                 self.iter.next();

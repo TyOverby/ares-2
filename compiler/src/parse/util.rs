@@ -3,9 +3,9 @@ use parse::Ast;
 
 pub fn immediate_value(v: &Ast, interner: &mut SymbolIntern) -> bool {
     match v {
-        &Ast::MapLit(ref m, _, _) =>
+        &Ast::MapLit(ref m, _) =>
             m.iter().all(|&(ref k, ref v)| immediate_value(k, interner) && immediate_value(v, interner)),
-        &Ast::Quote(_, _, _) => true,
+        &Ast::Quote(_, _) => true,
         &Ast::SymbolLit(_, _) => false,
         _ => true,
     }
@@ -13,7 +13,7 @@ pub fn immediate_value(v: &Ast, interner: &mut SymbolIntern) -> bool {
 
 pub fn unquote(v: &Ast) -> Ast {
     match v {
-        &Ast::ListLit(ref vec, _, _) => vec[1].clone(),
+        &Ast::ListLit(ref vec, _) => vec[1].clone(),
         v => v.clone(),
     }
 }
@@ -23,7 +23,7 @@ pub fn can_be_hash_key(v: &Ast, interner: &mut SymbolIntern) -> bool {
         &Ast::IntLit(_, _) => true,
         &Ast::BoolLit(_, _) => true,
         &Ast::FloatLit(_, _) => true,
-        &Ast::Quote(ref quoted, _, _) => {
+        &Ast::Quote(ref quoted, _) => {
             if let &Ast::SymbolLit(_, _) = &**quoted {
                 true
             } else {
