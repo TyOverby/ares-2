@@ -1,10 +1,13 @@
 use gc::{Gc, Trace};
+use std::ops::Deref;
 use intern::{Symbol, SymbolIntern};
+use std::collections::HashMap;
 use {InterpError, Lambda};
 
 #[derive(Clone)]
 pub enum Value {
     List(Gc<Vec<Value>>),
+    Map(Gc<MapWrapper>),
     String(Gc<String>),
     Float(f64),
     Int(i64),
@@ -24,13 +27,33 @@ pub enum ValueKind {
     Lambda,
 }
 
+#[derive(Debug, PartialEq)]
+pub struct MapWrapper(HashMap<Value, Value>);
+
+impl Deref for MapWrapper {
+    type Target = HashMap<Value, Value>;
+    fn deref(&self) -> &HashMap<Value, Value> {
+        &self.0
+    }
+}
+
 unsafe impl Trace for Value {
     custom_trace!(this, {
         match this {
             &Value::List(ref gc) => mark(gc),
+            &Value::Map(ref gc) => mark(gc),
             &Value::String(ref gc) => mark(gc),
             &Value::Lambda(ref gc) => mark(gc),
             _ => {}
+        }
+    });
+}
+
+unsafe impl Trace for MapWrapper {
+    custom_trace!(this, {
+        for (k, v) in &this.0 {
+            mark(k);
+            mark(v);
         }
     });
 }
@@ -43,13 +66,16 @@ impl ::std::fmt::Debug for Value {
     }
 }
 
+impl Eq for Value {}
 impl PartialEq for Value {
     fn eq(&self, other: &Value) -> bool {
         use ::Value::*;
 
         match (self, other) {
             (&List(ref gc1), &List(ref gc2)) =>
-                &**gc1 == &**gc2,
+                gc_to_usize(gc1) == gc_to_usize(gc2) || &**gc1 == &**gc2,
+            (&Map(ref gc1), &Map(ref gc2)) =>
+                gc_to_usize(gc1) == gc_to_usize(gc2) || &**gc1 == &**gc2,
             (&String(ref gc1), &String(ref gc2)) =>
                 &**gc1 == &**gc2,
             (&Float(f1), &Float(f2)) => f1 == f2,
@@ -66,6 +92,16 @@ impl Value {
     pub fn expect_list(self) -> Result<Gc<Vec<Value>>, InterpError> {
         match self {
             Value::List(list) => Ok(list),
+            other => Err(InterpError::MismatchedType {
+                value: other,
+                expected: ValueKind::List,
+            }),
+        }
+    }
+
+    pub fn expect_map(self) -> Result<Gc<MapWrapper>, InterpError> {
+        match self {
+            Value::Map(map) => Ok(map),
             other => Err(InterpError::MismatchedType {
                 value: other,
                 expected: ValueKind::List,
@@ -143,6 +179,16 @@ impl Value {
         }
     }
 
+    pub fn expect_map_ref(&self) -> Result<&Gc<MapWrapper>, InterpError> {
+        match self {
+            &Value::Map(ref map) => Ok(map),
+            other => Err(InterpError::MismatchedType {
+                value: other.clone(),
+                expected: ValueKind::List,
+            }),
+        }
+    }
+
     pub fn expect_string_ref(&self) -> Result<&Gc<String>, InterpError> {
         match self {
             &Value::String(ref string) => Ok(string),
@@ -213,6 +259,16 @@ impl Value {
         }
     }
 
+    pub fn expect_map_ref_mut(&mut self) -> Result<&mut Gc<MapWrapper>, InterpError> {
+        match self {
+            &mut Value::Map(ref mut map) => Ok(map),
+            other => Err(InterpError::MismatchedType {
+                value: other.clone(),
+                expected: ValueKind::List,
+            }),
+        }
+    }
+
     pub fn expect_string_ref_mut(&mut self) -> Result<&mut Gc<String>, InterpError> {
         match self {
             &mut Value::String(ref mut string) => Ok(string),
@@ -274,14 +330,14 @@ impl Value {
     }
 }
 
+fn gc_to_usize<T: Trace>(gc: &Gc<T>) -> usize {
+    use std::mem::transmute;
+    let ptr_t: &T = &**gc;
+    unsafe { transmute(ptr_t) }
+}
+
 pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
     use std::collections::HashSet;
-    fn gc_to_usize<T: Trace>(gc: &Gc<T>) -> usize {
-        use std::mem::transmute;
-        let ptr_t: &T = &**gc;
-        unsafe { transmute(ptr_t) }
-    }
-
     match value {
         &Value::Int(i) => format!("{}", i),
         &Value::Float(f) => format!("{}", f),
@@ -290,7 +346,7 @@ pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
         &Value::Symbol(s) => format!("'{}", interner.lookup_or_anon(s)),
         &Value::Lambda(_) => format!("<lambda>"),
 
-        &ref l@Value::List(_) => { //| &ref l@Value::Map(_) => {
+        &ref l@Value::List(_) | &ref l@Value::Map(_) => {
             fn format_singles(vec: &Gc<Vec<Value>>,
                               buf: &mut String,
                               seen: &mut HashSet<usize>,
@@ -313,8 +369,7 @@ pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
                     buf.push_str("]");
                 }
             }
-            /*
-            fn format_pairs(m: &Gc<HashMap<Value, Value>>,
+            fn format_pairs(m: &Gc<MapWrapper>,
                             buf: &mut String,
                             seen: &mut HashSet<usize>,
                             interner: &SymbolIntern) {
@@ -331,14 +386,14 @@ pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
                     }
                     buf.push_str("}")
                 }
-            }*/
+            }
             fn build_buf(cur: &Value,
                          buf: &mut String,
                          seen: &mut HashSet<usize>,
                          interner: &SymbolIntern) {
                 match cur {
                     &Value::List(ref v) => format_singles(v, buf, seen, interner),
-                    //&Value::Map(ref m) => format_pairs(m, buf, seen, interner),
+                    &Value::Map(ref m) => format_pairs(m, buf, seen, interner),
                     other => buf.push_str(&to_string_helper(&other, interner)),
                 }
             }
@@ -346,6 +401,38 @@ pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
             let mut seen = HashSet::new();
             build_buf(&l, &mut inner, &mut seen, interner);
             inner
+        }
+    }
+}
+
+impl ::std::hash::Hash for Value {
+    fn hash<H>(&self, state: &mut H)
+        where H: ::std::hash::Hasher
+    {
+        use std::mem::transmute;
+        match self {
+            &Value::List(ref rc) => rc.hash(state),
+            &Value::Map(ref rc) => {
+                for (k, v) in rc.iter() {
+                    k.hash(state);
+                    v.hash(state);
+                }
+            },
+            &Value::String(ref rc) => rc.hash(state),
+            &Value::Float(f) => unsafe { state.write(&transmute::<_, [u8; 8]>(f)) },
+            &Value::Int(i) => unsafe { state.write(&transmute::<_, [u8; 8]>(i)) },
+            &Value::Bool(b) => {
+                let byte = if b {
+                    1
+                } else {
+                    0
+                };
+                state.write(&[byte])
+            },
+            &Value::Symbol(ref rc) => rc.hash(state),
+            &Value::Lambda(_) => {
+                state.write(&[])
+            }
         }
     }
 }
