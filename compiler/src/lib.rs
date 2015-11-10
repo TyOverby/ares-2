@@ -7,7 +7,7 @@ mod error;
 
 use error::CompileError;
 
-fn compile(source: &str, interner: &mut ares_vm::SymbolIntern) -> Result<Vec<ares_vm::Instr>, CompileError> {
+pub fn compile(source: &str, interner: &mut ares_vm::SymbolIntern) -> Result<Vec<ares_vm::Instr>, CompileError> {
     let mut out = vec![];
     let asts = try!(parse::parse(source, interner));
     for ast in &asts {

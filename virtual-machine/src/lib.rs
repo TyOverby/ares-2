@@ -45,7 +45,7 @@ pub struct Return {
 pub struct Vm {
     pub stack: Stack,
     return_stack: Vec<Return>,
-    interner: intern::SymbolIntern,
+    pub interner: intern::SymbolIntern,
     globals: ReferenceMap,
     code: Vec<Instr>
 }

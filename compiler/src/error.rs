@@ -1,6 +1,7 @@
 use parse::ParseError;
 use emit::EmitError;
 
+#[derive(Debug)]
 pub enum CompileError {
     ParseError(ParseError),
     EmitError(EmitError),
