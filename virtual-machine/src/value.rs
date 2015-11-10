@@ -353,7 +353,7 @@ pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
                               interner: &SymbolIntern) {
                 let ptr = gc_to_usize(vec);
                 if seen.contains(&ptr) {
-                    buf.push_str("...")
+                    buf.push_str("[ ... ]")
                 } else {
                     seen.insert(ptr);
                     buf.push_str("[");
@@ -367,6 +367,7 @@ pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
                         buf.pop();
                     }
                     buf.push_str("]");
+                    seen.remove(&ptr);
                 }
             }
             fn format_pairs(m: &Gc<MapWrapper>,
@@ -375,7 +376,7 @@ pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
                             interner: &SymbolIntern) {
                 let ptr = gc_to_usize(m);
                 if seen.contains(&ptr) {
-                    buf.push_str("...")
+                    buf.push_str("{ ... }")
                 } else {
                     seen.insert(ptr);
                     buf.push_str("{");
@@ -384,7 +385,8 @@ pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
                         buf.push_str(", ");
                         build_buf(v, buf, seen, interner);
                     }
-                    buf.push_str("}")
+                    buf.push_str("}");
+                    seen.remove(&ptr);
                 }
             }
             fn build_buf(cur: &Value,
