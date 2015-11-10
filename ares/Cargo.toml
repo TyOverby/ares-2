@@ -1,7 +1,10 @@
 [package]
-name = "ares-compiler"
+name = "ares"
 version = "0.1.0"
 authors = ["Ty Overby <ty@pre-alpha.com>"]
+
+[dependencies.ares-compiler]
+path = "../compiler"
 
 [dependencies.ares-vm]
 path = "../virtual-machine"

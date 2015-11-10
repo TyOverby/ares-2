@@ -52,4 +52,24 @@ fn test_add_emit() {
                        ], Span::dummy());
     emit(&ast, &mut out);
     assert_eq!(vec![Instr::IntLit(5), Instr::IntLit(10), Instr::AddInt], out);
+
+    // Add some addition
+    let mut out = vec![];
+    let ast = Ast::Add(vec![
+                       Ast::IntLit(5, Span::dummy()),
+                       Ast::IntLit(10, Span::dummy()),
+                       Ast::Add(vec![
+                            Ast::IntLit(15, Span::dummy()),
+                            Ast::IntLit(20, Span::dummy()),
+                            ], Span::dummy())
+                       ], Span::dummy());
+    emit(&ast, &mut out);
+    assert_eq!(vec![
+               Instr::IntLit(5),
+               Instr::IntLit(10),
+               Instr::IntLit(15),
+               Instr::IntLit(20),
+               Instr::AddInt,
+               Instr::AddInt,
+               Instr::AddInt], out);
 }
