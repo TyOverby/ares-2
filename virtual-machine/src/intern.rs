@@ -8,15 +8,44 @@ pub struct SymbolIntern {
     current_id: u32,
     sym_to_string: HashMap<Symbol, String>,
     string_to_sym: HashMap<String, Symbol>,
+    pub precomputed: PrecomputedSymbols
+}
+
+#[derive(Debug)]
+pub struct PrecomputedSymbols {
+    pub iff: Symbol,
+    pub plus: Symbol,
+    pub quote: Symbol,
+    pub list: Symbol,
+    pub define: Symbol,
+}
+
+impl PrecomputedSymbols {
+    fn new() -> PrecomputedSymbols {
+        PrecomputedSymbols {
+            iff: Symbol(0),
+            plus: Symbol(0),
+            quote: Symbol(0),
+            list: Symbol(0),
+            define: Symbol(0),
+        }
+    }
 }
 
 impl SymbolIntern {
     pub fn new() -> SymbolIntern {
-        SymbolIntern {
+        let mut interner = SymbolIntern {
             current_id: 0,
             sym_to_string: HashMap::new(),
             string_to_sym: HashMap::new(),
-        }
+            precomputed: PrecomputedSymbols::new(),
+        };
+        interner.precomputed.iff = interner.intern("if");
+        interner.precomputed.plus = interner.intern("+");
+        interner.precomputed.quote = interner.intern("quote");
+        interner.precomputed.list = interner.intern("list");
+        interner.precomputed.define = interner.intern("define");
+        interner
     }
 
     pub fn gen_sym(&mut self) -> Symbol {
