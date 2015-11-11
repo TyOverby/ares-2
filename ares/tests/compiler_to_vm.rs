@@ -13,5 +13,14 @@ fn run_this(src: &str) -> Value {
 
 #[test]
 fn addition() {
+    assert_eq!(run_this("(+ 1)"), Value::Int(1));
+    assert_eq!(run_this("(+)"), Value::Int(0));
     assert_eq!(run_this("(+ 1 2 3)"), Value::Int(6));
+    assert_eq!(run_this("(+ 1 (+ 2 3))"), Value::Int(6));
+}
+
+#[test]
+fn iff() {
+    assert_eq!(run_this("(if true 15 20)"), Value::Int(15));
+    assert_eq!(run_this("(if false 15 20)"), Value::Int(20));
 }
