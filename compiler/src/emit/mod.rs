@@ -22,10 +22,13 @@ pub fn emit(ast: &Ast, out: &mut EmitBuffer) {
             }
         }
         &Ast::IntLit(i, _) => {
-            out.push(Instr::IntLit(i as i32))
+            out.push(Instr::IntLit(i as i32));
         }
         &Ast::BoolLit(b, _) => {
-            out.push(Instr::BoolLit(b))
+            out.push(Instr::BoolLit(b));
+        }
+        &Ast::SymbolLit(s, _) => {
+            out.push(Instr::SymbolLit(s));
         }
         &Ast::If(ref cond, ref tru, ref fals, _) => {
             let mut true_code = EmitBuffer::new();
