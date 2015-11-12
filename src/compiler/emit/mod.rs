@@ -1,8 +1,8 @@
 mod error;
 mod emit_buffer;
 
-use parse::Ast;
-use ares_vm::Instr;
+use compiler::parse::Ast;
+use vm::Instr;
 
 pub use self::error::EmitError;
 pub use self::emit_buffer::EmitBuffer;
@@ -59,7 +59,7 @@ pub fn emit(ast: &Ast, out: &mut EmitBuffer) {
 
 #[test]
 fn test_int_lit_emit() {
-    use parse::Span;
+    use compiler::parse::Span;
 
     let mut out = EmitBuffer::new();
     let ast = Ast::IntLit(5, Span::dummy());
@@ -71,7 +71,7 @@ fn test_int_lit_emit() {
 
 #[test]
 fn test_add_emit() {
-    use parse::Span;
+    use compiler::parse::Span;
 
     // Add a single item
     let mut out = EmitBuffer::new();
@@ -115,7 +115,7 @@ fn test_add_emit() {
 
 #[test]
 fn test_basic_if() {
-    use parse::Span;
+    use compiler::parse::Span;
 
     // Add a single item
     let mut out = EmitBuffer::new();

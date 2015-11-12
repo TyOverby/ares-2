@@ -1,8 +1,3 @@
-#![allow(dead_code)]
-
-#[macro_use]
-extern crate gc;
-extern crate libc;
 
 mod intern;
 mod lambda;
@@ -12,10 +7,10 @@ mod stack;
 use std::collections::HashMap;
 use gc::Trace;
 
-pub use intern::*;
-pub use value::*;
-pub use lambda::*;
-pub use stack::*;
+pub use vm::intern::*;
+pub use vm::value::*;
+pub use vm::lambda::*;
+pub use vm::stack::*;
 
 #[derive(Debug)]
 pub enum InterpError {

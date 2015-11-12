@@ -2,9 +2,9 @@ use std::fmt;
 use std::char;
 use std::str::CharIndices;
 use std::iter::Peekable;
-use parse::errors::ParseError;
-use parse::errors::ParseError::*;
-use parse::Span;
+use compiler::parse::errors::ParseError;
+use compiler::parse::errors::ParseError::*;
+use compiler::parse::Span;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Position(pub usize, pub usize);

@@ -1,8 +1,8 @@
 use gc::{Gc, Trace};
 use std::ops::Deref;
-use intern::{Symbol, SymbolIntern};
 use std::collections::HashMap;
-use {InterpError, Lambda};
+use vm::intern::{Symbol, SymbolIntern};
+use vm::{InterpError, Lambda};
 
 #[derive(Clone)]
 pub enum Value {
@@ -69,7 +69,7 @@ impl ::std::fmt::Debug for Value {
 impl Eq for Value {}
 impl PartialEq for Value {
     fn eq(&self, other: &Value) -> bool {
-        use ::Value::*;
+        use vm::Value::*;
 
         match (self, other) {
             (&List(ref gc1), &List(ref gc2)) =>

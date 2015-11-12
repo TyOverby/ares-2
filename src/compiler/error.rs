@@ -1,5 +1,5 @@
-use parse::ParseError;
-use emit::EmitError;
+use compiler::parse::ParseError;
+use compiler::emit::EmitError;
 
 #[derive(Debug)]
 pub enum CompileError {

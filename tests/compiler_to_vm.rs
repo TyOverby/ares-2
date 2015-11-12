@@ -1,8 +1,7 @@
-extern crate ares_compiler;
-extern crate ares_vm;
+extern crate ares;
 
-use ares_vm::{Vm, Value};
-use ares_compiler::compile;
+use ares::vm::{Vm, Value};
+use ares::compiler::compile;
 
 fn run_this(src: &str) -> Value {
     let mut vm = Vm::new();
@@ -12,7 +11,7 @@ fn run_this(src: &str) -> Value {
 }
 
 #[test]
-fn addition() {
+fn add() {
     assert_eq!(run_this("(+ 1)"), Value::Int(1));
     assert_eq!(run_this("(+)"), Value::Int(0));
     assert_eq!(run_this("(+ 1 2 3)"), Value::Int(6));

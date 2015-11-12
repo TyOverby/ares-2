@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ares_vm::Instr;
+use vm::Instr;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Standin(i32);

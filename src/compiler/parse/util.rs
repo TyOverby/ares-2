@@ -1,5 +1,5 @@
-use ares_vm::SymbolIntern;
-use parse::Ast;
+use vm::SymbolIntern;
+use compiler::parse::Ast;
 
 pub fn immediate_value(v: &Ast, interner: &mut SymbolIntern) -> bool {
     match v {

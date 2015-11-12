@@ -1,5 +1,5 @@
 use gc::{Trace};
-use {ReferenceMap};
+use vm::ReferenceMap;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Lambda {

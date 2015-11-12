@@ -1,7 +1,11 @@
 [package]
-name = "ares-vm"
+name = "ares"
 version = "0.1.0"
 authors = ["Ty Overby <ty@pre-alpha.com>"]
+
+[lib]
+name = "ares"
+path = "./src/lib.rs"
 
 [dependencies]
 libc = "*"

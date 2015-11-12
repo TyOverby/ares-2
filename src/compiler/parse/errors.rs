@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fmt;
-use parse::tokens::Close;
-use parse::Span;
+use compiler::parse::tokens::Close;
+use compiler::parse::Span;
 
 #[derive(Debug)]
 pub enum ParseError {

@@ -3,8 +3,8 @@ mod tokens;
 mod parse;
 mod util;
 
-use ares_vm::{Symbol, SymbolIntern};
-use parse::tokens::Position;
+use vm::{Symbol, SymbolIntern};
+use compiler::parse::tokens::Position;
 
 pub use self::errors::ParseError;
 

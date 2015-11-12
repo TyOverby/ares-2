@@ -1,16 +1,16 @@
 use std::error::Error;
-use parse::Ast;
-use ares_vm::SymbolIntern;
+use vm::SymbolIntern;
 
-use parse::tokens::{TokenType, Token, Open, TokenIter};
-pub use parse::errors::ParseError;
-use parse::errors::ParseError::*;
+use compiler::parse::Ast;
+use compiler::parse::tokens::{TokenType, Token, Open, TokenIter};
+pub use compiler::parse::errors::ParseError;
+use compiler::parse::errors::ParseError::*;
 
 fn one_expr<'a, 'b>(tok: Token,
                     tok_stream: &'a mut TokenIter<'b>,
                     interner: &mut SymbolIntern)
                     -> Result<Ast, ParseError> {
-    use parse::tokens::TokenType;
+    use compiler::parse::tokens::TokenType;
     match tok.clone().tt {
         TokenType::Number(s) => {
             let as_int: Result<i64, _> = s.parse();
@@ -160,8 +160,8 @@ pub fn parse(input: &str, interner: &mut SymbolIntern) -> Result<Vec<Ast>, Parse
 
 #[cfg(test)]
 mod tests {
-    use parse::Ast;
-    use ares_vm::SymbolIntern;
+    use compiler::parse::Ast;
+    use vm::SymbolIntern;
     use super::parse;
 
     macro_rules! matches {
