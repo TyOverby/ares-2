@@ -44,7 +44,7 @@ pub struct Vm {
     pub interner: intern::SymbolIntern,
     globals: ReferenceMap,
     code: Vec<Instr>,
-    compile_context: CompileContext,
+    pub compile_context: CompileContext,
 }
 
 #[derive(Debug, Clone, PartialEq)]
