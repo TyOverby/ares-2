@@ -9,6 +9,7 @@ path = "./src/lib.rs"
 
 [dependencies]
 libc = "*"
+itertools = "*"
 
 [dependencies.gc]
 git = "https://github.com/Manishearth/rust-gc.git"

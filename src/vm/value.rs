@@ -438,3 +438,54 @@ impl ::std::hash::Hash for Value {
         }
     }
 }
+
+macro_rules! gen_from {
+    ($inx: ty, $out: path) => {
+        gen_from!($inx, $out, |i| i);
+    };
+    ($inx: ty, $out: path, $tr: expr) => {
+        impl From<$inx> for Value {
+            fn from(i: $inx) -> Value {
+                $out($tr(i))
+            }
+        }
+    }
+}
+
+
+gen_from!(Symbol, Value::Symbol, |a| a);
+gen_from!(u8, Value::Int, |a| a as i64);
+gen_from!(i8, Value::Int, |a| a as i64);
+gen_from!(u16, Value::Int, |a| a as i64);
+gen_from!(i16, Value::Int, |a| a as i64);
+gen_from!(u32, Value::Int, |a| a as i64);
+gen_from!(i32, Value::Int, |a| a as i64);
+gen_from!(u64, Value::Int, |a| a as i64);
+gen_from!(i64, Value::Int);
+
+gen_from!(f32, Value::Float, |a| a as f64);
+gen_from!(f64, Value::Float);
+
+gen_from!(bool, Value::Bool);
+
+gen_from!(String, Value::String, Gc::new);
+
+impl <T: Into<Value>> From<Vec<T>> for Value {
+    fn from(x: Vec<T>) -> Value {
+        Value::List(Gc::new(x.into_iter().map(|a| a.into()).collect()))
+    }
+}
+
+impl <T: Into<Value> + ::std::hash::Hash + Eq> From<HashMap<T, T>> for Value {
+    fn from(x: HashMap<T, T>) -> Value {
+        Value::Map(Gc::new(MapWrapper(x.into_iter().map(|(k, v)| (k.into(), v.into())).collect())))
+    }
+}
+
+impl <'a> From<&'a str> for Value {
+    fn from(x: &'a str) -> Value {
+        let s: String = x.into();
+        let v: Value = s.into();
+        v
+    }
+}

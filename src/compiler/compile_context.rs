@@ -1,24 +1,30 @@
-use std::collections::HashMap;
-use ares_vm::{Value, Instr};
+use vm::{Value, Instr};
 
+pub enum CompileOptLevel {
+    None,
+    Few,
+    All
+}
 
-struct CompileContext {
-    next_constant_id: u32,
-    constants: HashMap<u32, Value>
+#[derive(Debug)]
+pub struct CompileContext {
+    constants: Vec<Value>
 }
 
 impl CompileContext {
-    fn new() -> CompileContext {
+    pub fn new() -> CompileContext {
         CompileContext {
-            next_constant_id: 0,
-            constants: HashMap::new(),
+            constants: vec![]
         }
     }
 
-    fn add_constant(&mut self, constant: Value) -> Instr {
-        let id = self.next_constant_id;
-        self.next_constant_id += 1;
-        self.constants.insert(id, constant);
-        Instr::
+    pub fn add_constant(&mut self, constant: Value) -> Instr {
+        let id = self.constants.len();
+        self.constants.push(constant);
+        Instr::LoadConstant(id as u32)
+    }
+
+    pub fn get_constant(&self, id: u32) -> Value {
+        self.constants[id as usize].clone()
     }
 }

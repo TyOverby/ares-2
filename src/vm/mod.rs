@@ -1,4 +1,3 @@
-
 mod intern;
 mod lambda;
 mod value;
@@ -6,6 +5,8 @@ mod stack;
 
 use std::collections::HashMap;
 use gc::Trace;
+
+use compiler::CompileContext;
 
 pub use vm::intern::*;
 pub use vm::value::*;
@@ -42,7 +43,8 @@ pub struct Vm {
     return_stack: Vec<Return>,
     pub interner: intern::SymbolIntern,
     globals: ReferenceMap,
-    code: Vec<Instr>
+    code: Vec<Instr>,
+    compile_context: CompileContext,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -67,6 +69,7 @@ pub enum Instr {
     BoolLit(bool),
     SymbolLit(Symbol),
     IntLit(i32),
+    LoadConstant(u32),
 
 
     /// Calls a function at the specified location.
@@ -146,6 +149,7 @@ impl Vm {
             globals: ReferenceMap::new(),
             return_stack: Vec::new(),
             code: Vec::new(),
+            compile_context: ::compiler::CompileContext::new(),
         }
     }
 
@@ -166,7 +170,8 @@ impl Vm {
             ref mut return_stack,
             ref mut interner,
             ref mut globals,
-            ref mut code
+            ref mut code,
+            ref compile_context,
         } = self;
 
         let mut i = start_at;
@@ -277,6 +282,9 @@ impl Vm {
                 }
                 &Instr::IntLit(int) => {
                     try!(stack.push(Value::Int(int as i64)));
+                }
+                &Instr::LoadConstant(c_id)=> {
+                    try!(stack.push(compile_context.get_constant(c_id)));
                 }
                 &Instr::Jump(location) => {
                     // subtract one because we'll be bumping
@@ -685,7 +693,7 @@ fn test_optimizations() {
     vm.load_and_execute(&[Instr::IntLit(10), Instr::AddInt], 1).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(15));
-    assert_eq!(vm.stack.pop_count(), 1);   // This pop is done in the test
+    assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
     assert_eq!(vm.stack.push_count(), 1); // this push is done in the test
 
     //
@@ -696,7 +704,7 @@ fn test_optimizations() {
     vm.load_and_execute(&[Instr::IntLit(5), Instr::SubInt], 1).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(5));
-    assert_eq!(vm.stack.pop_count(), 1);   // This pop is done in the test
+    assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
     assert_eq!(vm.stack.push_count(), 1); // this push is done in the test
 
     //
@@ -707,7 +715,7 @@ fn test_optimizations() {
     vm.load_and_execute(&[Instr::IntLit(10), Instr::MulInt], 1).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(50));
-    assert_eq!(vm.stack.pop_count(), 1);   // This pop is done in the test
+    assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
     assert_eq!(vm.stack.push_count(), 1); // this push is done in the test
 
     //
@@ -718,7 +726,7 @@ fn test_optimizations() {
     vm.load_and_execute(&[Instr::IntLit(5), Instr::DivInt], 1).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(2));
-    assert_eq!(vm.stack.pop_count(), 1);   // This pop is done in the test
+    assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
     assert_eq!(vm.stack.push_count(), 1); // this push is done in the test
 
     //
@@ -729,7 +737,7 @@ fn test_optimizations() {
     vm.load_and_execute(&[Instr::IntLit(10), Instr::Eq], 1).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Bool(true));
-    assert_eq!(vm.stack.pop_count(), 1);   // This pop is done in the test
+    assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
     assert_eq!(vm.stack.push_count(), 1); // this push is done in the test
 
     //
@@ -740,7 +748,7 @@ fn test_optimizations() {
     vm.load_and_execute(&[Instr::BoolLit(true), Instr::Eq], 1).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Bool(true));
-    assert_eq!(vm.stack.pop_count(), 1);   // This pop is done in the test
+    assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
     assert_eq!(vm.stack.push_count(), 1); // this push is done in the test
 
     //
@@ -751,7 +759,7 @@ fn test_optimizations() {
     vm.load_and_execute(&[Instr::SymbolLit(s), Instr::Eq], 1).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Bool(true));
-    assert_eq!(vm.stack.pop_count(), 1);   // This pop is done in the test
+    assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
     assert_eq!(vm.stack.push_count(), 1); // this push is done in the test
 
     //
@@ -763,7 +771,7 @@ fn test_optimizations() {
     vm.load_and_execute(&[Instr::Or, Instr::If, Instr::IntLit(5)], 2).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(5));
-    assert_eq!(vm.stack.pop_count(), 3);   // 1 from the test, two from popping the bools
+    assert_eq!(vm.stack.pop_count(), 3);  // 1 from the test, two from popping the bools
     assert_eq!(vm.stack.push_count(), 3); // 2 from the test, one for the int-lit
 
     //
@@ -775,7 +783,7 @@ fn test_optimizations() {
     vm.load_and_execute(&[Instr::Or, Instr::Ifn, Instr::Nop, Instr::IntLit(5)], 2).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(5));
-    assert_eq!(vm.stack.pop_count(), 3);   // 1 from the test, two from popping the bools
+    assert_eq!(vm.stack.pop_count(), 3);  // 1 from the test, two from popping the bools
     assert_eq!(vm.stack.push_count(), 3); // 2 from the test, one for the int-lit
 
     //
@@ -787,7 +795,7 @@ fn test_optimizations() {
     vm.load_and_execute(&[Instr::And, Instr::If, Instr::IntLit(5)], 2).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(5));
-    assert_eq!(vm.stack.pop_count(), 3);   // 1 from the test, two from popping the bools
+    assert_eq!(vm.stack.pop_count(), 3);  // 1 from the test, two from popping the bools
     assert_eq!(vm.stack.push_count(), 3); // 2 from the test, one for the int-lit
 
     //
@@ -799,6 +807,22 @@ fn test_optimizations() {
     vm.load_and_execute(&[Instr::And, Instr::Ifn, Instr::Nop, Instr::IntLit(5)], 2).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(5));
-    assert_eq!(vm.stack.pop_count(), 3);   // 1 from the test, two from popping the bools
+    assert_eq!(vm.stack.pop_count(), 3);  // 1 from the test, two from popping the bools
     assert_eq!(vm.stack.push_count(), 3); // 2 from the test, one for the int-lit
+}
+
+#[test]
+fn load_constant() {
+    let mut vm = Vm::new();
+    let instr = vm.compile_context.add_constant("hello world".into());
+    assert_eq!(instr, Instr::LoadConstant(0));
+    vm.load_and_execute(&[instr], 0).unwrap();
+    let result = vm.stack.pop().unwrap();
+    assert_eq!(result, "hello world".into());
+
+    let instr = vm.compile_context.add_constant("bye world".into());
+    assert_eq!(instr, Instr::LoadConstant(1));
+    vm.load_and_execute(&[instr], 0).unwrap();
+    let result = vm.stack.pop().unwrap();
+    assert_eq!(result, "bye world".into());
 }
