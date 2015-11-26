@@ -118,4 +118,16 @@ impl Stack {
         *b = f(*b, a);
         Ok(())
     }
+
+    pub fn as_slice(&self) -> &[Value] {
+        unsafe {
+            ::std::slice::from_raw_parts(self.ptr, self.size)
+        }
+    }
+
+    pub fn as_slice_mut(&mut self) -> &mut [Value] {
+        unsafe {
+            ::std::slice::from_raw_parts_mut(self.ptr, self.size)
+        }
+    }
 }

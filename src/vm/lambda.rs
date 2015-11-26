@@ -1,19 +1,12 @@
-use gc::{Trace};
+use gc::Trace;
 use vm::ReferenceMap;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Lambda {
     pub upvars: ReferenceMap,
     pub code_offset: u32,
-}
-
-impl Lambda {
-    pub fn new(ref_map: ReferenceMap, code_offset: u32) -> Lambda {
-        Lambda {
-            upvars: ref_map,
-            code_offset: code_offset,
-        }
-    }
+    pub arg_count: u32,
+    pub has_rest_params: bool
 }
 
 unsafe impl Trace for Lambda {

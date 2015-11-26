@@ -469,6 +469,7 @@ gen_from!(f64, Value::Float);
 gen_from!(bool, Value::Bool);
 
 gen_from!(String, Value::String, Gc::new);
+gen_from!(Lambda, Value::Lambda, |a| Gc::new(a));
 
 impl <T: Into<Value>> From<Vec<T>> for Value {
     fn from(x: Vec<T>) -> Value {

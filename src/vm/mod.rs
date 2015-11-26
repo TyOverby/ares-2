@@ -24,6 +24,10 @@ pub enum InterpError {
     StackOverflow,
     StackUnderflow,
     StackOutOfBounds,
+    BadArity {
+        got: u32,
+        expected: u32
+    },
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -95,11 +99,11 @@ pub enum Instr {
 
     /// Execute a lambda on the top of the stack with
     /// a specified number of arguments
-    Execute(u32),
+    ExecuteLambda(u32),
     /// Execute a lambda on the top of the stack with
     /// an amount of arguments equal to the *next*
     /// thing on the stack.
-    ExecuteN,
+    ExecuteLambdaN,
 
     /// Read a bool off the stack, if true, continue executing,
     /// else, skip the next instruction.
@@ -163,7 +167,7 @@ impl Vm {
     pub fn execute(&mut self,
                    start_at: u32,
                    mut stack_frame: u32,
-                   upvars: Option<&ReferenceMap>)
+                   _upvars: Option<&ReferenceMap>)
                    -> Result<(), InterpError> {
         let &mut Vm {
             ref mut stack,
@@ -258,10 +262,8 @@ impl Vm {
                     println!("{:?}", try!(stack.peek()));
                 }
                 &Instr::Dbg => {
-                    /*
-                    print!("{:?} - ",   &stack.stack[.. stack_frame as usize]);
-                    println!("{:?}", &stack.stack[stack_frame as usize ..]);
-                    */
+                    print!("{:?} - ", &stack.as_slice()[.. stack_frame as usize]);
+                    println!("{:?}", &stack.as_slice()[stack_frame as usize ..]);
                 }
                 &Instr::Dup(stack_pos) => {
                     let value = try!(stack.peek_n(stack_pos as usize)).clone();
@@ -318,20 +320,26 @@ impl Vm {
                     let b = try!(stack.peek());
                     *b = Value::Bool(&a == b);
                 }
-                &Instr::Execute(_arg_count) => {
-                    /*
-                    let lambda = try!(stack.pop().expect_lambda());
-                    let offset = lambda.code_offset;
+                &Instr::ExecuteLambda(arg_count) => {
+                    let lambda = try!(try!(stack.pop()).expect_lambda());
+                    let code_pos = lambda.code_offset;
+                    let expected_arg_count = lambda.arg_count;
+                    if arg_count != expected_arg_count {
+                        return Err(InterpError::BadArity {
+                            got: arg_count,
+                            expected: expected_arg_count
+                        });
+                    }
+
                     return_stack.push(Return {
                         code_pos: i,
                         stack_frame: stack_frame
                     });
-                    i = offset.wrapping_sub(1);
+
+                    i = code_pos.wrapping_sub(1);
                     stack_frame = stack.len() as u32 - arg_count as u32;
-                    */
-                    unimplemented!();
                 }
-                &Instr::ExecuteN => {
+                &Instr::ExecuteLambdaN => {
                     /*
                     let lambda = try!(stack.pop().expect_lambda());
                     let arg_count = try!(stack.pop().expect_int());
@@ -360,6 +368,7 @@ impl Vm {
                         Some(ri) => ri,
                         None => return Ok(())
                     };
+
                     i = return_info.code_pos as u32;
                     // TODO: finish implementing this
                     assert!(stack_frame + 1 == stack.len() as u32,
@@ -384,13 +393,8 @@ impl Vm {
                     let value = try!(globals.get(symbol, interner));
                     try!(stack.push(value));
                 }
-                &Instr::FetchUpvar(symbol) => {
-                    if let Some(upvars) = upvars {
-                        let value = try!(upvars.get(symbol, interner));
-                        try!(stack.push(value));
-                    } else {
-                        return Err(InterpError::NoUpvars);
-                    }
+                &Instr::FetchUpvar(_symbol) => {
+                    unimplemented!();
                 }
             }
             i = i.wrapping_add(1);
@@ -825,4 +829,26 @@ fn load_constant() {
     vm.load_and_execute(&[instr], 0).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, "bye world".into());
+}
+
+#[test]
+fn basic_lambdas() {
+    let mut vm = Vm::new();
+    let load_lambda_instr = vm.compile_context.add_constant(Lambda {
+        upvars: ReferenceMap::new(),
+        code_offset: 3,
+        arg_count: 0,
+        has_rest_params: false
+    }.into());
+
+    vm.load_and_execute(&[
+        load_lambda_instr,
+        Instr::ExecuteLambda(0),
+        Instr::Jump(6),
+        Instr::IntLit(30),
+        Instr::Ret
+    ], 0).unwrap();
+
+    let result = vm.stack.pop().unwrap();
+    assert_eq!(result, 30.into());
 }
