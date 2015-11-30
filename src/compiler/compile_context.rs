@@ -1,4 +1,4 @@
-use vm::{Value, Instr};
+use vm::{Value, Instr, ClosureClass};
 
 pub enum CompileOptLevel {
     None,
@@ -8,14 +8,26 @@ pub enum CompileOptLevel {
 
 #[derive(Debug)]
 pub struct CompileContext {
-    constants: Vec<Value>
+    constants: Vec<Value>,
+    closure_classes: Vec<ClosureClass>
 }
 
 impl CompileContext {
     pub fn new() -> CompileContext {
         CompileContext {
-            constants: vec![]
+            constants: vec![],
+            closure_classes: vec![]
         }
+    }
+
+    pub fn add_closure_class(&mut self, class: ClosureClass) -> usize {
+        let id = self.closure_classes.len();
+        self.closure_classes.push(class);
+        id
+    }
+
+    pub fn get_lambda_class(&self, id: u32) -> ClosureClass {
+        self.closure_classes[id as usize].clone()
     }
 
     pub fn add_constant(&mut self, constant: Value) -> Instr {

@@ -1,8 +1,8 @@
-use gc::{Gc, Trace};
+use gc::{Gc, Trace, GcCell};
 use std::ops::Deref;
 use std::collections::HashMap;
 use vm::intern::{Symbol, SymbolIntern};
-use vm::{InterpError, Lambda};
+use vm::{InterpError, Closure};
 
 #[derive(Clone)]
 pub enum Value {
@@ -13,7 +13,8 @@ pub enum Value {
     Int(i64),
     Bool(bool),
     Symbol(Symbol),
-    Lambda(Gc<Lambda>),
+    Closure(Gc<Closure>),
+    Cell(Gc<GcCell<Value>>)
 }
 
 #[derive(Debug)]
@@ -24,7 +25,8 @@ pub enum ValueKind {
     Int,
     Bool,
     Symbol,
-    Lambda,
+    Closure,
+    Cell,
 }
 
 #[derive(Debug, PartialEq)]
@@ -43,7 +45,7 @@ unsafe impl Trace for Value {
             &Value::List(ref gc) => mark(gc),
             &Value::Map(ref gc) => mark(gc),
             &Value::String(ref gc) => mark(gc),
-            &Value::Lambda(ref gc) => mark(gc),
+            &Value::Closure(ref gc) => mark(gc),
             _ => {}
         }
     });
@@ -82,7 +84,7 @@ impl PartialEq for Value {
             (&Int(i1), &Int(i2)) => i1 == i2,
             (&Bool(b1), &Bool(b2)) => b1 == b2,
             (&Symbol(ref id1), &Symbol(ref id2)) => id1 == id2,
-            //(&Lambda(ref l1, b1), &Lambda(ref l2, b2)) => l1 == l2 && b1 == b2,
+            //(&Closure(ref l1, b1), &Closure(ref l2, b2)) => l1 == l2 && b1 == b2,
             _ => false,
         }
     }
@@ -159,12 +161,22 @@ impl Value {
         }
     }
 
-    pub fn expect_lambda(self) -> Result<Gc<Lambda>, InterpError> {
+    pub fn expect_closure(self) -> Result<Gc<Closure>, InterpError> {
         match self {
-            Value::Lambda(lambda) => Ok(lambda),
+            Value::Closure(closure) => Ok(closure),
             other => Err(InterpError::MismatchedType {
                 value: other,
-                expected: ValueKind::Lambda,
+                expected: ValueKind::Closure,
+            }),
+        }
+    }
+
+    pub fn expect_cell(self) -> Result<Gc<GcCell<Value>>, InterpError> {
+        match self {
+            Value::Cell(cell) => Ok(cell),
+            other => Err(InterpError::MismatchedType {
+                value: other,
+                expected: ValueKind::Cell,
             }),
         }
     }
@@ -172,6 +184,16 @@ impl Value {
     pub fn expect_list_ref(&self) -> Result<&Gc<Vec<Value>>, InterpError> {
         match self {
             &Value::List(ref list) => Ok(list),
+            other => Err(InterpError::MismatchedType {
+                value: other.clone(),
+                expected: ValueKind::List,
+            }),
+        }
+    }
+
+    pub fn expect_cell_ref(&self) -> Result<&Gc<GcCell<Value>>, InterpError> {
+        match self {
+            &Value::Cell(ref cell) => Ok(cell),
             other => Err(InterpError::MismatchedType {
                 value: other.clone(),
                 expected: ValueKind::List,
@@ -239,12 +261,12 @@ impl Value {
         }
     }
 
-    pub fn expect_lambda_ref(&self) -> Result<&Gc<Lambda>, InterpError> {
+    pub fn expect_closure_ref(&self) -> Result<&Gc<Closure>, InterpError> {
         match self {
-            &Value::Lambda(ref lambda) => Ok(lambda),
+            &Value::Closure(ref closure) => Ok(closure),
             other => Err(InterpError::MismatchedType {
                 value: other.clone(),
-                expected: ValueKind::Lambda,
+                expected: ValueKind::Closure,
             }),
         }
     }
@@ -319,12 +341,22 @@ impl Value {
         }
     }
 
-    pub fn expect_lambda_ref_mut(&mut self) -> Result<&mut Gc<Lambda>, InterpError> {
+    pub fn expect_closure_ref_mut(&mut self) -> Result<&mut Gc<Closure>, InterpError> {
         match self {
-            &mut Value::Lambda(ref mut lambda) => Ok(lambda),
+            &mut Value::Closure(ref mut closure) => Ok(closure),
             other => Err(InterpError::MismatchedType {
                 value: other.clone(),
-                expected: ValueKind::Lambda,
+                expected: ValueKind::Closure,
+            }),
+        }
+    }
+
+    pub fn expect_cell_ref_mut(&mut self) -> Result<&mut Gc<GcCell<Value>>, InterpError> {
+        match self {
+            &mut Value::Cell(ref mut cell) => Ok(cell),
+            other => Err(InterpError::MismatchedType {
+                value: other.clone(),
+                expected: ValueKind::Cell,
             }),
         }
     }
@@ -344,7 +376,8 @@ pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
         &Value::String(ref s) => (&**s).clone(),
         &Value::Bool(b) => format!("{}", b),
         &Value::Symbol(s) => format!("'{}", interner.lookup_or_anon(s)),
-        &Value::Lambda(_) => format!("<lambda>"),
+        &Value::Closure(_) => format!("<Closure>"),
+        &Value::Cell(ref t) => to_string_helper(&*t.borrow(), interner),
 
         &ref l@Value::List(_) | &ref l@Value::Map(_) => {
             fn format_singles(vec: &Gc<Vec<Value>>,
@@ -432,7 +465,8 @@ impl ::std::hash::Hash for Value {
                 state.write(&[byte])
             },
             &Value::Symbol(ref rc) => rc.hash(state),
-            &Value::Lambda(_) => {
+            &Value::Cell(ref t) => t.borrow().hash(state),
+            &Value::Closure(_) => {
                 state.write(&[])
             }
         }
@@ -469,7 +503,7 @@ gen_from!(f64, Value::Float);
 gen_from!(bool, Value::Bool);
 
 gen_from!(String, Value::String, Gc::new);
-gen_from!(Lambda, Value::Lambda, |a| Gc::new(a));
+gen_from!(Closure, Value::Closure, |a| Gc::new(a));
 
 impl <T: Into<Value>> From<Vec<T>> for Value {
     fn from(x: Vec<T>) -> Value {

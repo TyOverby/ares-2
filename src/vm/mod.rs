@@ -75,6 +75,9 @@ pub enum Instr {
     IntLit(i32),
     LoadConstant(u32),
 
+    /// Pop the top value and set it in the cell located
+    /// at this position from the top of the stack
+    SetCell(u32),
 
     /// Calls a function at the specified location.
     /// Pops the first argument off the top of the stack to
@@ -83,6 +86,11 @@ pub enum Instr {
     /// Move the instruction pointer to a specified location
     Jump(u32),
     Ret,
+
+    /// Creates a closure with the given class
+    CreateClosure(u32),
+    /// Loads the top `n
+    LoadClosure(u32),
 
     /// Adds two integers by popping two values off of
     /// the stack, adding them, and pushing the result
@@ -99,11 +107,11 @@ pub enum Instr {
 
     /// Execute a lambda on the top of the stack with
     /// a specified number of arguments
-    ExecuteLambda(u32),
+    ExecuteClosure(u32),
     /// Execute a lambda on the top of the stack with
     /// an amount of arguments equal to the *next*
     /// thing on the stack.
-    ExecuteLambdaN,
+    ExecuteClosureN,
 
     /// Read a bool off the stack, if true, continue executing,
     /// else, skip the next instruction.
@@ -244,6 +252,12 @@ impl Vm {
                             i += 1;
                         }
                     }
+                    (&Instr::CreateClosure(class_id), &Instr::LoadClosure(upvar_nums)) => {
+                        let class = compile_context.get_lambda_class(class_id);
+                        let values = try!(stack.pop_n(upvar_nums as usize));
+                        let instance = Closure { class: class, upvars: values};
+                        try!(stack.push(instance.into()));
+                    }
                     _ => optimized = false,
                 }
 
@@ -266,8 +280,15 @@ impl Vm {
                     println!("{:?}", &stack.as_slice()[stack_frame as usize ..]);
                 }
                 &Instr::Dup(stack_pos) => {
-                    let value = try!(stack.peek_n(stack_pos as usize)).clone();
+                    let value = try!(stack.peek_n_up(stack_frame as usize + stack_pos as usize)).clone();
                     try!(stack.push(value));
+                }
+                &Instr::SetCell(frame_pos) => {
+                    let value = try!(stack.pop());
+                    let cell = try!(stack.peek_n_up(stack_frame as usize + frame_pos as usize));
+                    let cell = try!(cell.expect_cell_ref());
+                    let mut borrow = cell.borrow_mut();
+                    *borrow = value;
                 }
                 &Instr::Pop => {
                     try!(stack.pop());
@@ -320,10 +341,13 @@ impl Vm {
                     let b = try!(stack.peek());
                     *b = Value::Bool(&a == b);
                 }
-                &Instr::ExecuteLambda(arg_count) => {
-                    let lambda = try!(try!(stack.pop()).expect_lambda());
-                    let code_pos = lambda.code_offset;
-                    let expected_arg_count = lambda.arg_count;
+                &Instr::ExecuteClosure(arg_count) => {
+                    let closure = try!(try!(stack.pop()).expect_closure());
+                    let code_pos = closure.class.code_offset;
+                    let expected_arg_count = closure.class.arg_count;
+                    if closure.class.has_rest_params {
+                        unimplemented!();
+                    }
                     if arg_count != expected_arg_count {
                         return Err(InterpError::BadArity {
                             got: arg_count,
@@ -339,7 +363,7 @@ impl Vm {
                     i = code_pos.wrapping_sub(1);
                     stack_frame = stack.len() as u32 - arg_count as u32;
                 }
-                &Instr::ExecuteLambdaN => {
+                &Instr::ExecuteClosureN => {
                     /*
                     let lambda = try!(stack.pop().expect_lambda());
                     let arg_count = try!(stack.pop().expect_int());
@@ -395,6 +419,9 @@ impl Vm {
                 }
                 &Instr::FetchUpvar(_symbol) => {
                     unimplemented!();
+                }
+                &Instr::CreateClosure(_) | &Instr::LoadClosure(_) => {
+                    panic!("CreateClosure and LoadClosure need to be right next to each other");
                 }
             }
             i = i.wrapping_add(1);
@@ -834,16 +861,16 @@ fn load_constant() {
 #[test]
 fn basic_lambdas() {
     let mut vm = Vm::new();
-    let load_lambda_instr = vm.compile_context.add_constant(Lambda {
-        upvars: ReferenceMap::new(),
-        code_offset: 3,
+    let closure_class_id = vm.compile_context.add_closure_class(ClosureClass {
+        code_offset: 4,
         arg_count: 0,
-        has_rest_params: false
-    }.into());
+        has_rest_params: false,
+    });
 
     vm.load_and_execute(&[
-        load_lambda_instr,
-        Instr::ExecuteLambda(0),
+        Instr::CreateClosure(closure_class_id as u32),
+        Instr::LoadClosure(0), // 0 upvars
+        Instr::ExecuteClosure(0), // 0 arguments
         Instr::Jump(6),
         Instr::IntLit(30),
         Instr::Ret

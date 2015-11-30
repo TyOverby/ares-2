@@ -52,6 +52,25 @@ impl Stack {
     }
 
     #[inline(always)]
+    pub fn pop_n(&mut self, n: usize) -> Result<Vec<Value>, InterpError> {
+        if self.size < n {
+            return Err(InterpError::StackUnderflow);
+        }
+        if n == 0 {
+            return Ok(vec![]);
+        }
+
+        let v = {
+            let slice = self.as_slice();
+            let (_, above) = slice.split_at(self.size - n);
+            let v: Vec<Value> = Vec::from(above);
+            v
+        };
+        self.size -= n;
+        Ok(v)
+    }
+
+    #[inline(always)]
     pub fn peek(&mut self) -> Result<&mut Value, InterpError> {
         use std::mem::transmute;
         if self.size == 0 {
@@ -64,7 +83,19 @@ impl Stack {
     }
 
     #[inline(always)]
-    pub fn peek_n(&mut self, n: usize) -> Result<&mut Value, InterpError> {
+    pub fn peek_n_up(&mut self, n: usize) -> Result<&mut Value, InterpError> {
+        use std::mem::transmute;
+        if n >= self.size {
+            return Err(InterpError::StackOutOfBounds);
+        }
+
+        unsafe {
+            Ok(transmute::<*mut _, &mut _>(self.ptr.offset(n as isize)))
+        }
+    }
+
+    #[inline(always)]
+    pub fn peek_n_down(&mut self, n: usize) -> Result<&mut Value, InterpError> {
         use std::mem::transmute;
         if n >= self.size {
             return Err(InterpError::StackOutOfBounds);
