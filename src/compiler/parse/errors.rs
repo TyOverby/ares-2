@@ -13,6 +13,8 @@ pub enum ParseError {
     ExtraRightDelimiter(Close, Span),
     InvalidMapLiteral(Span),
     UnexpectedIfArity(usize, Span),
+    UnexpectedLambdaArity(usize, Span),
+    BadLambdaArgs(Span),
 }
 
 use self::ParseError::*;
@@ -34,6 +36,10 @@ impl fmt::Display for ParseError {
             InvalidMapLiteral(span) => write!(f, "Map literal at {} is malformed", span.start),
             UnexpectedIfArity(size, span) =>
                 write!(f, "`if` at {} takes {} arguments.  It should take 3", span.start, size),
+            UnexpectedLambdaArity(_, span) =>
+                write!(f, "`lambda` at {} takes at least an args list and one body.", span.start),
+            BadLambdaArgs(span) =>
+                write!(f, "Malformed arguments list at {}", span.start),
         }
     }
 }
@@ -48,7 +54,9 @@ impl Error for ParseError {
             MissingRightDelimiter(..) => "Missing right delimiter",
             ExtraRightDelimiter(..) => "Extra right delimiter",
             InvalidMapLiteral(..) => "Map literals require an even number of elements",
-            UnexpectedIfArity(..) => "Wrong arity for \"if\" expression"
+            UnexpectedIfArity(..) => "Wrong arity for \"if\" expression",
+            UnexpectedLambdaArity(..) => "Wrong arity for \"lambda\" expression",
+            BadLambdaArgs(..) => "arguments to \"lambda\" are malformed",
         }
     }
 }

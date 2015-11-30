@@ -18,6 +18,7 @@ pub struct PrecomputedSymbols {
     pub quote: Symbol,
     pub list: Symbol,
     pub define: Symbol,
+    pub lambda: Symbol,
 }
 
 impl PrecomputedSymbols {
@@ -28,6 +29,7 @@ impl PrecomputedSymbols {
             quote: Symbol(0),
             list: Symbol(0),
             define: Symbol(0),
+            lambda: Symbol(0),
         }
     }
 }
@@ -45,6 +47,7 @@ impl SymbolIntern {
         interner.precomputed.quote = interner.intern("quote");
         interner.precomputed.list = interner.intern("list");
         interner.precomputed.define = interner.intern("define");
+        interner.precomputed.lambda = interner.intern("lambda");
         interner
     }
 

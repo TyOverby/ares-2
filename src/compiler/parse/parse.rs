@@ -54,7 +54,7 @@ fn one_expr<'a, 'b>(tok: Token,
                         let len = values.len();
                         let mut values = values.into_iter();
 
-                        if len != 4 { return Err(UnexpectedIfArity(len, tok.span)) }
+                        if len != 4 { return Err(UnexpectedIfArity(len, tok.span)); }
                         let _ = values.next();
                         let (cond, tru, fals) =
                             (values.next().unwrap(),
@@ -68,8 +68,26 @@ fn one_expr<'a, 'b>(tok: Token,
                     } else if values[0].is_symbol_lit_with(&interner.precomputed.plus) {
                         values.remove(0);
                         Ok(Ast::Add(values, tok.span.join(end_tok.span)))
+                    } else if values[0].is_symbol_lit_with(&interner.precomputed.lambda) {
+                        if values.len() < 2 { return Err(UnexpectedLambdaArity(values.len(), tok.span)); }
+                        values.remove(0); // remove the "lambda"
+                        let args_list = values.remove(0);
+                        let bodies = values;
+                        if let Ast::List(args, t) = args_list {
+                            let mut arg_list = vec![];
+                            for arg in args {
+                                if let Ast::SymbolLit(symbol, _) = arg {
+                                    arg_list.push(symbol);
+                                } else {
+                                    return Err(BadLambdaArgs(t));
+                                }
+                            }
+                            Ok(Ast::Lambda(arg_list, bodies, tok.span.join(end_tok.span)))
+                        } else {
+                            return Err(BadLambdaArgs(tok.span.join(end_tok.span)))
+                        }
                     } else {
-                        unimplemented!();
+                        Ok(Ast::List(values, tok.span.join(end_tok.span)))
                     }
                 },
                 Open::LBracket => {
@@ -160,7 +178,7 @@ pub fn parse(input: &str, interner: &mut SymbolIntern) -> Result<Vec<Ast>, Parse
 
 #[cfg(test)]
 mod tests {
-    use compiler::parse::Ast;
+    use compiler::parse::{Ast, Span};
     use vm::SymbolIntern;
     use super::parse;
 
@@ -170,34 +188,34 @@ mod tests {
         }
     }
 
-    fn ok_parse(s: &str) -> Vec<Ast> {
+    fn ok_parse(s: &str) -> (Vec<Ast>, SymbolIntern) {
         let mut interner = SymbolIntern::new();
-        parse(s, &mut interner).unwrap()
+        (parse(s, &mut interner).unwrap(), interner)
     }
 
-    fn ok_parse_1(s: &str) -> Ast {
-        let mut parsed = ok_parse(s);
+    fn ok_parse_1(s: &str) -> (Ast, SymbolIntern) {
+        let (mut parsed, interner) = ok_parse(s);
         assert!(parsed.len() == 1);
-        parsed.pop().unwrap()
+        (parsed.pop().unwrap(), interner)
     }
 
     #[test]
     fn test_parse_literals() {
-        assert!(matches!(ok_parse_1("1"), Ast::IntLit(1, _)));
-        assert!(matches!(ok_parse_1("10.0"), Ast::FloatLit(10.0, _)));
-        assert!(matches!(ok_parse_1("true"), Ast::BoolLit(true, _)));
-        assert!(matches!(ok_parse_1("false"), Ast::BoolLit(false, _)));
+        assert!(matches!(ok_parse_1("1").0, Ast::IntLit(1, _)));
+        assert!(matches!(ok_parse_1("10.0").0, Ast::FloatLit(10.0, _)));
+        assert!(matches!(ok_parse_1("true").0, Ast::BoolLit(true, _)));
+        assert!(matches!(ok_parse_1("false").0, Ast::BoolLit(false, _)));
     }
 
     #[test]
     fn test_parse_if() {
-        assert!(matches!(ok_parse_1("(if true 1 2)"),
+        assert!(matches!(ok_parse_1("(if true 1 2)").0,
                          Ast::If(
                              box Ast::BoolLit(true, _),
                              box Ast::IntLit(1, _),
                              box Ast::IntLit(2, _),
                              _)));
-        assert!(matches!(ok_parse_1("(if true (if false 1 3) 2)"),
+        assert!(matches!(ok_parse_1("(if true (if false 1 3) 2)").0,
                          Ast::If(
                              box Ast::BoolLit(true, _),
                              box Ast::If(
@@ -211,25 +229,31 @@ mod tests {
 
     #[test]
     fn test_parse_plus() {
-        let ast = ok_parse_1("(+ 0 1 2)");
-        if let Ast::Add(v, _) = ast {
-            assert!(v.into_iter().all(|a| matches!(a, Ast::IntLit(_, _))));
-        } else {
-            panic!("not a plus ast");
-        }
+        let ast = ok_parse_1("(+ 0 1 2)").0;
 
-        let ast = ok_parse_1("(+ 0 1 (+ 2 3))");
-        if let Ast::Add(v, _) = ast {
-            assert!(matches!(&v[0], &Ast::IntLit(0, _)));
-            assert!(matches!(&v[1], &Ast::IntLit(1, _)));
-            if let &Ast::Add(ref v, _) = &v[2] {
-                assert!(matches!(&v[0], &Ast::IntLit(2, _)));
-                assert!(matches!(&v[1], &Ast::IntLit(3, _)));
-            } else {
-                panic!("nested is not a plus ast");
-            }
-        } else {
-            panic!("top is not a plus ast");
-        }
+        let should = Ast::Add(vec![
+            Ast::IntLit(0, Span::dummy()),
+            Ast::IntLit(1, Span::dummy()),
+            Ast::IntLit(2, Span::dummy())], Span::dummy());
+
+        assert!(ast.equals_sans_span(&should));
+    }
+
+    #[test]
+    fn test_parse_lambda() {
+        let (ast, mut interner) = ok_parse_1("(lambda (a b c) (+ a b c))");
+        let a = interner.intern("a");
+        let b = interner.intern("b");
+        let c = interner.intern("c");
+
+        let should = Ast::Lambda(
+            vec![a, b, c],
+            vec![Ast::Add(vec![
+                          Ast::SymbolLit(a, Span::dummy()),
+                          Ast::SymbolLit(b, Span::dummy()),
+                          Ast::SymbolLit(c, Span::dummy()),
+                          ], Span::dummy())],
+            Span::dummy());
+        assert!(ast.equals_sans_span(&should));
     }
 }

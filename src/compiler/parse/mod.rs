@@ -59,6 +59,7 @@ pub enum Ast {
     Quote(Box<Ast>, Span),
     List(Vec<Ast>, Span),
     If(Box<Ast>, Box<Ast>, Box<Ast>, Span),
+    Lambda(Vec<Symbol>, Vec<Ast>, Span)
 }
 
 pub fn parse(s: &str, interner: &mut SymbolIntern) -> Result<Vec<Ast>, errors::ParseError> {
@@ -70,5 +71,48 @@ impl Ast {
         if let &Ast::SymbolLit(ref s, _) = self {
             s == symbol
         } else { false }
+    }
+
+    pub fn equals_sans_span(&self, other: &Ast) -> bool {
+        use self::Ast::*;
+        match (self, other) {
+            (&BoolLit(ref a, _), &BoolLit(ref b, _)) => a == b,
+            (&StringLit(ref a, _), &StringLit(ref b, _)) => a == b,
+            (&IntLit(ref a, _), &IntLit(ref b, _)) => a == b,
+            (&FloatLit(ref a, _), &FloatLit(ref b, _)) => a == b,
+            (&ListLit(ref a, _), &ListLit(ref b, _)) => {
+                if a.len() != b.len() { return false }
+                a.iter().zip(b.iter()).all(|(ref a, ref b)| a.equals_sans_span(b))
+            },
+            (&MapLit(ref a, _), &MapLit(ref b, _)) => {
+                if a.len() != b.len() { return false }
+                a.iter().zip(b.iter()).all(|(ref a, ref b)|
+                    a.0.equals_sans_span(&b.0) && a.1.equals_sans_span(&b.1))
+            },
+            (&SymbolLit(a, _), &SymbolLit(b, _)) => a == b,
+            (&Add(ref a, _), &Add(ref b, _)) => {
+                if a.len() != b.len() { return false }
+                a.iter().zip(b.iter()).all(|(ref a, ref b)| a.equals_sans_span(b))
+            },
+            (&Quote(ref a, _), &Quote(ref b, _)) => a.equals_sans_span(&*b),
+            (&List(ref a, _), &List(ref b, _)) => {
+                if a.len() != b.len() { return false }
+                a.iter().zip(b.iter()).all(|(ref a, ref b)| a.equals_sans_span(b))
+            },
+            (&If(ref ac, ref at, ref af, _), &If(ref bc, ref bt, ref bf, _)) =>
+                ac.equals_sans_span(&*bc) &&
+                at.equals_sans_span(&*bt) &&
+                af.equals_sans_span(&*bf),
+            (&Lambda(ref a_args, ref a_bodies, _), &Lambda(ref b_args, ref b_bodies, _)) => {
+                if a_args.len() != b_args.len() { return false }
+                if !a_args.iter().zip(b_args.iter()).all(|(ref a, ref b)| a == b) {
+                    return false
+                }
+
+                if a_bodies.len() != b_bodies.len() { return false }
+                a_bodies.iter().zip(b_bodies.iter()).all(|(ref a, ref b)| a.equals_sans_span(b))
+            }
+            _ => false
+        }
     }
 }
