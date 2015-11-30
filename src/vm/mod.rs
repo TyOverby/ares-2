@@ -879,3 +879,27 @@ fn basic_lambdas() {
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, 30.into());
 }
+
+#[test]
+fn one_arg_lambda() {
+    let mut vm = Vm::new();
+    let closure_class_id = vm.compile_context.add_closure_class(ClosureClass {
+        code_offset: 5,
+        arg_count: 1,
+        has_rest_params: false,
+    });
+
+    vm.load_and_execute(&[
+        Instr::IntLit(10),
+        Instr::CreateClosure(closure_class_id as u32),
+        Instr::LoadClosure(0), // 0 upvars
+        Instr::ExecuteClosure(1), // 1 argument
+        Instr::Jump(7),
+        Instr::Dup(0),
+        Instr::MulInt,
+        Instr::Ret
+    ], 0).unwrap();
+
+    let result = vm.stack.pop().unwrap();
+    assert_eq!(result, 100.into());
+}
