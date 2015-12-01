@@ -88,7 +88,7 @@ pub fn emit(ast: &Ast, compile_context: &mut CompileContext, out: &mut EmitBuffe
             out.push_standin(eol_standin);
 
             debug_assert_eq!(prior_code_len + INSTRS_BEFORE_LAMBDA_CODE as usize, out.len());
-            for body in &bodies[0 .. bodies.len() - 1] {
+            for body in &bodies[.. bodies.len() - 1] {
                 try!(emit(body, compile_context, out));
                 out.push(Instr::Pop);
             }
@@ -104,7 +104,13 @@ pub fn emit(ast: &Ast, compile_context: &mut CompileContext, out: &mut EmitBuffe
             if elements.len() == 0 {
                 return Err(EmitError::CallWithEmptyList);
             }
-            //let funclike = element
+            let funclike = &elements[0];
+            let args = &elements[1 ..];
+            for arg in args {
+                try!(emit(arg, compile_context, out));
+            }
+            try!(emit(funclike, compile_context, out));
+            out.push(Instr::ExecuteClosure(args.len() as u32));
         }
         _ => unimplemented!()
     }
@@ -252,4 +258,23 @@ fn emit_no_arg_lambda() {
                Instr::Pop,
                Instr::IntLit(5),
                Instr::Ret]);
+}
+
+#[test]
+fn emit_list() {
+    use compiler::parse::Span;
+
+    let mut out = EmitBuffer::new();
+    let mut compile_context = CompileContext::new();
+    let ast = Ast::List(
+        vec![Ast::IntLit(1, Span::dummy()), Ast::IntLit(2, Span::dummy()), Ast::IntLit(3, Span::dummy())],
+        Span::dummy());
+    emit(&ast, &mut compile_context, &mut out).unwrap();
+    let out = out.into_instructions();
+
+    assert_eq!(out, vec![
+               Instr::IntLit(2),
+               Instr::IntLit(3),
+               Instr::IntLit(1),
+               Instr::ExecuteClosure(2)]);
 }

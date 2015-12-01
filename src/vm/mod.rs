@@ -353,6 +353,7 @@ impl Vm {
                     if closure.class.has_rest_params {
                         unimplemented!();
                     }
+
                     if arg_count != expected_arg_count {
                         return Err(InterpError::BadArity {
                             got: arg_count,
