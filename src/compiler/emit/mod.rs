@@ -88,8 +88,12 @@ pub fn emit(ast: &Ast, compile_context: &mut CompileContext, out: &mut EmitBuffe
             out.push_standin(eol_standin);
 
             debug_assert_eq!(prior_code_len + INSTRS_BEFORE_LAMBDA_CODE as usize, out.len());
-            for body in bodies {
+            for body in &bodies[0 .. bodies.len() - 1] {
                 emit(body, compile_context, out);
+                out.push(Instr::Pop);
+            }
+            if let Some(last_body) = bodies.last() {
+                emit(last_body, compile_context, out);
             }
             out.push(Instr::Ret);
 
@@ -211,13 +215,13 @@ fn test_basic_if() {
     emit(&ast, &mut compile_context, &mut out);
     let out = out.into_instructions();
     assert!(out.len() == 6);
-    assert_eq!(vec![
+    assert_eq!(out, vec![
                Instr::BoolLit(true),
                Instr::Ifn,
                Instr::Jump(5),
                Instr::IntLit(15),
                Instr::Jump(6),
-               Instr::IntLit(20)], out);
+               Instr::IntLit(20)]);
 }
 
 #[test]
@@ -234,11 +238,12 @@ fn emit_no_arg_lambda() {
     let out = out.into_instructions();
 
 //    assert!(out.len() == 6);
-    assert_eq!(vec![
+    assert_eq!(out, vec![
                Instr::CreateClosure(0),
                Instr::LoadClosure(0),
-               Instr::Jump(6),
+               Instr::Jump(7),
                Instr::IntLit(10),
+               Instr::Pop,
                Instr::IntLit(5),
-               Instr::Ret], out);
+               Instr::Ret]);
 }
