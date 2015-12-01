@@ -8,11 +8,11 @@ use vm::{Instr, ClosureClass};
 pub use self::error::EmitError;
 pub use self::emit_buffer::EmitBuffer;
 
-pub fn emit(ast: &Ast, compile_context: &mut CompileContext, out: &mut EmitBuffer) {
+pub fn emit(ast: &Ast, compile_context: &mut CompileContext, out: &mut EmitBuffer) -> Result<(), EmitError> {
     match ast {
         &Ast::Add(ref operands, _) => {
             for operand in &operands[..] {
-                emit(operand, compile_context, out);
+                try!(emit(operand, compile_context, out));
             }
             if operands.len() == 0 {
                 out.push(Instr::IntLit(0));
@@ -47,14 +47,14 @@ pub fn emit(ast: &Ast, compile_context: &mut CompileContext, out: &mut EmitBuffe
             let mut true_code = EmitBuffer::new();
             let mut false_code = EmitBuffer::new();
 
-            emit(&**cond, compile_context, out);
+            try!(emit(&**cond, compile_context, out));
 
             out.push(Instr::Ifn);
             let (false_pos, fulfill_false) = out.standin();
             out.push_standin(false_pos);
 
-            emit(&**tru, compile_context, &mut true_code);
-            emit(&**fals, compile_context, &mut false_code);
+            try!(emit(&**tru, compile_context, &mut true_code));
+            try!(emit(&**fals, compile_context, &mut false_code));
 
             // The true branch needs to jump past the end
             // of the false branch.
@@ -89,19 +89,26 @@ pub fn emit(ast: &Ast, compile_context: &mut CompileContext, out: &mut EmitBuffe
 
             debug_assert_eq!(prior_code_len + INSTRS_BEFORE_LAMBDA_CODE as usize, out.len());
             for body in &bodies[0 .. bodies.len() - 1] {
-                emit(body, compile_context, out);
+                try!(emit(body, compile_context, out));
                 out.push(Instr::Pop);
             }
             if let Some(last_body) = bodies.last() {
-                emit(last_body, compile_context, out);
+                try!(emit(last_body, compile_context, out));
             }
             out.push(Instr::Ret);
 
             let next = out.len() as u32;
             out.fulfill(eol_fulfill, Instr::Jump(next));
         }
+        &Ast::List(ref elements, _) => {
+            if elements.len() == 0 {
+                return Err(EmitError::CallWithEmptyList);
+            }
+            //let funclike = element
+        }
         _ => unimplemented!()
     }
+    Ok(())
 }
 
 #[test]
@@ -114,7 +121,7 @@ fn test_literal_emit() {
         let mut out = EmitBuffer::new();
         let mut compile_context = CompileContext::new();
         let ast = Ast::IntLit(5, Span::dummy());
-        emit(&ast, &mut compile_context, &mut out);
+        emit(&ast, &mut compile_context, &mut out).unwrap();
         let out = out.into_instructions();
         assert!(out.len() == 1);
         assert_eq!(Instr::IntLit(5), out[0]);
@@ -123,7 +130,7 @@ fn test_literal_emit() {
         let mut out = EmitBuffer::new();
         let mut compile_context = CompileContext::new();
         let ast = Ast::IntLit(8589934592, Span::dummy());
-        emit(&ast, &mut compile_context, &mut out);
+        emit(&ast, &mut compile_context, &mut out).unwrap();
         let out = out.into_instructions();
         assert!(out.len() == 1);
         assert_eq!(Instr::LoadConstant(0), out[0]);
@@ -133,7 +140,7 @@ fn test_literal_emit() {
         let mut out = EmitBuffer::new();
         let mut compile_context = CompileContext::new();
         let ast = Ast::FloatLit(3.14, Span::dummy());
-        emit(&ast, &mut compile_context, &mut out);
+        emit(&ast, &mut compile_context, &mut out).unwrap();
         let out = out.into_instructions();
         assert!(out.len() == 1);
         assert_eq!(Instr::LoadConstant(0), out[0]);
@@ -143,7 +150,7 @@ fn test_literal_emit() {
         let mut out = EmitBuffer::new();
         let mut compile_context = CompileContext::new();
         let ast = Ast::StringLit("hello world".into(), Span::dummy());
-        emit(&ast, &mut compile_context, &mut out);
+        emit(&ast, &mut compile_context, &mut out).unwrap();
         let out = out.into_instructions();
         assert!(out.len() == 1);
         assert_eq!(Instr::LoadConstant(0), out[0]);
@@ -160,7 +167,7 @@ fn test_add_emit() {
         let mut out = EmitBuffer::new();
         let mut compile_context = CompileContext::new();
         let ast = Ast::Add(vec![Ast::IntLit(5, Span::dummy())], Span::dummy());
-        emit(&ast, &mut compile_context, &mut out);
+        emit(&ast, &mut compile_context, &mut out).unwrap();
         let out = out.into_instructions();
         assert!(out.len() == 1);
         assert_eq!(out[0], Instr::IntLit(5));
@@ -172,7 +179,7 @@ fn test_add_emit() {
                            Ast::IntLit(5, Span::dummy()),
                            Ast::IntLit(10, Span::dummy())
                            ], Span::dummy());
-        emit(&ast, &mut compile_context, &mut out);
+        emit(&ast, &mut compile_context, &mut out).unwrap();
         let out = out.into_instructions();
         assert_eq!(out, vec![Instr::IntLit(5), Instr::IntLit(10), Instr::AddInt]);
     } {
@@ -187,7 +194,7 @@ fn test_add_emit() {
                                     Ast::IntLit(20, Span::dummy()),
                                     ], Span::dummy())
                            ], Span::dummy());
-        emit(&ast, &mut compile_context, &mut out);
+        emit(&ast, &mut compile_context, &mut out).unwrap();
         let out = out.into_instructions();
         assert_eq!(out, vec![
                    Instr::IntLit(5),
@@ -212,7 +219,7 @@ fn test_basic_if() {
         Box::new(Ast::IntLit(15, Span::dummy())),
         Box::new(Ast::IntLit(20, Span::dummy())),
         Span::dummy());
-    emit(&ast, &mut compile_context, &mut out);
+    emit(&ast, &mut compile_context, &mut out).unwrap();
     let out = out.into_instructions();
 
     assert_eq!(out, vec![
@@ -234,7 +241,7 @@ fn emit_no_arg_lambda() {
         vec![],
         vec![Ast::IntLit(10, Span::dummy()), Ast::IntLit(5, Span::dummy())],
         Span::dummy());
-    emit(&ast, &mut compile_context, &mut out);
+    emit(&ast, &mut compile_context, &mut out).unwrap();
     let out = out.into_instructions();
 
     assert_eq!(out, vec![
