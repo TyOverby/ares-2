@@ -189,13 +189,18 @@ impl Vm {
         let mut i = start_at;
         while i < code.len() as u32 {
             let current_instruction = &code[i as usize];
-            // TODO: this could probably be replaced with
-            // a check against len.
             let after_current = code.get(i as usize + 1);
             // Here lay some optimizations
             if let Some(after) = after_current {
                 let mut optimized = true;
                 match (current_instruction, after) {
+                    (&Instr::IntLit(_), &Instr::Pop) |
+                    (&Instr::BoolLit(_), &Instr::Pop) |
+                    (&Instr::SymbolLit(_), &Instr::Pop) |
+                    (&Instr::LoadConstant(_), &Instr::Pop) => {
+                        // Do nothing, don't push things just to pop them off.
+                    }
+
                     (&Instr::IntLit(added_to), &Instr::AddInt) => {
                         let cur = try!(try!(stack.peek()).expect_int_ref_mut());
                         *cur = *cur + added_to as i64;
@@ -428,7 +433,7 @@ impl Vm {
         }
 
         assert!(stack_frame + 1 == stack.len() as u32,
-                "execute left the stack at the wrong size: actual: {} vs expected: {}",
+                "'execute' left the stack at the wrong size: actual: {} vs expected: {}",
                 stack.len(),
                 stack_frame + 1);
 

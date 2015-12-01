@@ -163,7 +163,7 @@ fn test_add_emit() {
         emit(&ast, &mut compile_context, &mut out);
         let out = out.into_instructions();
         assert!(out.len() == 1);
-        assert_eq!(Instr::IntLit(5), out[0]);
+        assert_eq!(out[0], Instr::IntLit(5));
     } {
         // Add two things
         let mut out = EmitBuffer::new();
@@ -174,7 +174,7 @@ fn test_add_emit() {
                            ], Span::dummy());
         emit(&ast, &mut compile_context, &mut out);
         let out = out.into_instructions();
-        assert_eq!(vec![Instr::IntLit(5), Instr::IntLit(10), Instr::AddInt], out);
+        assert_eq!(out, vec![Instr::IntLit(5), Instr::IntLit(10), Instr::AddInt]);
     } {
         // Add some addition
         let mut out = EmitBuffer::new();
@@ -189,14 +189,14 @@ fn test_add_emit() {
                            ], Span::dummy());
         emit(&ast, &mut compile_context, &mut out);
         let out = out.into_instructions();
-        assert_eq!(vec![
+        assert_eq!(out, vec![
                    Instr::IntLit(5),
                    Instr::IntLit(10),
                    Instr::IntLit(15),
                    Instr::IntLit(20),
                    Instr::AddInt,
                    Instr::AddInt,
-                   Instr::AddInt], out);
+                   Instr::AddInt]);
     }
 }
 
@@ -214,7 +214,7 @@ fn test_basic_if() {
         Span::dummy());
     emit(&ast, &mut compile_context, &mut out);
     let out = out.into_instructions();
-    assert!(out.len() == 6);
+
     assert_eq!(out, vec![
                Instr::BoolLit(true),
                Instr::Ifn,
@@ -237,7 +237,6 @@ fn emit_no_arg_lambda() {
     emit(&ast, &mut compile_context, &mut out);
     let out = out.into_instructions();
 
-//    assert!(out.len() == 6);
     assert_eq!(out, vec![
                Instr::CreateClosure(0),
                Instr::LoadClosure(0),
