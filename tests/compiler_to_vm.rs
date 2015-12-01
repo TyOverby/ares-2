@@ -42,3 +42,9 @@ fn test_literals() {
 fn test_lambdas() {
     assert!(matches!(run_this("(lambda () 5)"), Value::Closure(_)));
 }
+
+#[test]
+fn call_lambdas() {
+    assert_eq!(run_this("((lambda () 5))"), 5.into());
+    assert_eq!(run_this("((lambda () 5 6 7))"), 7.into());
+}
