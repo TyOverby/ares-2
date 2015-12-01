@@ -89,7 +89,7 @@ pub enum Instr {
 
     /// Creates a closure with the given class
     CreateClosure(u32),
-    /// Loads the top `n
+    /// Loads the top `n` stack variables into the upvars for a lambda
     LoadClosure(u32),
 
     /// Adds two integers by popping two values off of

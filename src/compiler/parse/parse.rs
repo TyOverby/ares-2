@@ -69,6 +69,7 @@ fn one_expr<'a, 'b>(tok: Token,
                         values.remove(0);
                         Ok(Ast::Add(values, tok.span.join(end_tok.span)))
                     } else if values[0].is_symbol_lit_with(&interner.precomputed.lambda) {
+                        // TODO: take varargs into account
                         if values.len() < 2 { return Err(UnexpectedLambdaArity(values.len(), tok.span)); }
                         values.remove(0); // remove the "lambda"
                         let args_list = values.remove(0);
@@ -182,12 +183,6 @@ mod tests {
     use vm::SymbolIntern;
     use super::parse;
 
-    macro_rules! matches {
-        ($e: expr, $p: pat) => {
-            if let $p = $e { true } else { false }
-        }
-    }
-
     fn ok_parse(s: &str) -> (Vec<Ast>, SymbolIntern) {
         let mut interner = SymbolIntern::new();
         (parse(s, &mut interner).unwrap(), interner)
@@ -240,7 +235,17 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_lambda() {
+    fn test_parse_lambda_no_args() {
+        let (ast, _) = ok_parse_1("(lambda () 5)");
+        let should = Ast::Lambda(
+            vec![],
+            vec![Ast::IntLit(5, Span::dummy())],
+            Span::dummy());
+        assert!(ast.equals_sans_span(&should), "\n{:?}\n!=\n{:?}", ast, should);
+    }
+
+    #[test]
+    fn test_parse_lambda_with_args() {
         let (ast, mut interner) = ok_parse_1("(lambda (a b c) (+ a b c))");
         let a = interner.intern("a");
         let b = interner.intern("b");

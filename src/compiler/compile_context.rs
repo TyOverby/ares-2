@@ -20,10 +20,10 @@ impl CompileContext {
         }
     }
 
-    pub fn add_closure_class(&mut self, class: ClosureClass) -> usize {
+    pub fn add_closure_class(&mut self, class: ClosureClass) -> u32 {
         let id = self.closure_classes.len();
         self.closure_classes.push(class);
-        id
+        id as u32
     }
 
     pub fn get_lambda_class(&self, id: u32) -> ClosureClass {

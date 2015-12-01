@@ -3,6 +3,12 @@ extern crate ares;
 use ares::vm::{Vm, Value};
 use ares::compiler::compile;
 
+macro_rules! matches {
+    ($e: expr, $p: pat) => {
+        if let $p = $e { true } else { false }
+    }
+}
+
 fn run_this(src: &str) -> Value {
     let mut vm = Vm::new();
     let compiled = compile(src, &mut vm.compile_context, &mut vm.interner).unwrap();
@@ -30,4 +36,9 @@ fn test_literals() {
     assert_eq!(run_this("3.14"), Value::Float(3.14));
     assert_eq!(run_this("\"hello world\""), "hello world".into());
     assert_eq!(run_this("8589934592"), 8589934592i64.into());
+}
+
+#[test]
+fn test_lambdas() {
+    assert!(matches!(run_this("(lambda () 5)"), Value::Closure(_)));
 }

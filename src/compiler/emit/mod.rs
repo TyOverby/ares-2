@@ -3,7 +3,7 @@ mod emit_buffer;
 
 use compiler::parse::Ast;
 use compiler::CompileContext;
-use vm::Instr;
+use vm::{Instr, ClosureClass};
 
 pub use self::error::EmitError;
 pub use self::emit_buffer::EmitBuffer;
@@ -65,6 +65,36 @@ pub fn emit(ast: &Ast, compile_context: &mut CompileContext, out: &mut EmitBuffe
             let len_with_true_code = out.len();
             out.fulfill(fulfill_false, Instr::Jump(len_with_true_code as u32));
             out.merge(false_code);
+        }
+        &Ast::Lambda(ref argslist, ref bodies, _) => {
+            const INSTRS_BEFORE_LAMBDA_CODE: u32 = 3;
+            let prior_code_len = out.len();
+
+            let closure_class = ClosureClass {
+                    code_offset: out.len() as u32 + INSTRS_BEFORE_LAMBDA_CODE,
+                    // TODO: take varargs into account
+                    arg_count: argslist.len() as u32,
+                    has_rest_params: false
+            };
+
+            let cc_id = compile_context.add_closure_class(closure_class);
+
+            out.push(Instr::CreateClosure(cc_id));
+            // TODO: load closure with upvars
+            out.push(Instr::LoadClosure(0));
+
+            // Standin for the end of the lambda code.
+            let (eol_standin, eol_fulfill) = out.standin();
+            out.push_standin(eol_standin);
+
+            debug_assert_eq!(prior_code_len + INSTRS_BEFORE_LAMBDA_CODE as usize, out.len());
+            for body in bodies {
+                emit(body, compile_context, out);
+            }
+            out.push(Instr::Ret);
+
+            let next = out.len() as u32;
+            out.fulfill(eol_fulfill, Instr::Jump(next));
         }
         _ => unimplemented!()
     }
@@ -188,4 +218,27 @@ fn test_basic_if() {
                Instr::IntLit(15),
                Instr::Jump(6),
                Instr::IntLit(20)], out);
+}
+
+#[test]
+fn emit_no_arg_lambda() {
+    use compiler::parse::Span;
+
+    let mut out = EmitBuffer::new();
+    let mut compile_context = CompileContext::new();
+    let ast = Ast::Lambda(
+        vec![],
+        vec![Ast::IntLit(10, Span::dummy()), Ast::IntLit(5, Span::dummy())],
+        Span::dummy());
+    emit(&ast, &mut compile_context, &mut out);
+    let out = out.into_instructions();
+
+//    assert!(out.len() == 6);
+    assert_eq!(vec![
+               Instr::CreateClosure(0),
+               Instr::LoadClosure(0),
+               Instr::Jump(6),
+               Instr::IntLit(10),
+               Instr::IntLit(5),
+               Instr::Ret], out);
 }
