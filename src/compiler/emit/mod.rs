@@ -36,9 +36,6 @@ pub fn emit(ast: &Ast, compile_context: &mut CompileContext, out: &mut EmitBuffe
         &Ast::StringLit(ref s, _) => {
             out.push(compile_context.add_constant(s.clone().into()));
         }
-        &Ast::SymbolLit(s, _) => {
-            out.push(Instr::SymbolLit(s));
-        }
         &Ast::FloatLit(f, _) => {
             out.push(compile_context.add_constant(f.into()));
         }

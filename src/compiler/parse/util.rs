@@ -6,7 +6,7 @@ pub fn immediate_value<'ast>(v: &'ast Ast<'ast>, interner: &mut SymbolIntern) ->
         &Ast::MapLit(ref m, _) =>
             m.iter().all(|&(ref k, ref v)| immediate_value(k, interner) && immediate_value(v, interner)),
         &Ast::Quote(_, _) => true,
-        &Ast::SymbolLit(_, _) => false,
+        &Ast::Symbol(_, _) => false,
         _ => true,
     }
 }
@@ -25,7 +25,7 @@ pub fn can_be_hash_key(v: &Ast, interner: &mut SymbolIntern) -> bool {
         &Ast::BoolLit(_, _) => true,
         &Ast::FloatLit(_, _) => true,
         &Ast::Quote(ref quoted, _) => {
-            if let &Ast::SymbolLit(_, _) = &**quoted {
+            if let &Ast::Symbol(_, _) = &**quoted {
                 true
             } else {
                 can_be_hash_key(&*quoted, interner)

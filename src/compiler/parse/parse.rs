@@ -28,7 +28,7 @@ fn one_expr<'a, 'b, 'ast>(tok: Token,
             match &s[..] {
                 "true" => Ok(arena.alloc(Ast::BoolLit(true, tok.span))),
                 "false" => Ok(arena.alloc(Ast::BoolLit(false, tok.span))),
-                other => Ok(arena.alloc(Ast::SymbolLit(interner.intern(other), tok.span)))
+                other => Ok(arena.alloc(Ast::Symbol(interner.intern(other), tok.span)))
             }
         }
 
@@ -77,7 +77,7 @@ fn one_expr<'a, 'b, 'ast>(tok: Token,
                         if let &Ast::List(ref args, t) = args_list {
                             let mut arg_list = vec![];
                             for arg in args {
-                                if let &&Ast::SymbolLit(symbol, _) = arg {
+                                if let &&Ast::Symbol(symbol, _) = arg {
                                     arg_list.push(symbol);
                                 } else {
                                     return Err(BadLambdaArgs(t));
@@ -262,9 +262,9 @@ mod tests {
         let should = arena.alloc(Ast::Lambda(
             vec![a, b, c],
             vec![arena.alloc(Ast::Add(vec![
-                          arena.alloc(Ast::SymbolLit(a, Span::dummy())),
-                          arena.alloc(Ast::SymbolLit(b, Span::dummy())),
-                          arena.alloc(Ast::SymbolLit(c, Span::dummy())),
+                          arena.alloc(Ast::Symbol(a, Span::dummy())),
+                          arena.alloc(Ast::Symbol(b, Span::dummy())),
+                          arena.alloc(Ast::Symbol(c, Span::dummy())),
                           ], Span::dummy()))],
             Span::dummy()));
         assert!(ast.equals_sans_span(should));

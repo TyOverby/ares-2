@@ -55,7 +55,7 @@ pub enum Ast<'ast> {
     FloatLit(f64, Span),
     ListLit(Vec<&'ast Ast<'ast>>, Span),
     MapLit(Vec<(&'ast Ast<'ast>, &'ast Ast<'ast>)>, Span),
-    SymbolLit(Symbol, Span),
+    Symbol(Symbol, Span),
     Add(Vec<&'ast Ast<'ast>>, Span),
     Quote(&'ast Ast<'ast>, Span),
     List(Vec<&'ast Ast<'ast>>, Span),
@@ -70,7 +70,7 @@ Result<Vec<&'ast Ast<'ast>>, errors::ParseError> {
 
 impl <'ast> Ast<'ast> {
     pub fn is_symbol_lit_with(&self, symbol: &Symbol) -> bool {
-        if let &Ast::SymbolLit(ref s, _) = self {
+        if let &Ast::Symbol(ref s, _) = self {
             s == symbol
         } else { false }
     }
@@ -91,7 +91,7 @@ impl <'ast> Ast<'ast> {
                 a.iter().zip(b.iter()).all(|(ref a, ref b)|
                     a.0.equals_sans_span(&b.0) && a.1.equals_sans_span(&b.1))
             },
-            (&SymbolLit(a, _), &SymbolLit(b, _)) => a == b,
+            (&Symbol(a, _), &Symbol(b, _)) => a == b,
             (&Add(ref a, _), &Add(ref b, _)) => {
                 if a.len() != b.len() { return false }
                 a.iter().zip(b.iter()).all(|(ref a, ref b)| a.equals_sans_span(b))
