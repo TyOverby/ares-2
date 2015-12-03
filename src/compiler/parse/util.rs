@@ -1,7 +1,7 @@
 use vm::SymbolIntern;
 use compiler::parse::Ast;
 
-pub fn immediate_value(v: &Ast, interner: &mut SymbolIntern) -> bool {
+pub fn immediate_value<'ast>(v: &'ast Ast<'ast>, interner: &mut SymbolIntern) -> bool {
     match v {
         &Ast::MapLit(ref m, _) =>
             m.iter().all(|&(ref k, ref v)| immediate_value(k, interner) && immediate_value(v, interner)),
@@ -11,7 +11,8 @@ pub fn immediate_value(v: &Ast, interner: &mut SymbolIntern) -> bool {
     }
 }
 
-pub fn unquote(v: &Ast) -> Ast {
+
+pub fn unquote<'ast>(v: &'ast Ast<'ast>) -> Ast<'ast> {
     match v {
         &Ast::ListLit(ref vec, _) => vec[1].clone(),
         v => v.clone(),

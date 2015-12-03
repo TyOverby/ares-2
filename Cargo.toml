@@ -14,6 +14,7 @@ path = "./src/main.rs"
 [dependencies]
 libc = "*"
 itertools = "*"
+typed-arena = "1.0.*"
 
 [dependencies.gc]
 git = "https://github.com/Manishearth/rust-gc.git"

@@ -3,6 +3,7 @@ mod tokens;
 mod parse;
 mod util;
 
+use typed_arena::Arena;
 use vm::{Symbol, SymbolIntern};
 use compiler::parse::tokens::Position;
 
@@ -47,26 +48,27 @@ impl Span {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Ast {
+pub enum Ast<'ast> {
     BoolLit(bool, Span),
     StringLit(String, Span),
     IntLit(i64, Span),
     FloatLit(f64, Span),
-    ListLit(Vec<Ast>, Span),
-    MapLit(Vec<(Ast, Ast)>, Span),
+    ListLit(Vec<&'ast Ast<'ast>>, Span),
+    MapLit(Vec<(&'ast Ast<'ast>, &'ast Ast<'ast>)>, Span),
     SymbolLit(Symbol, Span),
-    Add(Vec<Ast>, Span),
-    Quote(Box<Ast>, Span),
-    List(Vec<Ast>, Span),
-    If(Box<Ast>, Box<Ast>, Box<Ast>, Span),
-    Lambda(Vec<Symbol>, Vec<Ast>, Span)
+    Add(Vec<&'ast Ast<'ast>>, Span),
+    Quote(&'ast Ast<'ast>, Span),
+    List(Vec<&'ast Ast<'ast>>, Span),
+    If(&'ast Ast<'ast>, &'ast Ast<'ast>, &'ast Ast<'ast>, Span),
+    Lambda(Vec<Symbol>, Vec<&'ast Ast<'ast>>, Span)
 }
 
-pub fn parse(s: &str, interner: &mut SymbolIntern) -> Result<Vec<Ast>, errors::ParseError> {
-    parse::parse(s, interner)
+pub fn parse<'ast>(s: &str, interner: &mut SymbolIntern, arena: &'ast Arena<Ast<'ast>>) ->
+Result<Vec<&'ast Ast<'ast>>, errors::ParseError> {
+    parse::parse(s, interner, arena)
 }
 
-impl Ast {
+impl <'ast> Ast<'ast> {
     pub fn is_symbol_lit_with(&self, symbol: &Symbol) -> bool {
         if let &Ast::SymbolLit(ref s, _) = self {
             s == symbol

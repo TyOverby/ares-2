@@ -2,6 +2,7 @@ extern crate ares;
 use ares::vm::*;
 
 fn main () {
+
     let mut vm = Vm::new();
     vm.stack.push(Value::Int(30)).unwrap();
     vm.load_and_execute(
