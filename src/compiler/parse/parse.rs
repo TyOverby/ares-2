@@ -230,13 +230,16 @@ mod tests {
     #[test]
     fn test_parse_plus() {
         let arena = Arena::new();
-        let ast = ok_parse_1("(+ 0 1 2)", &arena).0;
 
+        let ast = ok_parse_1("(+ 0 1 2)", &arena).0;
         let should = arena.alloc(Ast::Add(vec![
             arena.alloc(Ast::IntLit(0, Span::dummy())),
             arena.alloc(Ast::IntLit(1, Span::dummy())),
             arena.alloc(Ast::IntLit(2, Span::dummy()))], Span::dummy()));
+        assert!(ast.equals_sans_span(&should));
 
+        let ast = ok_parse_1("(+)", &arena).0;
+        let should = arena.alloc(Ast::Add(vec![], Span::dummy()));
         assert!(ast.equals_sans_span(&should));
     }
 

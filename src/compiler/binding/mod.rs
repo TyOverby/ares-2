@@ -19,6 +19,7 @@ use util::iterators_same;
 // Each bound node has a reference to the AST that it was from,
 //
 
+#[derive(Debug)]
 enum Bound<'bound, 'ast: 'bound> {
     Literal(&'ast Ast<'ast>),
     Symbol {
@@ -42,7 +43,7 @@ enum Bound<'bound, 'ast: 'bound> {
        Lambda(Vec<Symbol>, Vec<&'bound Bound<'bound, 'ast>>, &'ast Ast<'ast>)
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum SymbolBindSource {
     Arg(u32),
     Upvar(u32),
@@ -67,8 +68,8 @@ trait Binder {
 impl <'a> LambdaBinder<'a> {
     fn new(parent: &'a mut Binder, args: Vec<Symbol>) -> LambdaBinder<'a> {
         let mut bindings = HashMap::new();
-        for (i, arg_symbol) in args.iter().cloned().enumerate() {
-            bindings.insert(arg_symbol, SymbolBindSource::Arg(i as u32));
+        for (i, arg_symbol) in args.iter().enumerate() {
+            bindings.insert(arg_symbol.clone(), SymbolBindSource::Arg(i as u32));
         }
 
         LambdaBinder {
@@ -199,11 +200,11 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             (&Bound::ListLit(ref list_a, _), &Bound::ListLit(ref list_b, _)) |
             (&Bound::List(ref list_a, _), &Bound::List(ref list_b, _)) |
             (&Bound::Add(ref list_a, _), &Bound::Add(ref list_b, _)) => {
-                iterators_same(list_a.iter().cloned(), list_b.iter().cloned(), Bound::equals_sans_ast)
+                iterators_same(list_a.iter(), list_b.iter(), |&a, &b| Bound::equals_sans_ast(a, b))
             }
 
             (&Bound::MapLit(ref list_a, _), &Bound::MapLit(ref list_b, _)) => {
-                iterators_same(list_a.iter().cloned(), list_b.iter().cloned(), |(ref k1, ref v1), (ref k2, ref v2)| {
+                iterators_same(list_a.iter(), list_b.iter(), |&(k1, v1), &(k2, v2)| {
                     Bound::equals_sans_ast(k1, k2) && Bound::equals_sans_ast(v1, v2)
                 })
             }
@@ -213,8 +214,8 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             (&Bound::If(ref a1, ref a2, ref a3, _), &Bound::If(ref b1, ref b2, ref b3, _)) =>
                 a1.equals_sans_ast(b1) && a2.equals_sans_ast(b2) && a3.equals_sans_ast(b3),
             (&Bound::Lambda(ref args_a, ref bodies_a, _), &Bound::Lambda(ref args_b, ref bodies_b, _)) => {
-                iterators_same(args_a.iter().cloned(), args_b.iter().cloned(), |a, b| a == b) &&
-                    iterators_same(bodies_a.iter().cloned(), bodies_b.iter().cloned(), Bound::equals_sans_ast)
+                iterators_same(args_a.iter(), args_b.iter(), |a, b| a == b) &&
+                iterators_same(bodies_a.iter(), bodies_b.iter(), |&a, &b| Bound::equals_sans_ast(a, b))
             }
             _ => false
         }
