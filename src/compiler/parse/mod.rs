@@ -6,6 +6,7 @@ mod util;
 use typed_arena::Arena;
 use vm::{Symbol, SymbolIntern};
 use compiler::parse::tokens::Position;
+use util::iterators_same;
 
 pub use self::errors::ParseError;
 
@@ -75,6 +76,24 @@ impl <'ast> Ast<'ast> {
         } else { false }
     }
 
+    pub fn span(&self) -> Span {
+        use self::Ast::*;
+        match *self {
+            BoolLit(_, span) => span,
+            StringLit(_, span) => span,
+            IntLit(_, span) => span,
+            FloatLit(_, span) => span,
+            ListLit(_, span) => span,
+            MapLit(_, span) => span,
+            Symbol(_, span) => span,
+            Add(_, span) => span,
+            Quote(_, span) => span,
+            List(_, span) => span,
+            If(_, _, _, span) => span,
+            Lambda(_, _, span) => span,
+        }
+    }
+
     pub fn equals_sans_span(&self, other: &Ast) -> bool {
         use self::Ast::*;
         match (self, other) {
@@ -83,36 +102,28 @@ impl <'ast> Ast<'ast> {
             (&IntLit(ref a, _), &IntLit(ref b, _)) => a == b,
             (&FloatLit(ref a, _), &FloatLit(ref b, _)) => a == b,
             (&ListLit(ref a, _), &ListLit(ref b, _)) => {
-                if a.len() != b.len() { return false }
-                a.iter().zip(b.iter()).all(|(ref a, ref b)| a.equals_sans_span(b))
+                iterators_same(a.iter().cloned(), b.iter().cloned(), Ast::equals_sans_span)
             },
             (&MapLit(ref a, _), &MapLit(ref b, _)) => {
-                if a.len() != b.len() { return false }
-                a.iter().zip(b.iter()).all(|(ref a, ref b)|
-                    a.0.equals_sans_span(&b.0) && a.1.equals_sans_span(&b.1))
+                iterators_same(a.iter().cloned(), b.iter().cloned(), |(ref k1, ref v1), (ref k2, ref v2)| {
+                    Ast::equals_sans_span(k1, k2) && Ast::equals_sans_span(v1, v2)
+                })
             },
             (&Symbol(a, _), &Symbol(b, _)) => a == b,
             (&Add(ref a, _), &Add(ref b, _)) => {
-                if a.len() != b.len() { return false }
-                a.iter().zip(b.iter()).all(|(ref a, ref b)| a.equals_sans_span(b))
+                iterators_same(a.iter().cloned(), b.iter().cloned(), Ast::equals_sans_span)
             },
             (&Quote(ref a, _), &Quote(ref b, _)) => a.equals_sans_span(&*b),
             (&List(ref a, _), &List(ref b, _)) => {
-                if a.len() != b.len() { return false }
-                a.iter().zip(b.iter()).all(|(ref a, ref b)| a.equals_sans_span(b))
+                iterators_same(a.iter().cloned(), b.iter().cloned(), Ast::equals_sans_span)
             },
             (&If(ref ac, ref at, ref af, _), &If(ref bc, ref bt, ref bf, _)) =>
                 ac.equals_sans_span(&*bc) &&
                 at.equals_sans_span(&*bt) &&
                 af.equals_sans_span(&*bf),
             (&Lambda(ref a_args, ref a_bodies, _), &Lambda(ref b_args, ref b_bodies, _)) => {
-                if a_args.len() != b_args.len() { return false }
-                if !a_args.iter().zip(b_args.iter()).all(|(ref a, ref b)| a == b) {
-                    return false
-                }
-
-                if a_bodies.len() != b_bodies.len() { return false }
-                a_bodies.iter().zip(b_bodies.iter()).all(|(ref a, ref b)| a.equals_sans_span(b))
+                iterators_same(a_args.iter().cloned(), b_args.iter().cloned(), |a, b| a == b) &&
+                iterators_same(a_bodies.iter().cloned(), b_bodies.iter().cloned(), Ast::equals_sans_span)
             }
             _ => false
         }

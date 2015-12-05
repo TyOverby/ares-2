@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-#![feature(box_patterns)]
 
 #[macro_use]
 extern crate gc;
@@ -14,3 +13,4 @@ macro_rules! matches {
 
 pub mod compiler;
 pub mod vm;
+mod util;
