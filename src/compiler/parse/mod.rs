@@ -101,22 +101,20 @@ impl <'ast> Ast<'ast> {
             (&StringLit(ref a, _), &StringLit(ref b, _)) => a == b,
             (&IntLit(ref a, _), &IntLit(ref b, _)) => a == b,
             (&FloatLit(ref a, _), &FloatLit(ref b, _)) => a == b,
-            (&ListLit(ref a, _), &ListLit(ref b, _)) => {
+
+            (&ListLit(ref a, _), &ListLit(ref b, _)) |
+            (&List(ref a, _), &List(ref b, _)) |
+            (&Add(ref a, _), &List(ref b, _)) => {
                 iterators_same(a.iter().cloned(), b.iter().cloned(), Ast::equals_sans_span)
             },
+
             (&MapLit(ref a, _), &MapLit(ref b, _)) => {
                 iterators_same(a.iter().cloned(), b.iter().cloned(), |(ref k1, ref v1), (ref k2, ref v2)| {
                     Ast::equals_sans_span(k1, k2) && Ast::equals_sans_span(v1, v2)
                 })
             },
             (&Symbol(a, _), &Symbol(b, _)) => a == b,
-            (&Add(ref a, _), &Add(ref b, _)) => {
-                iterators_same(a.iter().cloned(), b.iter().cloned(), Ast::equals_sans_span)
-            },
             (&Quote(ref a, _), &Quote(ref b, _)) => a.equals_sans_span(&*b),
-            (&List(ref a, _), &List(ref b, _)) => {
-                iterators_same(a.iter().cloned(), b.iter().cloned(), Ast::equals_sans_span)
-            },
             (&If(ref ac, ref at, ref af, _), &If(ref bc, ref bt, ref bf, _)) =>
                 ac.equals_sans_span(&*bc) &&
                 at.equals_sans_span(&*bt) &&

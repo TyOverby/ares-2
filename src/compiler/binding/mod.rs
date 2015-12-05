@@ -182,9 +182,9 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 }))
             }
 
-    fn eq_sans_ast(&self, other: &'bound Bound<'bound, 'ast>) -> bool {
+    fn equals_sans_ast(&self, other: &'bound Bound<'bound, 'ast>) -> bool {
         match (self, other) {
-            (&Bound::Literal(ref a), &Bound::Literal(ref b)) => true,
+            (&Bound::Literal(ref a), &Bound::Literal(ref b)) => a.equals_sans_span(b),
 
             (&Bound::Symbol {
                 symbol: symbol_a,
@@ -196,29 +196,26 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 ..
             }) => symbol_a == symbol_b && source_a == source_b,
 
-            (&Bound::ListLit(ref list_a, _), &Bound::ListLit(ref list_b, _)) => {
-                iterators_same(list_a.iter().cloned(), list_b.iter().cloned(), Bound::eq_sans_ast)
+            (&Bound::ListLit(ref list_a, _), &Bound::ListLit(ref list_b, _)) |
+            (&Bound::List(ref list_a, _), &Bound::List(ref list_b, _)) |
+            (&Bound::Add(ref list_a, _), &Bound::Add(ref list_b, _)) => {
+                iterators_same(list_a.iter().cloned(), list_b.iter().cloned(), Bound::equals_sans_ast)
             }
+
             (&Bound::MapLit(ref list_a, _), &Bound::MapLit(ref list_b, _)) => {
                 iterators_same(list_a.iter().cloned(), list_b.iter().cloned(), |(ref k1, ref v1), (ref k2, ref v2)| {
-                    Bound::eq_sans_ast(k1, k2) && Bound::eq_sans_ast(v1, v2)
+                    Bound::equals_sans_ast(k1, k2) && Bound::equals_sans_ast(v1, v2)
                 })
-            }
-            (&Bound::Add(ref list_a, _), &Bound::Add(ref list_b, _)) => {
-                iterators_same(list_a.iter().cloned(), list_b.iter().cloned(), Bound::eq_sans_ast)
             }
             (&Bound::Quote { quoting: quoting_a, ..  }, &Bound::Quote { quoting: quoting_b, ..  }) => {
                 quoting_a.equals_sans_span(quoting_b)
             }
-            (&Bound::List(ref list_a, _), &Bound::List(ref list_b, _)) => {
-                iterators_same(list_a.iter().cloned(), list_b.iter().cloned(), Bound::eq_sans_ast)
-            }
             (&Bound::If(ref a1, ref a2, ref a3, _), &Bound::If(ref b1, ref b2, ref b3, _)) =>
-                a1.eq_sans_ast(b1) && a2.eq_sans_ast(b2) && a3.eq_sans_ast(b3),
-           (&Bound::Lambda(ref args_a, ref bodies_a, _), &Bound::Lambda(ref args_b, ref bodies_b, _)) => {
-               iterators_same(args_a.iter().cloned(), args_b.iter().cloned(), |a, b| a == b) &&
-               iterators_same(bodies_a.iter().cloned(), bodies_b.iter().cloned(), Bound::eq_sans_ast)
-           }
+                a1.equals_sans_ast(b1) && a2.equals_sans_ast(b2) && a3.equals_sans_ast(b3),
+            (&Bound::Lambda(ref args_a, ref bodies_a, _), &Bound::Lambda(ref args_b, ref bodies_b, _)) => {
+                iterators_same(args_a.iter().cloned(), args_b.iter().cloned(), |a, b| a == b) &&
+                    iterators_same(bodies_a.iter().cloned(), bodies_b.iter().cloned(), Bound::equals_sans_ast)
+            }
             _ => false
         }
     }
