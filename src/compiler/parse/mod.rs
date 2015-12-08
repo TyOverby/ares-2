@@ -2,6 +2,11 @@ mod errors;
 mod tokens;
 mod parse;
 mod util;
+mod validate;
+
+
+#[cfg(test)]
+pub use self::parse::test;
 
 use typed_arena::Arena;
 use vm::{Symbol, SymbolIntern};
@@ -70,6 +75,10 @@ Result<Vec<&'ast Ast<'ast>>, errors::ParseError> {
 }
 
 impl <'ast> Ast<'ast> {
+    pub fn dummy() -> Ast<'ast> {
+        Ast::StringLit("dummy".into(), Span::dummy())
+    }
+
     pub fn is_symbol_lit_with(&self, symbol: &Symbol) -> bool {
         if let &Ast::Symbol(ref s, _) = self {
             s == symbol

@@ -40,7 +40,7 @@ enum Bound<'bound, 'ast: 'bound> {
        &'bound Bound<'bound, 'ast>,
        &'bound Bound<'bound, 'ast>,
        &'ast Ast<'ast>),
-       Lambda(Vec<Symbol>, Vec<&'bound Bound<'bound, 'ast>>, &'ast Ast<'ast>)
+   Lambda(Vec<Symbol>, Vec<&'bound Bound<'bound, 'ast>>, &'ast Ast<'ast>)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,7 +55,7 @@ struct BuckStopsHereBinder;
 
 struct LambdaBinder<'a> {
     parent: &'a mut Binder,
-    args: Vec<Symbol>,
+    args: &'a Vec<Symbol>,
     bindings: HashMap<Symbol, SymbolBindSource>
 }
 
@@ -66,7 +66,7 @@ trait Binder {
 }
 
 impl <'a> LambdaBinder<'a> {
-    fn new(parent: &'a mut Binder, args: Vec<Symbol>) -> LambdaBinder<'a> {
+    fn new(parent: &'a mut Binder, args: &'a Vec<Symbol>) -> LambdaBinder<'a> {
         let mut bindings = HashMap::new();
         for (i, arg_symbol) in args.iter().enumerate() {
             bindings.insert(arg_symbol.clone(), SymbolBindSource::Arg(i as u32));
@@ -105,6 +105,13 @@ impl Binder for BuckStopsHereBinder {
 }
 
 impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
+    fn bind_top(ast: &'ast Ast<'ast>,
+            arena: &'bound Arena<Bound<'bound, 'ast>>,
+            interner: &mut SymbolIntern) -> Result<&'bound Bound<'bound, 'ast>, BindingError> {
+        let mut buck = BuckStopsHereBinder;
+        Bound::bind(ast, arena, &mut buck, interner)
+    }
+
     fn bind(ast: &'ast Ast<'ast>,
             arena: &'bound Arena<Bound<'bound, 'ast>>,
             binder: &mut Binder,
@@ -176,8 +183,14 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                         ast
                         )
                 }
-                &Ast::Lambda(ref _args, ref _bodies, _) => {
-                    unimplemented!();
+                &Ast::Lambda(ref args, ref bodies, _) => {
+                    let mut new_binder = LambdaBinder::new(binder, args);
+
+                    let bound_bodies =
+                        try!(bodies.iter()
+                                   .map(|element| Bound::bind(element, arena, &mut new_binder, interner))
+                                   .collect());
+                    Bound::Lambda(args.clone(), bound_bodies, ast)
                 }
                 _ => unimplemented!()
                 }))
@@ -219,5 +232,56 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             }
             _ => false
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{Bound, SymbolBindSource};
+    use compiler::parse::Ast;
+    use compiler::parse::test::ok_parse_1;
+    use typed_arena::Arena;
+
+    #[test]
+    fn bind_lambda_one_arg() {
+        let parse_arena = Arena::new();
+        let bind_arena = Arena::new();
+        let (ast, mut interner) = ok_parse_1("(lambda (a) a)", &parse_arena);
+        let bound = Bound::bind_top(ast, &bind_arena, &mut interner);
+
+        let should = bind_arena.alloc(
+            Bound::Lambda(vec![interner.intern("a")],
+                          vec![bind_arena.alloc(Bound::Symbol {
+                              symbol: interner.intern("a"),
+                              ast: parse_arena.alloc(Ast::dummy()),
+                              source: SymbolBindSource::Arg(0)
+                          })], parse_arena.alloc(Ast::dummy())));
+        assert!(should.equals_sans_ast(bound.unwrap()));
+    }
+
+    #[test]
+    fn bind_lambda_two_args() {
+        let parse_arena = Arena::new();
+        let bind_arena = Arena::new();
+        let (ast, mut interner) = ok_parse_1("(lambda (a b) (+ a b))", &parse_arena);
+        let bound = Bound::bind_top(ast, &bind_arena, &mut interner);
+
+        let should = bind_arena.alloc(
+            Bound::Lambda(vec![interner.intern("a"), interner.intern("b")],
+                          vec![bind_arena.alloc(
+                              Bound::Add(vec![
+                                  bind_arena.alloc(Bound::Symbol {
+                                      symbol: interner.intern("a"),
+                                      ast: parse_arena.alloc(Ast::dummy()),
+                                      source: SymbolBindSource::Arg(0)
+                                  }),
+                                  bind_arena.alloc(Bound::Symbol {
+                                      symbol: interner.intern("b"),
+                                      ast: parse_arena.alloc(Ast::dummy()),
+                                      source: SymbolBindSource::Arg(1)
+                                  })
+                           ], parse_arena.alloc(Ast::dummy())))
+                          ], parse_arena.alloc(Ast::dummy())));
+        assert!(should.equals_sans_ast(bound.unwrap()));
     }
 }

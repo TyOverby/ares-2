@@ -180,18 +180,18 @@ pub fn parse<'ast>(input: &str, interner: &mut SymbolIntern, arena: &'ast Arena<
 
 
 #[cfg(test)]
-mod tests {
+pub mod test {
     use compiler::parse::{Ast, Span};
     use typed_arena::Arena;
     use vm::SymbolIntern;
     use super::parse;
 
-    fn ok_parse<'ast>(s: &str, arena: &'ast Arena<Ast<'ast>>) -> (Vec<&'ast Ast<'ast>>, SymbolIntern) {
+    pub fn ok_parse<'ast>(s: &str, arena: &'ast Arena<Ast<'ast>>) -> (Vec<&'ast Ast<'ast>>, SymbolIntern) {
         let mut interner = SymbolIntern::new();
         (parse(s, &mut interner, arena).unwrap(), interner)
     }
 
-    fn ok_parse_1<'ast>(s: &str, arena: &'ast Arena<Ast<'ast>>) -> (&'ast Ast<'ast>, SymbolIntern) {
+    pub fn ok_parse_1<'ast>(s: &str, arena: &'ast Arena<Ast<'ast>>) -> (&'ast Ast<'ast>, SymbolIntern) {
         let (mut parsed, interner) = ok_parse(s, arena);
         assert!(parsed.len() == 1);
         (parsed.pop().unwrap(), interner)
