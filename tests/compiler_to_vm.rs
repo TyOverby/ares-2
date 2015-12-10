@@ -44,7 +44,14 @@ fn test_lambdas() {
 }
 
 #[test]
-fn call_lambdas() {
+fn call_lambdas_no_args() {
     assert_eq!(run_this("((lambda () 5))"), 5.into());
     assert_eq!(run_this("((lambda () 5 6 7))"), 7.into());
+}
+
+#[test]
+fn call_lambdas_with_args() {
+    assert_eq!(run_this("((lambda (a) a) 5)"), 5.into());
+    assert_eq!(run_this("((lambda (a b) b) 5 10)"), 10.into());
+    assert_eq!(run_this("((lambda (a b) (+ a b)) 5 10)"), 15.into());
 }

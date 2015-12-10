@@ -35,6 +35,16 @@ impl Stack {
         self.pops
     }
 
+    pub fn truncate(&mut self, size: usize) -> Result<(), InterpError> {
+        if self.size >= size {
+            self.size = size;
+            Ok(())
+        } else {
+            Err(InterpError::InternalInterpError(
+            format!("stack.truncate({}) with a current size of {}", size, self.size)))
+        }
+    }
+
     #[inline(always)]
     pub fn pop(&mut self) -> Result<Value, InterpError> {
         use std::mem::{uninitialized, swap, transmute};

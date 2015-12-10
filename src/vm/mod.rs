@@ -15,6 +15,7 @@ pub use vm::stack::*;
 
 #[derive(Debug)]
 pub enum InterpError {
+    InternalInterpError(String),
     MismatchedType {
         value: Value,
         expected: ValueKind,
@@ -61,8 +62,8 @@ pub enum Instr {
     /// (debug use only)
     Print,
     Dbg,
-    /// Copy a value from N positions down the stack
-    /// into the top of the stack
+    /// Copy a value from N positions up the
+    /// stack frame into the top of the stack.
     Dup(u32),
     /// Push a value onto the stack
     /// Pop a value off of the stack
@@ -400,11 +401,9 @@ impl Vm {
                     };
 
                     i = return_info.code_pos as u32;
-                    // TODO: finish implementing this
-                    assert!(stack_frame + 1 == stack.len() as u32,
-                            "return left the stack at the wrong size: actual: {} vs expected: {}",
-                            stack.len(),
-                            stack_frame + 1);
+                    let return_value = try!(stack.pop());
+                    try!(stack.truncate(stack_frame as usize));
+                    try!(stack.push(return_value));
                     stack_frame = return_info.stack_frame;
                 }
                 &Instr::If => {

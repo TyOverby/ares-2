@@ -43,8 +43,8 @@ pub enum Bound<'bound, 'ast: 'bound> {
    Lambda(Vec<Symbol>, Vec<&'bound Bound<'bound, 'ast>>, &'ast Ast<'ast>)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum SymbolBindSource {
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum SymbolBindSource {
     Arg(u32),
     Upvar(u32),
     LocalDefine(u32),
