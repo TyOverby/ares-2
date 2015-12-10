@@ -20,7 +20,7 @@ use util::iterators_same;
 //
 
 #[derive(Debug)]
-enum Bound<'bound, 'ast: 'bound> {
+pub enum Bound<'bound, 'ast: 'bound> {
     Literal(&'ast Ast<'ast>),
     Symbol {
         symbol: Symbol,
@@ -105,7 +105,7 @@ impl Binder for BuckStopsHereBinder {
 }
 
 impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
-    fn bind_top(ast: &'ast Ast<'ast>,
+    pub fn bind_top(ast: &'ast Ast<'ast>,
             arena: &'bound Arena<Bound<'bound, 'ast>>,
             interner: &mut SymbolIntern) -> Result<&'bound Bound<'bound, 'ast>, BindingError> {
         let mut buck = BuckStopsHereBinder;
@@ -119,6 +119,7 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 Ok(arena.alloc(match ast {
                     &Ast::BoolLit(_, _) |
                     &Ast::StringLit(_, _) |
+                    &Ast::FloatLit(_, _) |
                     &Ast::IntLit(_, _)  => {
                         Bound::Literal(ast)
                     }
@@ -192,7 +193,6 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                                    .collect());
                     Bound::Lambda(args.clone(), bound_bodies, ast)
                 }
-                _ => unimplemented!()
                 }))
             }
 

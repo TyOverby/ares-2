@@ -2,15 +2,16 @@ mod error;
 mod emit_buffer;
 
 use compiler::parse::Ast;
+use compiler::binding::Bound;
 use compiler::CompileContext;
 use vm::{Instr, ClosureClass};
 
 pub use self::error::EmitError;
 pub use self::emit_buffer::EmitBuffer;
 
-pub fn emit(ast: &Ast, compile_context: &mut CompileContext, out: &mut EmitBuffer) -> Result<(), EmitError> {
+pub fn emit(ast: &Bound, compile_context: &mut CompileContext, out: &mut EmitBuffer) -> Result<(), EmitError> {
     match ast {
-        &Ast::Add(ref operands, _) => {
+        &Bound::Add(ref operands, _) => {
             for operand in &operands[..] {
                 try!(emit(operand, compile_context, out));
             }
@@ -22,25 +23,29 @@ pub fn emit(ast: &Ast, compile_context: &mut CompileContext, out: &mut EmitBuffe
                 }
             }
         }
-        &Ast::IntLit(i, _) => {
-            use ::std::i32::{MIN, MAX};
-            if i >= MIN as i64 && i <= MAX as i64 {
-                out.push(Instr::IntLit(i as i32));
-            } else {
-                out.push(compile_context.add_constant(i.into()));
+        &Bound::Literal(ast) => {
+            match ast {
+                &Ast::IntLit(i, _) => {
+                    use ::std::i32::{MIN, MAX};
+                    if i >= MIN as i64 && i <= MAX as i64 {
+                        out.push(Instr::IntLit(i as i32));
+                    } else {
+                        out.push(compile_context.add_constant(i.into()));
+                    }
+                }
+                &Ast::BoolLit(b, _) => {
+                    out.push(Instr::BoolLit(b));
+                }
+                &Ast::StringLit(ref s, _) => {
+                    out.push(compile_context.add_constant(s.clone().into()));
+                }
+                &Ast::FloatLit(f, _) => {
+                    out.push(compile_context.add_constant(f.into()));
+                }
+                _ => panic!("non-literal ast found in Bound::Literal")
             }
         }
-        &Ast::BoolLit(b, _) => {
-            out.push(Instr::BoolLit(b));
-        }
-        &Ast::StringLit(ref s, _) => {
-            out.push(compile_context.add_constant(s.clone().into()));
-        }
-        &Ast::FloatLit(f, _) => {
-            out.push(compile_context.add_constant(f.into()));
-        }
-
-        &Ast::If(ref cond, ref tru, ref fals, _) => {
+        &Bound::If(ref cond, ref tru, ref fals, _) => {
             let mut true_code = EmitBuffer::new();
             let mut false_code = EmitBuffer::new();
 
@@ -63,7 +68,7 @@ pub fn emit(ast: &Ast, compile_context: &mut CompileContext, out: &mut EmitBuffe
             out.fulfill(fulfill_false, Instr::Jump(len_with_true_code as u32));
             out.merge(false_code);
         }
-        &Ast::Lambda(ref argslist, ref bodies, _) => {
+        &Bound::Lambda(ref argslist, ref bodies, _) => {
             const INSTRS_BEFORE_LAMBDA_CODE: u32 = 3;
             let prior_code_len = out.len();
 
@@ -97,7 +102,7 @@ pub fn emit(ast: &Ast, compile_context: &mut CompileContext, out: &mut EmitBuffe
             let next = out.len() as u32;
             out.fulfill(eol_fulfill, Instr::Jump(next));
         }
-        &Ast::List(ref elements, _) => {
+        &Bound::List(ref elements, _) => {
             if elements.len() == 0 {
                 return Err(EmitError::CallWithEmptyList);
             }
@@ -114,165 +119,148 @@ pub fn emit(ast: &Ast, compile_context: &mut CompileContext, out: &mut EmitBuffe
     Ok(())
 }
 
-/*
-#[test]
-fn test_literal_emit() {
-    use compiler::parse::Span;
-    use vm::Value;
+#[cfg(test)]
+mod test {
+    use vm::{Instr, Value};
+    use compiler::parse::{Ast, Span};
+    use compiler::CompileContext;
+    use typed_arena::Arena;
 
-    {
-        // Inlieable int
+    fn compile_this(ast: &Ast) -> (Vec<Instr>, CompileContext) {
+        use compiler::emit::emit;
+        use compiler::emit::EmitBuffer;
+        use compiler::binding::Bound;
+        use vm::SymbolIntern;
+
         let mut out = EmitBuffer::new();
         let mut compile_context = CompileContext::new();
-        let ast = Ast::IntLit(5, Span::dummy());
-        emit(&ast, &mut compile_context, &mut out).unwrap();
-        let out = out.into_instructions();
-        assert!(out.len() == 1);
-        assert_eq!(Instr::IntLit(5), out[0]);
-    } {
-        // constant int
-        let mut out = EmitBuffer::new();
-        let mut compile_context = CompileContext::new();
-        let ast = Ast::IntLit(8589934592, Span::dummy());
-        emit(&ast, &mut compile_context, &mut out).unwrap();
-        let out = out.into_instructions();
-        assert!(out.len() == 1);
-        assert_eq!(Instr::LoadConstant(0), out[0]);
-        assert_eq!(compile_context.get_constant(0), Value::Int(8589934592))
-    } {
-        // constant float
-        let mut out = EmitBuffer::new();
-        let mut compile_context = CompileContext::new();
-        let ast = Ast::FloatLit(3.14, Span::dummy());
-        emit(&ast, &mut compile_context, &mut out).unwrap();
-        let out = out.into_instructions();
-        assert!(out.len() == 1);
-        assert_eq!(Instr::LoadConstant(0), out[0]);
-        assert_eq!(compile_context.get_constant(0), Value::Float(3.14))
-    } {
-        // string float
-        let mut out = EmitBuffer::new();
-        let mut compile_context = CompileContext::new();
-        let ast = Ast::StringLit("hello world".into(), Span::dummy());
-        emit(&ast, &mut compile_context, &mut out).unwrap();
-        let out = out.into_instructions();
-        assert!(out.len() == 1);
-        assert_eq!(Instr::LoadConstant(0), out[0]);
-        assert_eq!(compile_context.get_constant(0), "hello world".into())
+        let mut bound_arena = Arena::new();
+        let mut interner = SymbolIntern::new();
+
+        let bound = Bound::bind_top(ast, &mut bound_arena, &mut interner).unwrap();
+        emit(&bound, &mut compile_context, &mut out).unwrap();
+        (out.into_instructions(), compile_context)
     }
-}
 
-#[test]
-fn test_add_emit() {
-    use compiler::parse::Span;
+    #[test]
+    fn test_literal_emit() {
+        {
+            let ast = Ast::IntLit(5, Span::dummy());
+            let (out, _) = compile_this(&ast);
+            assert_eq!(out, vec![Instr::IntLit(5)]);
+        } {
+            let ast = Ast::IntLit(8589934592, Span::dummy());
+            let (out, cc) = compile_this(&ast);
+            assert_eq!(cc.get_constant(0), Value::Int(8589934592));
+            assert_eq!(out, vec![Instr::LoadConstant(0)]);
 
-    {
-        // Add a single item
-        let mut out = EmitBuffer::new();
-        let mut compile_context = CompileContext::new();
-        let ast = Ast::Add(vec![Ast::IntLit(5, Span::dummy())], Span::dummy());
-        emit(&ast, &mut compile_context, &mut out).unwrap();
-        let out = out.into_instructions();
-        assert!(out.len() == 1);
-        assert_eq!(out[0], Instr::IntLit(5));
-    } {
-        // Add two things
-        let mut out = EmitBuffer::new();
-        let mut compile_context = CompileContext::new();
-        let ast = Ast::Add(vec![
-                           Ast::IntLit(5, Span::dummy()),
-                           Ast::IntLit(10, Span::dummy())
-                           ], Span::dummy());
-        emit(&ast, &mut compile_context, &mut out).unwrap();
-        let out = out.into_instructions();
-        assert_eq!(out, vec![Instr::IntLit(5), Instr::IntLit(10), Instr::AddInt]);
-    } {
-        // Add some addition
-        let mut out = EmitBuffer::new();
-        let mut compile_context = CompileContext::new();
-        let ast = Ast::Add(vec![
-                           Ast::IntLit(5, Span::dummy()),
-                           Ast::IntLit(10, Span::dummy()),
-                           Ast::Add(vec![
-                                    Ast::IntLit(15, Span::dummy()),
-                                    Ast::IntLit(20, Span::dummy()),
-                                    ], Span::dummy())
-                           ], Span::dummy());
-        emit(&ast, &mut compile_context, &mut out).unwrap();
-        let out = out.into_instructions();
+        } {
+            let ast = Ast::FloatLit(3.14, Span::dummy());
+            let (out, cc) = compile_this(&ast);
+            assert_eq!(cc.get_constant(0), Value::Float(3.14));
+            assert_eq!(out, vec![Instr::LoadConstant(0)]);
+        } {
+            let ast = Ast::StringLit("hello world".into(), Span::dummy());
+            let (out, cc) = compile_this(&ast);
+            assert_eq!(cc.get_constant(0), "hello world".into());
+            assert_eq!(out, vec![Instr::LoadConstant(0)]);
+        }
+    }
+
+    #[test]
+    fn test_add_emit() {
+        let a = Arena::new();
+        {
+            // Add one thing
+            let ast = Ast::Add(vec![a.alloc(Ast::IntLit(5, Span::dummy()))], Span::dummy());
+            let (out, _) = compile_this(&ast);
+            assert_eq!(out, vec![Instr::IntLit(5)]);
+        } {
+            // Add two things
+            let ast = Ast::Add(vec![
+                               a.alloc(Ast::IntLit(5, Span::dummy())),
+                               a.alloc(Ast::IntLit(10, Span::dummy()))
+                               ], Span::dummy());
+            let (out, _) = compile_this(&ast);
+            assert_eq!(out, vec![Instr::IntLit(5), Instr::IntLit(10), Instr::AddInt]);
+        } {
+            // Add some addition
+            let ast = Ast::Add(vec![
+                               a.alloc(Ast::IntLit(5, Span::dummy())),
+                               a.alloc(Ast::IntLit(10, Span::dummy())),
+                               a.alloc(Ast::Add(vec![
+                                        a.alloc(Ast::IntLit(15, Span::dummy())),
+                                        a.alloc(Ast::IntLit(20, Span::dummy())),
+                                        ], Span::dummy()))
+                               ], Span::dummy());
+            let (out, _) = compile_this(&ast);
+            assert_eq!(out, vec![
+                       Instr::IntLit(5),
+                       Instr::IntLit(10),
+                       Instr::IntLit(15),
+                       Instr::IntLit(20),
+                       Instr::AddInt,
+                       Instr::AddInt,
+                       Instr::AddInt]);
+        }
+    }
+
+    #[test]
+    fn test_basic_if() {
+        let a = Arena::new();
+        let ast = Ast::If(
+            a.alloc(Ast::BoolLit(true, Span::dummy())),
+            a.alloc(Ast::IntLit(15, Span::dummy())),
+            a.alloc(Ast::IntLit(20, Span::dummy())),
+            Span::dummy());
+
+        let (out, _) = compile_this(&ast);
+
         assert_eq!(out, vec![
-                   Instr::IntLit(5),
-                   Instr::IntLit(10),
+                   Instr::BoolLit(true),
+                   Instr::Ifn,
+                   Instr::Jump(5),
                    Instr::IntLit(15),
-                   Instr::IntLit(20),
-                   Instr::AddInt,
-                   Instr::AddInt,
-                   Instr::AddInt]);
+                   Instr::Jump(6),
+                   Instr::IntLit(20)]);
+    }
+
+    #[test]
+    fn emit_no_arg_lambda() {
+        let a = Arena::new();
+        let ast = Ast::Lambda(
+            vec![],
+            vec![a.alloc(Ast::IntLit(10, Span::dummy())), a.alloc(Ast::IntLit(5, Span::dummy()))],
+            Span::dummy());
+
+        let (out, _) = compile_this(&ast);
+
+        assert_eq!(out, vec![
+                   Instr::CreateClosure(0),
+                   Instr::LoadClosure(0),
+                   Instr::Jump(7),
+                   Instr::IntLit(10),
+                   Instr::Pop,
+                   Instr::IntLit(5),
+                   Instr::Ret]);
+    }
+
+    #[test]
+    fn emit_list() {
+        let a = Arena::new();
+        let ast = Ast::List(
+            vec![
+                a.alloc(Ast::IntLit(1, Span::dummy())),
+                a.alloc(Ast::IntLit(2, Span::dummy())),
+                a.alloc(Ast::IntLit(3, Span::dummy())),
+            ], Span::dummy());
+
+        let (out, _) = compile_this(&ast);
+
+        assert_eq!(out, vec![
+                   Instr::IntLit(2),
+                   Instr::IntLit(3),
+                   Instr::IntLit(1),
+                   Instr::ExecuteClosure(2)]);
     }
 }
-
-#[test]
-fn test_basic_if() {
-    use compiler::parse::Span;
-
-    // Add a single item
-    let mut out = EmitBuffer::new();
-    let mut compile_context = CompileContext::new();
-    let ast = Ast::If(
-        Box::new(Ast::BoolLit(true, Span::dummy())),
-        Box::new(Ast::IntLit(15, Span::dummy())),
-        Box::new(Ast::IntLit(20, Span::dummy())),
-        Span::dummy());
-    emit(&ast, &mut compile_context, &mut out).unwrap();
-    let out = out.into_instructions();
-
-    assert_eq!(out, vec![
-               Instr::BoolLit(true),
-               Instr::Ifn,
-               Instr::Jump(5),
-               Instr::IntLit(15),
-               Instr::Jump(6),
-               Instr::IntLit(20)]);
-}
-
-#[test]
-fn emit_no_arg_lambda() {
-    use compiler::parse::Span;
-
-    let mut out = EmitBuffer::new();
-    let mut compile_context = CompileContext::new();
-    let ast = Ast::Lambda(
-        vec![],
-        vec![Ast::IntLit(10, Span::dummy()), Ast::IntLit(5, Span::dummy())],
-        Span::dummy());
-    emit(&ast, &mut compile_context, &mut out).unwrap();
-    let out = out.into_instructions();
-
-    assert_eq!(out, vec![
-               Instr::CreateClosure(0),
-               Instr::LoadClosure(0),
-               Instr::Jump(7),
-               Instr::IntLit(10),
-               Instr::Pop,
-               Instr::IntLit(5),
-               Instr::Ret]);
-}
-
-#[test]
-fn emit_list() {
-    use compiler::parse::Span;
-
-    let mut out = EmitBuffer::new();
-    let mut compile_context = CompileContext::new();
-    let ast = Ast::List(
-        vec![Ast::IntLit(1, Span::dummy()), Ast::IntLit(2, Span::dummy()), Ast::IntLit(3, Span::dummy())],
-        Span::dummy());
-    emit(&ast, &mut compile_context, &mut out).unwrap();
-    let out = out.into_instructions();
-
-    assert_eq!(out, vec![
-               Instr::IntLit(2),
-               Instr::IntLit(3),
-               Instr::IntLit(1),
-               Instr::ExecuteClosure(2)]);
-}*/

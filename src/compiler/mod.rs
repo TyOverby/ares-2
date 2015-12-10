@@ -18,11 +18,13 @@ pub fn compile(
 Result<Vec<Instr>, CompileError> {
 
     let ast_arena: typed_arena::Arena<parse::Ast>  = typed_arena::Arena::new();
+    let bound_arena: typed_arena::Arena<binding::Bound>  = typed_arena::Arena::new();
 
     let mut out = EmitBuffer::new();
     let asts = try!(parse::parse(source, interner, &ast_arena));
     for ast in &asts {
-        try!(emit::emit(ast, compile_context, &mut out));
+        let bound = binding::Bound::bind_top(ast, &bound_arena, interner);
+        try!(emit::emit(try!(bound), compile_context, &mut out));
     }
     Ok(out.into_instructions())
 }
