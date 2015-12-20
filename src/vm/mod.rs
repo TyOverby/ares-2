@@ -65,6 +65,7 @@ pub enum Instr {
     /// Copy a value from N positions up the
     /// stack frame into the top of the stack.
     Dup(u32),
+    DupTop,
     /// Push a value onto the stack
     /// Pop a value off of the stack
     Pop,
@@ -79,6 +80,9 @@ pub enum Instr {
     /// Pop the top value and set it in the cell located
     /// at this position from the top of the stack
     SetCell(u32),
+    /// Pop the top value and overwrite this position in the
+    /// stack with that value.
+    Assign(u32),
 
     /// Calls a function at the specified location.
     /// Pops the first argument off the top of the stack to
@@ -290,12 +294,26 @@ impl Vm {
                     let value = try!(stack.peek_n_up(stack_frame as usize + stack_pos as usize)).clone();
                     try!(stack.push(value));
                 }
+                &Instr::DupTop => {
+                    let value = try!(stack.peek()).clone();
+                    try!(stack.push(value));
+                }
                 &Instr::SetCell(frame_pos) => {
                     let value = try!(stack.pop());
                     let cell = try!(stack.peek_n_up(stack_frame as usize + frame_pos as usize));
                     let cell = try!(cell.expect_cell_ref());
                     let mut borrow = cell.borrow_mut();
                     *borrow = value;
+                }
+                &Instr::Assign(frame_pos) => {
+                    {
+                        let value = try!(stack.pop());
+                        let cell = try!(stack.peek_n_up(stack_frame as usize + frame_pos as usize));
+                        *cell = value;
+                    }
+                    println!("after assign");
+                    print!("{:?} - ", &stack.as_slice()[.. stack_frame as usize]);
+                    println!("{:?}", &stack.as_slice()[stack_frame as usize ..]);
                 }
                 &Instr::Pop => {
                     try!(stack.pop());
@@ -352,6 +370,7 @@ impl Vm {
                     let closure = try!(try!(stack.pop()).expect_closure());
                     let code_pos = closure.class.code_offset;
                     let expected_arg_count = closure.class.arg_count;
+                    let local_defines_count = closure.class.local_defines_count;
                     if closure.class.has_rest_params {
                         unimplemented!();
                     }
@@ -363,6 +382,7 @@ impl Vm {
                         });
                     }
 
+
                     return_stack.push(Return {
                         code_pos: i,
                         stack_frame: stack_frame
@@ -370,6 +390,11 @@ impl Vm {
 
                     i = code_pos.wrapping_sub(1);
                     stack_frame = stack.len() as u32 - arg_count as u32;
+
+                    println!("test: {}", local_defines_count);
+                    for _ in 0 .. local_defines_count {
+                        try!(stack.push(Value::Int(255)));
+                    }
                 }
                 &Instr::ExecuteClosureN => {
                     /*
@@ -870,6 +895,7 @@ fn basic_lambdas() {
     let closure_class_id = vm.compile_context.add_closure_class(ClosureClass {
         code_offset: 4,
         arg_count: 0,
+        local_defines_count: 0,
         has_rest_params: false,
     });
 
@@ -892,6 +918,7 @@ fn one_arg_lambda() {
     let closure_class_id = vm.compile_context.add_closure_class(ClosureClass {
         code_offset: 5,
         arg_count: 1,
+        local_defines_count: 0,
         has_rest_params: false,
     });
 

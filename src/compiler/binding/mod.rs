@@ -40,8 +40,13 @@ pub enum Bound<'bound, 'ast: 'bound> {
        &'bound Bound<'bound, 'ast>,
        &'bound Bound<'bound, 'ast>,
        &'ast Ast<'ast>),
-   Lambda(Vec<Symbol>, Vec<&'bound Bound<'bound, 'ast>>, &'ast Ast<'ast>),
-   Define(Symbol, &'bound Bound<'bound, 'ast>, &'ast Ast<'ast>),
+   Lambda {
+       arg_symbols: Vec<Symbol>,
+       bound_bodies: Vec<&'bound Bound<'bound, 'ast>>,
+       ast: &'ast Ast<'ast>,
+       bindings: LambdaBindings,
+   },
+   Define(Symbol, SymbolBindSource, &'bound Bound<'bound, 'ast>, &'ast Ast<'ast>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -54,24 +59,53 @@ pub enum SymbolBindSource {
 
 struct BuckStopsHereBinder;
 
+#[derive(Debug, Eq, PartialEq)]
+pub struct LambdaBindings {
+    pub bindings: HashMap<Symbol, SymbolBindSource>,
+    pub num_args: u32,
+    pub num_upvars: u32,
+    pub num_declarations: u32,
+}
+
 struct LambdaBinder<'a> {
     parent: &'a mut Binder,
     args: &'a Vec<Symbol>,
-    bindings: HashMap<Symbol, SymbolBindSource>
+    bindings: LambdaBindings
 }
 
 trait Binder {
-    fn add_declaration(&mut self, symbol: Symbol, interner: &mut SymbolIntern);
+    fn add_declaration(&mut self, symbol: Symbol, interner: &mut SymbolIntern) -> SymbolBindSource;
     fn already_binds(&self, symbol: Symbol) -> bool;
     fn lookup(&self, symbol: Symbol) -> Option<SymbolBindSource>;
 }
 
+impl LambdaBindings {
+    fn new() -> LambdaBindings {
+        LambdaBindings {
+            bindings: HashMap::new(),
+            num_args: 0,
+            num_upvars: 0,
+            num_declarations: 0,
+        }
+    }
+
+    pub fn compute_stack_offset(&self, bind_source: SymbolBindSource) -> u32 {
+        match bind_source {
+            SymbolBindSource::Arg(a) => a,
+            SymbolBindSource::Upvar(_) => unimplemented!(),
+            SymbolBindSource::LocalDefine(a) => self.num_args + self.num_upvars + a,
+            SymbolBindSource::Global(_) => unimplemented!(),
+        }
+    }
+}
+
 impl <'a> LambdaBinder<'a> {
     fn new(parent: &'a mut Binder, args: &'a Vec<Symbol>) -> LambdaBinder<'a> {
-        let mut bindings = HashMap::new();
+        let mut bindings = LambdaBindings::new();
         for (i, arg_symbol) in args.iter().enumerate() {
-            bindings.insert(arg_symbol.clone(), SymbolBindSource::Arg(i as u32));
+            bindings.bindings.insert(arg_symbol.clone(), SymbolBindSource::Arg(i as u32));
         }
+        bindings.num_args = args.len() as u32;
 
         LambdaBinder {
             parent: parent,
@@ -82,21 +116,27 @@ impl <'a> LambdaBinder<'a> {
 }
 
 impl <'a> Binder for LambdaBinder<'a> {
-    fn add_declaration(&mut self, _symbol: Symbol, _interner: &mut SymbolIntern) {
-        // ignore for now
+    fn add_declaration(&mut self, symbol: Symbol, _interner: &mut SymbolIntern) -> SymbolBindSource {
+        assert!(!self.bindings.bindings.contains_key(&symbol));
+        let source = SymbolBindSource::LocalDefine(self.bindings.num_declarations);
+        self.bindings.bindings.insert(symbol, source);
+        self.bindings.num_declarations += 1;
+        source
     }
 
     fn already_binds(&self, symbol: Symbol) -> bool {
-        self.bindings.contains_key(&symbol)
+        self.bindings.bindings.contains_key(&symbol)
     }
 
     fn lookup(&self, symbol: Symbol) -> Option<SymbolBindSource> {
-        self.bindings.get(&symbol).cloned()
+        self.bindings.bindings.get(&symbol).cloned()
     }
 }
 
 impl Binder for BuckStopsHereBinder {
-    fn add_declaration(&mut self, _symbol: Symbol, _interner: &mut SymbolIntern) { }
+    fn add_declaration(&mut self, symbol: Symbol, _interner: &mut SymbolIntern) -> SymbolBindSource {
+        SymbolBindSource::Global(symbol)
+    }
 
     fn already_binds(&self, _symbol: Symbol) -> bool { false }
 
@@ -192,12 +232,18 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                         try!(bodies.iter()
                                    .map(|element| Bound::bind(element, arena, &mut new_binder, interner))
                                    .collect());
-                    Bound::Lambda(args.clone(), bound_bodies, ast)
+                    Bound::Lambda{
+                        arg_symbols: args.clone(),
+                        bound_bodies: bound_bodies,
+                        ast: ast,
+                        bindings: new_binder.bindings
+                    }
                 }
+
                 &Ast::Define(symbol, ref ast, _) => {
-                    binder.add_declaration(symbol, interner);
+                    let source = binder.add_declaration(symbol, interner);
                     let bound_value = try!(Bound::bind(ast, arena, binder, interner));
-                    Bound::Define(symbol, bound_value, ast)
+                    Bound::Define(symbol, source, bound_value, ast)
                 }
                 }))
     }
@@ -232,9 +278,11 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             }
             (&Bound::If(ref a1, ref a2, ref a3, _), &Bound::If(ref b1, ref b2, ref b3, _)) =>
                 a1.equals_sans_ast(b1) && a2.equals_sans_ast(b2) && a3.equals_sans_ast(b3),
-            (&Bound::Lambda(ref args_a, ref bodies_a, _), &Bound::Lambda(ref args_b, ref bodies_b, _)) => {
+            (&Bound::Lambda{arg_symbols: ref args_a, bound_bodies: ref bodies_a, bindings: ref bindings_a, ast: ref _asta },
+             &Bound::Lambda{arg_symbols: ref args_b, bound_bodies: ref bodies_b, bindings: ref bindings_b, ast: ref _astb }) => {
                 iterators_same(args_a.iter(), args_b.iter(), |a, b| a == b) &&
-                iterators_same(bodies_a.iter(), bodies_b.iter(), |&a, &b| Bound::equals_sans_ast(a, b))
+                iterators_same(bodies_a.iter(), bodies_b.iter(), |&a, &b| Bound::equals_sans_ast(a, b)) &&
+                bindings_a == bindings_b
             }
             _ => false
         }
@@ -243,7 +291,7 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
 
 #[cfg(test)]
 mod test {
-    use super::{Bound, SymbolBindSource};
+    use super::{Bound, SymbolBindSource, LambdaBindings};
     use compiler::parse::Ast;
     use compiler::parse::test::ok_parse_1;
     use typed_arena::Arena;
@@ -256,12 +304,21 @@ mod test {
         let bound = Bound::bind_top(ast, &bind_arena, &mut interner);
 
         let should = bind_arena.alloc(
-            Bound::Lambda(vec![interner.intern("a")],
-                          vec![bind_arena.alloc(Bound::Symbol {
+            Bound::Lambda {
+                arg_symbols: vec![interner.intern("a")],
+                bound_bodies: vec![bind_arena.alloc(Bound::Symbol {
                               symbol: interner.intern("a"),
                               ast: parse_arena.alloc(Ast::dummy()),
                               source: SymbolBindSource::Arg(0)
-                          })], parse_arena.alloc(Ast::dummy())));
+                })],
+                ast: parse_arena.alloc(Ast::dummy()),
+                bindings: LambdaBindings {
+                    bindings: vec![(interner.intern("a"), SymbolBindSource::Arg(0))].into_iter().collect(),
+                    num_args: 1,
+                    num_upvars: 0,
+                    num_declarations: 0,
+                }
+            });
         assert!(should.equals_sans_ast(bound.unwrap()));
     }
 
@@ -273,8 +330,9 @@ mod test {
         let bound = Bound::bind_top(ast, &bind_arena, &mut interner);
 
         let should = bind_arena.alloc(
-            Bound::Lambda(vec![interner.intern("a"), interner.intern("b")],
-                          vec![bind_arena.alloc(
+            Bound::Lambda {
+                arg_symbols: vec![interner.intern("a"), interner.intern("b")],
+                bound_bodies: vec![bind_arena.alloc(
                               Bound::Add(vec![
                                   bind_arena.alloc(Bound::Symbol {
                                       symbol: interner.intern("a"),
@@ -287,7 +345,17 @@ mod test {
                                       source: SymbolBindSource::Arg(1)
                                   })
                            ], parse_arena.alloc(Ast::dummy())))
-                          ], parse_arena.alloc(Ast::dummy())));
+                          ],
+                ast: parse_arena.alloc(Ast::dummy()),
+                bindings: LambdaBindings {
+                    bindings: vec![
+                        (interner.intern("a"), SymbolBindSource::Arg(0)),
+                        (interner.intern("b"), SymbolBindSource::Arg(1))].into_iter().collect(),
+                    num_args: 2,
+                    num_upvars: 0,
+                    num_declarations: 0,
+                }
+            });
         assert!(should.equals_sans_ast(bound.unwrap()));
     }
 }

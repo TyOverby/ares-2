@@ -95,6 +95,7 @@ impl Stack {
     #[inline(always)]
     pub fn peek_n_up(&mut self, n: usize) -> Result<&mut Value, InterpError> {
         use std::mem::transmute;
+        println!("size: {}, ask: {}", self.size, n);
         if n >= self.size {
             return Err(InterpError::StackOutOfBounds);
         }

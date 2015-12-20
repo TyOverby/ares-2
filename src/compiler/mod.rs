@@ -24,7 +24,7 @@ Result<Vec<Instr>, CompileError> {
     let asts = try!(parse::parse(source, interner, &ast_arena));
     for ast in &asts {
         let bound = binding::Bound::bind_top(ast, &bound_arena, interner);
-        try!(emit::emit(try!(bound), compile_context, &mut out));
+        try!(emit::emit(try!(bound), compile_context, &mut out, None));
     }
     Ok(out.into_instructions())
 }

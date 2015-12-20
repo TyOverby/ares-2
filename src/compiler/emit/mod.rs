@@ -2,7 +2,7 @@ mod error;
 mod emit_buffer;
 
 use compiler::parse::Ast;
-use compiler::binding::{Bound, SymbolBindSource};
+use compiler::binding::{Bound, SymbolBindSource, LambdaBindings};
 use compiler::CompileContext;
 use vm::{Instr, ClosureClass};
 
@@ -10,11 +10,16 @@ pub use self::error::EmitError;
 pub use self::emit_buffer::EmitBuffer;
 
 #[allow(unused_variables)]
-pub fn emit(ast: &Bound, compile_context: &mut CompileContext, out: &mut EmitBuffer) -> Result<(), EmitError> {
+pub fn emit<'a, 'b>(
+    ast: &'b Bound<'a, 'b>,
+    compile_context: &mut CompileContext,
+    out: &mut EmitBuffer,
+    inside_lambda: Option<&LambdaBindings>)
+-> Result<(), EmitError> {
     match ast {
         &Bound::Add(ref operands, _) => {
             for operand in &operands[..] {
-                try!(emit(operand, compile_context, out));
+                try!(emit(operand, compile_context, out, inside_lambda));
             }
             if operands.len() == 0 {
                 out.push(Instr::IntLit(0));
@@ -50,14 +55,14 @@ pub fn emit(ast: &Bound, compile_context: &mut CompileContext, out: &mut EmitBuf
             let mut true_code = EmitBuffer::new();
             let mut false_code = EmitBuffer::new();
 
-            try!(emit(&**cond, compile_context, out));
+            try!(emit(&**cond, compile_context, out, inside_lambda));
 
             out.push(Instr::Ifn);
             let (false_pos, fulfill_false) = out.standin();
             out.push_standin(false_pos);
 
-            try!(emit(&**tru, compile_context, &mut true_code));
-            try!(emit(&**fals, compile_context, &mut false_code));
+            try!(emit(&**tru, compile_context, &mut true_code, inside_lambda));
+            try!(emit(&**fals, compile_context, &mut false_code, inside_lambda));
 
             // The true branch needs to jump past the end
             // of the false branch.
@@ -69,15 +74,16 @@ pub fn emit(ast: &Bound, compile_context: &mut CompileContext, out: &mut EmitBuf
             out.fulfill(fulfill_false, Instr::Jump(len_with_true_code as u32));
             out.merge(false_code);
         }
-        &Bound::Lambda(ref argslist, ref bodies, _) => {
+        &Bound::Lambda { ref arg_symbols, ref bound_bodies, ref bindings, ..} => {
             const INSTRS_BEFORE_LAMBDA_CODE: u32 = 3;
             let prior_code_len = out.len();
 
             let closure_class = ClosureClass {
                     code_offset: out.len() as u32 + INSTRS_BEFORE_LAMBDA_CODE,
                     // TODO: take varargs into account
-                    arg_count: argslist.len() as u32,
-                    has_rest_params: false
+                    arg_count: arg_symbols.len() as u32,
+                    local_defines_count: bindings.num_declarations,
+                    has_rest_params: false,
             };
 
             let cc_id = compile_context.add_closure_class(closure_class);
@@ -91,12 +97,12 @@ pub fn emit(ast: &Bound, compile_context: &mut CompileContext, out: &mut EmitBuf
             out.push_standin(eol_standin);
 
             debug_assert_eq!(prior_code_len + INSTRS_BEFORE_LAMBDA_CODE as usize, out.len());
-            for body in &bodies[.. bodies.len() - 1] {
-                try!(emit(body, compile_context, out));
+            for body in &bound_bodies[.. bound_bodies.len() - 1] {
+                try!(emit(body, compile_context, out, Some(bindings)));
                 out.push(Instr::Pop);
             }
-            if let Some(last_body) = bodies.last() {
-                try!(emit(last_body, compile_context, out));
+            if let Some(last_body) = bound_bodies.last() {
+                try!(emit(last_body, compile_context, out, Some(bindings)));
             }
             out.push(Instr::Ret);
 
@@ -110,28 +116,32 @@ pub fn emit(ast: &Bound, compile_context: &mut CompileContext, out: &mut EmitBuf
             let funclike = &elements[0];
             let args = &elements[1 ..];
             for arg in args {
-                try!(emit(arg, compile_context, out));
+                try!(emit(arg, compile_context, out, inside_lambda));
             }
-            try!(emit(funclike, compile_context, out));
+            try!(emit(funclike, compile_context, out, inside_lambda));
             out.push(Instr::ExecuteClosure(args.len() as u32));
         }
         &Bound::Symbol { symbol, ast, source, } => {
-            match source {
-                SymbolBindSource::Arg(arg_pos) => {
-                    out.push(Instr::Dup(arg_pos));
-                }
-                SymbolBindSource::Upvar(_upvar_pos) => {
-                    unimplemented!();
-                }
-                SymbolBindSource::LocalDefine(_local_define_pos) => {
-                    unimplemented!();
-                }
-                SymbolBindSource::Global(_symbol) => {
-                    unimplemented!();
-                }
+            if let SymbolBindSource::Global(_) = source {
+                unimplemented!();
+            } else {
+                let binder = inside_lambda.unwrap();
+                out.push(Instr::Dup(binder.compute_stack_offset(source)));
             }
         }
-        _ => unimplemented!()
+        &Bound::Define(_, source, value, _) => {
+            if let SymbolBindSource::Global(_) = source {
+                unimplemented!();
+            } else {
+                let binder = inside_lambda.unwrap();
+                try!(emit(value, compile_context, out, inside_lambda));
+                out.push(Instr::DupTop);
+                out.push(Instr::Assign(binder.compute_stack_offset(source)));
+            }
+        }
+        &Bound::ListLit(_, _) |
+        &Bound::MapLit(_, _) |
+        &Bound::Quote {..} => unimplemented!()
     }
     Ok(())
 }
@@ -156,7 +166,7 @@ mod test {
         let mut interner = interner.unwrap_or_else(|| SymbolIntern::new());
 
         let bound = Bound::bind_top(ast, &mut bound_arena, &mut interner).unwrap();
-        emit(&bound, &mut compile_context, &mut out).unwrap();
+        emit(&bound, &mut compile_context, &mut out, None).unwrap();
         (out.into_instructions(), compile_context)
     }
 
