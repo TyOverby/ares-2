@@ -55,3 +55,13 @@ declarations are pushed onto the stack.
 |  arg  |
 |  arg  |
 +-------+
+
+## Compile Time
+
+Compiling a closure is tricky business.  There are lots of things that
+the compiler needs to keep track of during the compilation process.
+
+1. Which of my local variables is closed over by an inner closure?
+2. How many local variable declarations (from `let` and `define`) do
+   I have, and how do I deal with shadowing?
+3. Which variables am I closing over?

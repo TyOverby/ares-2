@@ -66,7 +66,8 @@ pub enum Ast<'ast> {
     Quote(&'ast Ast<'ast>, Span),
     List(Vec<&'ast Ast<'ast>>, Span),
     If(&'ast Ast<'ast>, &'ast Ast<'ast>, &'ast Ast<'ast>, Span),
-    Lambda(Vec<Symbol>, Vec<&'ast Ast<'ast>>, Span)
+    Lambda(Vec<Symbol>, Vec<&'ast Ast<'ast>>, Span),
+    Define(Symbol, &'ast Ast<'ast>, Span),
 }
 
 pub fn parse<'ast>(s: &str, interner: &mut SymbolIntern, arena: &'ast Arena<Ast<'ast>>) ->
@@ -100,6 +101,7 @@ impl <'ast> Ast<'ast> {
             List(_, span) => span,
             If(_, _, _, span) => span,
             Lambda(_, _, span) => span,
+            Define(_, _, span) => span,
         }
     }
 
@@ -132,6 +134,9 @@ impl <'ast> Ast<'ast> {
                 iterators_same(a_args.iter(), b_args.iter(), |a, b| a == b) &&
                 iterators_same(a_bodies.iter(), b_bodies.iter(), |&a, &b| Ast::equals_sans_span(a, b))
             }
+            (&Define(ref s1, ref a1, _), &Define(ref s2, ref a2, _)) =>
+                s1 == s2 && a1.equals_sans_span(a2),
+            
             _ => false
         }
     }

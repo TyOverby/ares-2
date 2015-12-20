@@ -86,6 +86,9 @@ pub enum Instr {
     Call(u32),
     /// Move the instruction pointer to a specified location
     Jump(u32),
+    /// Clear the current frame (except for the item on the very top),
+    /// move the instruction pointer back to where it was before the
+    /// lambda was called.
     Ret,
 
     /// Creates a closure with the given class
@@ -198,25 +201,23 @@ impl Vm {
                     (&Instr::IntLit(_), &Instr::Pop) |
                     (&Instr::BoolLit(_), &Instr::Pop) |
                     (&Instr::SymbolLit(_), &Instr::Pop) |
-                    (&Instr::LoadConstant(_), &Instr::Pop) => {
-                        // Do nothing, don't push things just to pop them off.
-                    }
+                    (&Instr::LoadConstant(_), &Instr::Pop) => { }
 
-                    (&Instr::IntLit(added_to), &Instr::AddInt) => {
+                    (&Instr::IntLit(added_with), &Instr::AddInt) => {
                         let cur = try!(try!(stack.peek()).expect_int_ref_mut());
-                        *cur = *cur + added_to as i64;
+                        *cur = *cur + added_with as i64;
                     }
                     (&Instr::IntLit(subtract_by), &Instr::SubInt) => {
                         let cur = try!(try!(stack.peek()).expect_int_ref_mut());
                         *cur = *cur - subtract_by as i64;
                     }
-                    (&Instr::IntLit(added_to), &Instr::MulInt) => {
+                    (&Instr::IntLit(multiply_by), &Instr::MulInt) => {
                         let cur = try!(try!(stack.peek()).expect_int_ref_mut());
-                        *cur = *cur * added_to as i64;
+                        *cur = *cur * multiply_by as i64;
                     }
-                    (&Instr::IntLit(subtract_by), &Instr::DivInt) => {
+                    (&Instr::IntLit(divide_by), &Instr::DivInt) => {
                         let cur = try!(try!(stack.peek()).expect_int_ref_mut());
-                        *cur = *cur / subtract_by as i64;
+                        *cur = *cur / divide_by as i64;
                     }
                     (&Instr::IntLit(value), &Instr::Eq) => {
                         let cur = try!(stack.peek());

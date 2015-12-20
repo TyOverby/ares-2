@@ -40,7 +40,8 @@ pub enum Bound<'bound, 'ast: 'bound> {
        &'bound Bound<'bound, 'ast>,
        &'bound Bound<'bound, 'ast>,
        &'ast Ast<'ast>),
-   Lambda(Vec<Symbol>, Vec<&'bound Bound<'bound, 'ast>>, &'ast Ast<'ast>)
+   Lambda(Vec<Symbol>, Vec<&'bound Bound<'bound, 'ast>>, &'ast Ast<'ast>),
+   Define(Symbol, &'bound Bound<'bound, 'ast>, &'ast Ast<'ast>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -193,8 +194,13 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                                    .collect());
                     Bound::Lambda(args.clone(), bound_bodies, ast)
                 }
+                &Ast::Define(symbol, ref ast, _) => {
+                    binder.add_declaration(symbol, interner);
+                    let bound_value = try!(Bound::bind(ast, arena, binder, interner));
+                    Bound::Define(symbol, bound_value, ast)
+                }
                 }))
-            }
+    }
 
     fn equals_sans_ast(&self, other: &'bound Bound<'bound, 'ast>) -> bool {
         match (self, other) {
