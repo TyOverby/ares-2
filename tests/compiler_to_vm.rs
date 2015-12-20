@@ -58,6 +58,7 @@ fn call_lambdas_with_args() {
 
 #[test]
 fn test_defines() {
+    assert_eq!(run_this("((lambda () (define x 5)))"), 5.into());
     assert_eq!(run_this("((lambda () (define x 5) x))"), 5.into());
     assert_eq!(run_this("((lambda () (define x 5) (define y 10) (+ x y)))"), 15.into());
 }
