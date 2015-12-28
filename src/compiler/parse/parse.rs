@@ -68,6 +68,17 @@ fn one_expr<'a, 'b, 'ast>(tok: Token,
                     } else if values[0].is_symbol_lit_with(&interner.precomputed.plus) {
                         values.remove(0);
                         Ok(arena.alloc(Ast::Add(values, tok.span.join(end_tok.span))))
+                    } else if values[0].is_symbol_lit_with(&interner.precomputed.define) {
+                        values.remove(0);
+                        if values.len() != 2 {
+                            return Err(MalformedDefine(tok.span.join(end_tok.span)));
+                        }
+
+                        if let &Ast::Symbol(symbol, _) = &*values[0] {
+                            Ok(arena.alloc(Ast::Define(symbol, values[1], tok.span.join(end_tok.span))))
+                        } else {
+                            Err(MalformedDefine(tok.span.join(end_tok.span)))
+                        }
                     } else if values[0].is_symbol_lit_with(&interner.precomputed.lambda) {
                         // TODO: take varargs into account
                         if values.len() < 2 { return Err(UnexpectedLambdaArity(values.len(), tok.span)); }

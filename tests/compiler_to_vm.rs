@@ -55,3 +55,10 @@ fn call_lambdas_with_args() {
     assert_eq!(run_this("((lambda (a b) b) 5 10)"), 10.into());
     assert_eq!(run_this("((lambda (a b) (+ a b)) 5 10)"), 15.into());
 }
+
+#[test]
+fn test_defines() {
+    assert_eq!(run_this("((lambda () (define x 5)))"), 5.into());
+    assert_eq!(run_this("((lambda () (define x 5) x))"), 5.into());
+    assert_eq!(run_this("((lambda () (define x 5) (define y 10) (+ x y)))"), 15.into());
+}

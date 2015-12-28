@@ -15,6 +15,7 @@ pub enum ParseError {
     UnexpectedIfArity(usize, Span),
     UnexpectedLambdaArity(usize, Span),
     BadLambdaArgs(Span),
+    MalformedDefine(Span),
 }
 
 use self::ParseError::*;
@@ -40,6 +41,8 @@ impl fmt::Display for ParseError {
                 write!(f, "`lambda` at {} takes at least an args list and one body.", span.start),
             BadLambdaArgs(span) =>
                 write!(f, "Malformed arguments list at {}", span.start),
+            MalformedDefine(span) =>
+                write!(f, "Malformed define at {}", span.start),
         }
     }
 }
@@ -57,6 +60,7 @@ impl Error for ParseError {
             UnexpectedIfArity(..) => "Wrong arity for \"if\" expression",
             UnexpectedLambdaArity(..) => "Wrong arity for \"lambda\" expression",
             BadLambdaArgs(..) => "arguments to \"lambda\" are malformed",
+            MalformedDefine(..) => "bad syntax for define"
         }
     }
 }
