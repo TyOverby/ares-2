@@ -372,7 +372,7 @@ mod test {
     }
 
     #[test]
-    fn bind_lambda_with_deifines() {
+    fn bind_lambda_with_define() {
         let parse_arena = Arena::new();
         let bind_arena = Arena::new();
         let (ast, mut interner) = ok_parse_1("(lambda () (define x 5) x)", &parse_arena);
