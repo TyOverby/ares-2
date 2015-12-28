@@ -3,5 +3,6 @@ use compiler::parse::Span;
 
 #[derive(Debug)]
 pub enum BindingError {
-    CouldNotBind(Symbol, Span)
+    CouldNotBind(Symbol, Span),
+    AlreadyDefined(Symbol),
 }
