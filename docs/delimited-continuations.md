@@ -89,3 +89,103 @@ reset {
     }
 }
 ```
+
+## Generators via delimited continuations
+
+Generators can be implemented with delimited continuations.
+
+```ares
+fn done() { [nil, done] }
+
+export fn yield(value) {
+    return shift k { [value, k] };
+}
+
+export fn generator(f, args...) {
+    let continuation = reset {
+        f.apply(args);
+        fn done() { [nil, done] }
+    };
+
+    return fn(passback?) {
+        let [value, k] = continuation(passback);
+        continuation = k;
+        return value;
+    }
+}
+```
+
+Then, you can write your generators and use them like this:
+
+```ares
+import exp.gen.yield;
+import exp.gen.generator;
+
+fn even_numbers() {
+    yield(0);
+    yield(2);
+    yield(4);
+    yield(6);
+    yield(8);
+}
+
+for number in generator(even_numbers) {
+    print(number);
+}
+```
+
+Or even pass values back into the generator.
+
+```ares
+import exp.gen.yield;
+import exp.gen.generator;
+
+fn what_you_give() {
+    let start = 0;
+    while true {
+        start = yield(start);
+    }
+}
+
+let gen = generator(what_you_give);
+
+let i = 0;
+while true {
+    print(gen(i));
+    i += 1;
+}
+```
+
+## Named continuations?
+
+It might be handy to provide "named continuations" in order to allow for
+shifts to transfer across multiple resets.
+
+An example would be trying to mix generators with asynchronous io.  Putting
+async io inside of a generator could shift inside of the wrong reset.  By pairing
+shifts and resets you could get rid of this problem for well-written APIs.
+
+With named delimited continuations, generators would look like this:
+
+```ares
+fn done() { [nil, done] }
+
+const generator_symbol = gensym();
+
+export fn yield(value) {
+    return shift(generator_symbol) k { [value, k] };
+}
+
+export fn generator(f, args...) {
+    let continuation = reset(generator_symbol) {
+        f.apply(args);
+        fn done() { [nil, done] }
+    };
+
+    return fn(passback?) {
+        let [value, k] = continuation(passback);
+        continuation = k;
+        return value;
+    }
+}
+```

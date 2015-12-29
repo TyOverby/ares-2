@@ -1,4 +1,4 @@
-# Syntax 
+# Syntax
 
 Originally Ares was designed with an s-expression based syntax.
 However, the more that I thought about integrating well with rust, the more
@@ -91,6 +91,29 @@ fn(a, b) {
 }
 ```
 
+## Curried functions
+
+An easier way to generate lambdas for use in common patterns.
+```ares
+fn im_curried(a, b, c)(d, e, f) {
+    a + b + c + d + e + f
+}
+```
+
+could be lowered to
+
+```ares
+fn im_curried(a, b, c) {
+    fn(d, e, f) {
+        a + b + c + d + e + f
+    }
+}
+```
+
+Thought a more optimized version without implicit closure creation
+at every step would be possible if the interpreter specialized.
+
+
 ## Expressions vs Statements
 
 An expression that is terminated with a semicolon is
@@ -115,6 +138,12 @@ fn(a, b) {
 fn(a, b) {
     // `if` is also an expression
     let x = if a == 0 { b } else { a };
+    let x = if a == 0 then b else a;
+
+    let x = if a == 0 then {
+        foo
+    } 
+
     x + 10
 }
 ```
