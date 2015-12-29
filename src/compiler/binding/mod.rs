@@ -241,6 +241,9 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 }
 
                 &Ast::Define(symbol, ref ast, _) => {
+                    if binder.already_binds(symbol) {
+                        return Err(BindingError::AlreadyDefined(symbol));
+                    }
                     let source = binder.add_declaration(symbol, interner);
                     let bound_value = try!(Bound::bind(ast, arena, binder, interner));
                     Bound::Define(symbol, source, bound_value, ast)
@@ -250,15 +253,18 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
 
     fn equals_sans_ast(&self, other: &'bound Bound<'bound, 'ast>) -> bool {
         match (self, other) {
-            (&Bound::Literal(ref a), &Bound::Literal(ref b)) => a.equals_sans_span(b),
+            (&Bound::Literal(ref a), &Bound::Literal(ref b)) => {
+                let res = a.equals_sans_span(b);
+                res
+            }
 
             (&Bound::Symbol {
                 symbol: symbol_a,
-                source: ref source_a,
+                source: source_a,
                 ..
             }, &Bound::Symbol {
                 symbol: symbol_b,
-                source: ref source_b,
+                source: source_b,
                 ..
             }) => symbol_a == symbol_b && source_a == source_b,
 
@@ -280,10 +286,16 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 a1.equals_sans_ast(b1) && a2.equals_sans_ast(b2) && a3.equals_sans_ast(b3),
             (&Bound::Lambda{arg_symbols: ref args_a, bound_bodies: ref bodies_a, bindings: ref bindings_a, ast: ref _asta },
              &Bound::Lambda{arg_symbols: ref args_b, bound_bodies: ref bodies_b, bindings: ref bindings_b, ast: ref _astb }) => {
-                iterators_same(args_a.iter(), args_b.iter(), |a, b| a == b) &&
-                iterators_same(bodies_a.iter(), bodies_b.iter(), |&a, &b| Bound::equals_sans_ast(a, b)) &&
-                bindings_a == bindings_b
+                let mut res = iterators_same(args_a.iter(), args_b.iter(), |a, b| a == b);
+                res &= iterators_same(bodies_a.iter(), bodies_b.iter(), |&a, &b| Bound::equals_sans_ast(a, b));
+                res &= bindings_a == bindings_b;
+                res
             }
+            (&Bound::Define(symbol_a, source_a, bound_a, _),
+             &Bound::Define(symbol_b, source_b, bound_b, _)) => {
+                 let defines_eq = symbol_a == symbol_b && source_a == source_b && bound_a.equals_sans_ast(bound_b);
+                 defines_eq
+             }
             _ => false
         }
     }
@@ -292,7 +304,7 @@ impl <'bound, 'ast: 'bound> Bound<'bound, 'ast> {
 #[cfg(test)]
 mod test {
     use super::{Bound, SymbolBindSource, LambdaBindings};
-    use compiler::parse::Ast;
+    use compiler::parse::{Ast, Span};
     use compiler::parse::test::ok_parse_1;
     use typed_arena::Arena;
 
@@ -354,6 +366,41 @@ mod test {
                     num_args: 2,
                     num_upvars: 0,
                     num_declarations: 0,
+                }
+            });
+        assert!(should.equals_sans_ast(bound.unwrap()));
+    }
+
+    #[test]
+    fn bind_lambda_with_define() {
+        let parse_arena = Arena::new();
+        let bind_arena = Arena::new();
+        let (ast, mut interner) = ok_parse_1("(lambda () (define x 5) x)", &parse_arena);
+        let bound = Bound::bind_top(ast, &bind_arena, &mut interner);
+        let x = interner.intern("x");
+
+        let should = bind_arena.alloc(
+            Bound::Lambda {
+                arg_symbols: vec![],
+                bound_bodies: vec![
+                    bind_arena.alloc(
+                        Bound::Define(x, SymbolBindSource::LocalDefine(0), bind_arena.alloc(
+                                Bound::Literal(
+                                    parse_arena.alloc(Ast::IntLit(5, Span::dummy())))
+                                ), parse_arena.alloc(Ast::dummy()))),
+                    bind_arena.alloc(
+                        Bound::Symbol {
+                            symbol: x,
+                            ast: parse_arena.alloc(Ast::dummy()),
+                            source: SymbolBindSource::LocalDefine(0)
+                        })
+                ],
+                ast: parse_arena.alloc(Ast::dummy()),
+                bindings: LambdaBindings {
+                    bindings: vec![(x, SymbolBindSource::LocalDefine(0))].into_iter().collect(),
+                    num_args: 0,
+                    num_upvars: 0,
+                    num_declarations: 1,
                 }
             });
         assert!(should.equals_sans_ast(bound.unwrap()));

@@ -9,7 +9,6 @@ where A: Iterator<Item=&'a T>, B: Iterator<Item=&'a T>, F: Fn(&T, &T) -> bool {
             (None, Some(_)) => return false,
             (Some(a), Some(b)) => {
                 if !eq_fn(a, b) {
-                    println!("neq: {:#?} {:#?}", a, b);
                     return false;
                 }
             }
