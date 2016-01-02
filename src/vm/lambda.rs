@@ -6,6 +6,7 @@ pub struct ClosureClass {
     pub code_offset: u32,
     pub arg_count: u32,
     pub local_defines_count: u32,
+    pub upvars_count: u32,
     pub has_rest_params: bool,
 }
 

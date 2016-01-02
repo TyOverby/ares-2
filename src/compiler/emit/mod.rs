@@ -75,7 +75,7 @@ pub fn emit<'a, 'b>(
             out.merge(false_code);
         }
         &Bound::Lambda { ref arg_symbols, ref bound_bodies, ref bindings, ..} => {
-            const INSTRS_BEFORE_LAMBDA_CODE: u32 = 3;
+            const INSTRS_BEFORE_LAMBDA_CODE: u32 = 2;
             let prior_code_len = out.len();
 
             let closure_class = ClosureClass {
@@ -83,6 +83,7 @@ pub fn emit<'a, 'b>(
                     // TODO: take varargs into account
                     arg_count: arg_symbols.len() as u32,
                     local_defines_count: bindings.num_declarations,
+                    upvars_count: bindings.num_upvars,
                     has_rest_params: false,
             };
 
@@ -90,7 +91,6 @@ pub fn emit<'a, 'b>(
 
             out.push(Instr::CreateClosure(cc_id));
             // TODO: load closure with upvars
-            out.push(Instr::LoadClosure(0));
 
             // Standin for the end of the lambda code.
             let (eol_standin, eol_fulfill) = out.standin();
@@ -265,8 +265,7 @@ mod test {
 
         assert_eq!(out, vec![
                    Instr::CreateClosure(0),
-                   Instr::LoadClosure(0),
-                   Instr::Jump(7),
+                   Instr::Jump(6),
                    Instr::IntLit(10),
                    Instr::Pop,
                    Instr::IntLit(5),
@@ -307,8 +306,7 @@ mod test {
 
         assert_eq!(out, vec![
                    Instr::CreateClosure(0),
-                   Instr::LoadClosure(0),
-                   Instr::Jump(5),
+                   Instr::Jump(4),
                    Instr::Dup(0),
                    Instr::Ret]);
     }

@@ -97,8 +97,6 @@ pub enum Instr {
 
     /// Creates a closure with the given class
     CreateClosure(u32),
-    /// Loads the top `n` stack variables into the upvars for a lambda
-    LoadClosure(u32),
 
     /// Adds two integers by popping two values off of
     /// the stack, adding them, and pushing the result
@@ -263,12 +261,6 @@ impl Vm {
                             i += 1;
                         }
                     }
-                    (&Instr::CreateClosure(class_id), &Instr::LoadClosure(upvar_nums)) => {
-                        let class = compile_context.get_lambda_class(class_id);
-                        let values = try!(stack.pop_n(upvar_nums as usize));
-                        let instance = Closure { class: class, upvars: values};
-                        try!(stack.push(instance.into()));
-                    }
                     _ => optimized = false,
                 }
 
@@ -391,10 +383,16 @@ impl Vm {
                     i = code_pos.wrapping_sub(1);
                     stack_frame = stack.len() as u32 - arg_count as u32;
 
-                    println!("test: {}", local_defines_count);
                     for _ in 0 .. local_defines_count {
                         try!(stack.push(Value::Int(255)));
                     }
+                }
+                &Instr::CreateClosure(class_id) => {
+                    let class = compile_context.get_lambda_class(class_id);
+                    let upvar_nums = class.upvars_count;
+                    let values = try!(stack.pop_n(upvar_nums as usize));
+                    let instance = Closure { class: class, upvars: values};
+                    try!(stack.push(instance.into()));
                 }
                 &Instr::ExecuteClosureN => {
                     /*
@@ -450,9 +448,6 @@ impl Vm {
                 }
                 &Instr::FetchUpvar(_symbol) => {
                     unimplemented!();
-                }
-                &Instr::CreateClosure(_) | &Instr::LoadClosure(_) => {
-                    panic!("CreateClosure and LoadClosure need to be right next to each other");
                 }
             }
             i = i.wrapping_add(1);
@@ -893,21 +888,21 @@ fn load_constant() {
 fn basic_lambdas() {
     let mut vm = Vm::new();
     let closure_class_id = vm.compile_context.add_closure_class(ClosureClass {
-        code_offset: 4,
+        code_offset: 3,
         arg_count: 0,
         local_defines_count: 0,
+        upvars_count: 0,
         has_rest_params: false,
     });
 
     vm.load_and_execute(&[
         Instr::CreateClosure(closure_class_id as u32),
-        Instr::LoadClosure(0), // 0 upvars
         Instr::ExecuteClosure(0), // 0 arguments
-        Instr::Jump(6),
+        Instr::Jump(5),
         Instr::IntLit(30),
         Instr::Ret
     ], 0).unwrap();
-
+    println!("{:?}", vm.stack);
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, 30.into());
 }
@@ -916,18 +911,18 @@ fn basic_lambdas() {
 fn one_arg_lambda() {
     let mut vm = Vm::new();
     let closure_class_id = vm.compile_context.add_closure_class(ClosureClass {
-        code_offset: 5,
+        code_offset: 4,
         arg_count: 1,
         local_defines_count: 0,
+        upvars_count: 0,
         has_rest_params: false,
     });
 
     vm.load_and_execute(&[
         Instr::IntLit(10),
         Instr::CreateClosure(closure_class_id as u32),
-        Instr::LoadClosure(0), // 0 upvars
         Instr::ExecuteClosure(1), // 1 argument
-        Instr::Jump(7),
+        Instr::Jump(6),
         Instr::Dup(0),
         Instr::MulInt,
         Instr::Ret
