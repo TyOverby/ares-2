@@ -15,3 +15,11 @@ let x = {
     x + 5; // Use x even though we are currently defining x;
 };
 ```
+
+### Solution:
+
+```ares
+let f = fn recurse(a) { // have another name be visable.
+    recurse(a - 1);
+};
+```
