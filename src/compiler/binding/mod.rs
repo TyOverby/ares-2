@@ -45,6 +45,7 @@ pub enum Bound<'bound, 'ast: 'bound> {
         ast: &'ast Ast<'ast>,
         bindings: LambdaBindings,
     },
+    //Block(Vec<&'bound Bound<'bound, 'ast>>, &'ast Ast<'ast>),
     Define(Symbol, SymbolBindSource, &'bound Bound<'bound, 'ast>, &'ast Ast<'ast>),
 }
 
@@ -180,17 +181,13 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                                ast)
             }
             &Ast::MapLit(ref elements, _) => {
-                Bound::MapLit(try!(elements.iter()
-                                           .map(|&(ref k, ref v)| {
-                                               match (Bound::bind(k, arena, binder, interner),
-                                                      Bound::bind(v, arena, binder, interner)) {
-                                                   (Ok(k), Ok(v)) => Ok((k, v)),
-                                                   (Err(e), _) => Err(e),
-                                                   (_, Err(e)) => Err(e),
-                                               }
-                                           })
-                                           .collect::<Result<Vec<_>, _>>()),
-                              ast)
+                let mut bound = Vec::with_capacity(elements.len());
+                for &(ref k, ref v) in elements {
+                    let k = try!(Bound::bind(k, arena, binder, interner));
+                    let v = try!(Bound::bind(v, arena, binder, interner));
+                    bound.push((k, v));
+                }
+                Bound::MapLit(bound, ast)
             }
             &Ast::Symbol(symbol, span) => {
                 let source = match binder.lookup(symbol) {
@@ -205,12 +202,11 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 }
             }
             &Ast::Add(ref elements, _) => {
-                Bound::Add(try!(elements.iter()
-                                        .map(|element| {
-                                            Bound::bind(element, arena, binder, interner)
-                                        })
-                                        .collect::<Result<Vec<_>, _>>()),
-                           ast)
+                let mut bound = Vec::with_capacity(elements.len());
+                for element in elements {
+                    bound.push(try!(Bound::bind(element, arena, binder, interner)));
+                }
+                Bound::Add(bound, ast)
             }
             &Ast::Quote(ref q, _) => {
                 Bound::Quote {
@@ -219,12 +215,11 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 }
             }
             &Ast::List(ref elements, _) => {
-                Bound::List(try!(elements.iter()
-                                         .map(|element| {
-                                             Bound::bind(element, arena, binder, interner)
-                                         })
-                                         .collect()),
-                            ast)
+                let mut bound = Vec::with_capacity(elements.len());
+                for element in elements {
+                    bound.push(try!(Bound::bind(element, arena, binder, interner)));
+                }
+                Bound::List(bound, ast)
             }
             &Ast::If(ref a, ref b, ref c, _) => {
                 Bound::If(try!(Bound::bind(a, arena, binder, interner)) as &_,
@@ -235,14 +230,11 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             &Ast::Lambda(ref args, ref bodies, _) => {
                 let mut new_binder = LambdaBinder::new(binder, args);
 
-                let bound_bodies = try!(bodies.iter()
-                                              .map(|element| {
-                                                  Bound::bind(element,
-                                                              arena,
-                                                              &mut new_binder,
-                                                              interner)
-                                              })
-                                              .collect());
+                let mut bound_bodies = Vec::with_capacity(bodies.len());
+                for body in bodies {
+                    bound_bodies.push(try!(Bound::bind(body, arena, &mut new_binder, interner)));
+                }
+
                 Bound::Lambda {
                     arg_symbols: args.clone(),
                     bound_bodies: bound_bodies,
@@ -250,7 +242,6 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                     bindings: new_binder.bindings,
                 }
             }
-
             &Ast::Define(symbol, ref ast, _) => {
                 if binder.already_binds(symbol) {
                     return Err(BindingError::AlreadyDefined(symbol));
