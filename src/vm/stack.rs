@@ -1,6 +1,5 @@
 use super::*;
 
-#[derive(Debug)]
 #[allow(raw_pointer_derive)]
 pub struct Stack {
     capacity: usize,
@@ -8,6 +7,18 @@ pub struct Stack {
     ptr: *mut Value,
     pushes: u64,
     pops: u64,
+}
+
+impl ::std::fmt::Debug for Stack {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error>{
+        try!(writeln!(f, "Stack"));
+        try!(writeln!(f, "-----"));
+        for v in self.as_slice() {
+            try!(writeln!(f, "{:?}", v));
+        }
+        try!(writeln!(f, "-----"));
+        Ok(())
+    }
 }
 
 impl Stack {
@@ -95,7 +106,6 @@ impl Stack {
     #[inline(always)]
     pub fn peek_n_up(&mut self, n: usize) -> Result<&mut Value, InterpError> {
         use std::mem::transmute;
-        println!("size: {}, ask: {}", self.size, n);
         if n >= self.size {
             return Err(InterpError::StackOutOfBounds);
         }

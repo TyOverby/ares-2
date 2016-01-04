@@ -311,9 +311,6 @@ impl Vm {
                         let cell = try!(stack.peek_n_up(stack_frame as usize + frame_pos as usize));
                         *cell = value;
                     }
-                    println!("after assign");
-                    print!("{:?} - ", &stack.as_slice()[.. stack_frame as usize]);
-                    println!("{:?}", &stack.as_slice()[stack_frame as usize ..]);
                 }
                 &Instr::Pop => {
                     try!(stack.pop());
