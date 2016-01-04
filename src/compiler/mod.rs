@@ -11,14 +11,13 @@ use vm::{SymbolIntern, Instr};
 
 pub use self::compile_context::CompileContext;
 
-pub fn compile(
-    source: &str,
-    compile_context: &mut CompileContext,
-    interner: &mut SymbolIntern) ->
-Result<Vec<Instr>, CompileError> {
+pub fn compile(source: &str,
+               compile_context: &mut CompileContext,
+               interner: &mut SymbolIntern)
+               -> Result<Vec<Instr>, CompileError> {
 
-    let ast_arena: typed_arena::Arena<parse::Ast>  = typed_arena::Arena::new();
-    let bound_arena: typed_arena::Arena<binding::Bound>  = typed_arena::Arena::new();
+    let ast_arena: typed_arena::Arena<parse::Ast> = typed_arena::Arena::new();
+    let bound_arena: typed_arena::Arena<binding::Bound> = typed_arena::Arena::new();
 
     let mut out = EmitBuffer::new();
     let asts = try!(parse::parse(source, interner, &ast_arena));

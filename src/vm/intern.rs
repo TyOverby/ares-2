@@ -8,7 +8,7 @@ pub struct SymbolIntern {
     current_id: u32,
     sym_to_string: HashMap<Symbol, String>,
     string_to_sym: HashMap<String, Symbol>,
-    pub precomputed: PrecomputedSymbols
+    pub precomputed: PrecomputedSymbols,
 }
 
 #[derive(Debug)]

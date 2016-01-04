@@ -3,20 +3,20 @@ use vm::{Value, Instr, ClosureClass};
 pub enum CompileOptLevel {
     None,
     Few,
-    All
+    All,
 }
 
 #[derive(Debug)]
 pub struct CompileContext {
     constants: Vec<Value>,
-    closure_classes: Vec<ClosureClass>
+    closure_classes: Vec<ClosureClass>,
 }
 
 impl CompileContext {
     pub fn new() -> CompileContext {
         CompileContext {
             constants: vec![],
-            closure_classes: vec![]
+            closure_classes: vec![],
         }
     }
 

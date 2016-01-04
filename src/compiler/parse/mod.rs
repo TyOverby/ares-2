@@ -48,7 +48,7 @@ impl Span {
         let highest = max(self.end, other.end);
         Span {
             start: lowest,
-            end: highest
+            end: highest,
         }
     }
 }
@@ -70,12 +70,14 @@ pub enum Ast<'ast> {
     Define(Symbol, &'ast Ast<'ast>, Span),
 }
 
-pub fn parse<'ast>(s: &str, interner: &mut SymbolIntern, arena: &'ast Arena<Ast<'ast>>) ->
-Result<Vec<&'ast Ast<'ast>>, errors::ParseError> {
+pub fn parse<'ast>(s: &str,
+                   interner: &mut SymbolIntern,
+                   arena: &'ast Arena<Ast<'ast>>)
+                   -> Result<Vec<&'ast Ast<'ast>>, errors::ParseError> {
     parse::parse(s, interner, arena)
 }
 
-impl <'ast> Ast<'ast> {
+impl<'ast> Ast<'ast> {
     pub fn dummy() -> Ast<'ast> {
         Ast::StringLit("dummy".into(), Span::dummy())
     }
@@ -83,7 +85,9 @@ impl <'ast> Ast<'ast> {
     pub fn is_symbol_lit_with(&self, symbol: &Symbol) -> bool {
         if let &Ast::Symbol(ref s, _) = self {
             s == symbol
-        } else { false }
+        } else {
+            false
+        }
     }
 
     pub fn span(&self) -> Span {
@@ -117,27 +121,31 @@ impl <'ast> Ast<'ast> {
             (&List(ref a, _), &List(ref b, _)) |
             (&Add(ref a, _), &Add(ref b, _)) => {
                 iterators_same(a.iter(), b.iter(), |&a, &b| Ast::equals_sans_span(a, b))
-            },
+            }
 
             (&MapLit(ref a, _), &MapLit(ref b, _)) => {
                 iterators_same(a.iter(), b.iter(), |&(k1, v1), &(k2, v2)| {
                     Ast::equals_sans_span(k1, k2) && Ast::equals_sans_span(v1, v2)
                 })
-            },
+            }
             (&Symbol(a, _), &Symbol(b, _)) => a == b,
             (&Quote(ref a, _), &Quote(ref b, _)) => a.equals_sans_span(&*b),
-            (&If(ref ac, ref at, ref af, _), &If(ref bc, ref bt, ref bf, _)) =>
-                ac.equals_sans_span(&*bc) &&
-                at.equals_sans_span(&*bt) &&
-                af.equals_sans_span(&*bf),
-            (&Lambda(ref a_args, ref a_bodies, _), &Lambda(ref b_args, ref b_bodies, _)) => {
-                iterators_same(a_args.iter(), b_args.iter(), |a, b| a == b) &&
-                iterators_same(a_bodies.iter(), b_bodies.iter(), |&a, &b| Ast::equals_sans_span(a, b))
+            (&If(ref ac, ref at, ref af, _),
+             &If(ref bc, ref bt, ref bf, _)) => {
+                ac.equals_sans_span(&*bc) && at.equals_sans_span(&*bt) && af.equals_sans_span(&*bf)
             }
-            (&Define(ref s1, ref a1, _), &Define(ref s2, ref a2, _)) =>
-                s1 == s2 && a1.equals_sans_span(a2),
-            
-            _ => false
+            (&Lambda(ref a_args, ref a_bodies, _),
+             &Lambda(ref b_args, ref b_bodies, _)) => {
+                iterators_same(a_args.iter(), b_args.iter(), |a, b| a == b) &&
+                iterators_same(a_bodies.iter(),
+                               b_bodies.iter(),
+                               |&a, &b| Ast::equals_sans_span(a, b))
+            }
+            (&Define(ref s1, ref a1, _), &Define(ref s2, ref a2, _)) => {
+                s1 == s2 && a1.equals_sans_span(a2)
+            }
+
+            _ => false,
         }
     }
 }
