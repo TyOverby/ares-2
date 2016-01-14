@@ -189,3 +189,85 @@ export fn generator(f, args...) {
     }
 }
 ```
+
+## Exceptions
+
+Delimited continuations can also implement resumable exception handling.
+
+```
+const all_good = gensym();
+const exception = gensym();
+
+fn try(body, catch) {
+    let result = nil;
+    let ex = reset(exception) {
+        result = f();
+        all_good
+    };
+
+    if ex == all_good {
+        return result;
+    } else {
+        return catch(ex[0], ex[1]);
+    }
+}
+
+fn raise(error) {
+    return shift(exception) k {
+        [error, k]
+    }
+}
+```
+
+## Call/cc esque?
+
+If we allowed for a "global" reset, you could get call/cc functionality
+without needing to add a new special form.
+
+```
+// Imagine that the entire program was wrapped in
+// one large `reset ('global) {  }`
+
+fn call_cc(f) {
+    shift('global) k {
+        f(k)
+    }
+}
+```
+
+This would let you implement things like forking in a really pretty way.
+
+Imagine we have a function called "run_on_thread" which took a function, and
+the arguments that get passed to that function when executed on another thread.
+The function would return the thread ID of the thread that started.
+An implementation of fork could be:
+
+```ares
+fn fork() {
+    call_cc(fn(k) {
+        let thread_id = run_on_thread(k, 0);
+        k(thread_id)
+    })
+}
+
+// without call_cc
+fn fork2() {
+    shift('global) k {
+        let thread_id = run_on_thread(k, 0);
+        k(thread_id)
+    }
+}
+```
+
+Then, in your program, you could write something like this:
+
+```ares
+do_something();
+let child = fork();
+if child == 0 {
+    print("I'm the child");
+} else {
+    print("my child is ", child);
+}
+do_other_things();
+```

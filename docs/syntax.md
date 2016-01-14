@@ -27,7 +27,9 @@ post
 ### Basic Syntax
 Named function with no parameters
 ```ares
-fn named_function() { }
+fn named_function() {
+
+}
 ```
 
 Named function with parameters

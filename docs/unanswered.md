@@ -23,3 +23,13 @@ let f = fn recurse(a) { // have another name be visable.
     recurse(a - 1);
 };
 ```
+
+# No Global Blocks
+
+```ares
+// In the global environment
+{
+    let a = 5;
+}
+// a should be undefined here.
+```
