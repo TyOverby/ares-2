@@ -90,10 +90,6 @@ macro_rules! ast {
             $(ast!($arena, $intern, $name $args)),*
         ], Span::dummy()))
     };
-
-//    Define(Symbol, &'ast Ast<'ast>, Span),
-
-//    Lambda(Vec<Symbol>, &'ast Ast<'ast>, Span),
 }
 
 mod test_macro {
