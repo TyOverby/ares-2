@@ -1,6 +1,4 @@
 use super::*;
-
-#[allow(raw_pointer_derive)]
 pub struct Stack {
     capacity: usize,
     size: usize,

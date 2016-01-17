@@ -19,6 +19,7 @@ pub struct PrecomputedSymbols {
     pub list: Symbol,
     pub define: Symbol,
     pub lambda: Symbol,
+    pub block: Symbol,
 }
 
 impl PrecomputedSymbols {
@@ -30,6 +31,7 @@ impl PrecomputedSymbols {
             list: Symbol(0),
             define: Symbol(0),
             lambda: Symbol(0),
+            block: Symbol(0),
         }
     }
 }
@@ -48,10 +50,11 @@ impl SymbolIntern {
         interner.precomputed.list = interner.intern("list");
         interner.precomputed.define = interner.intern("define");
         interner.precomputed.lambda = interner.intern("lambda");
+        interner.precomputed.block = interner.intern("block");
         interner
     }
 
-    pub fn gen_sym(&mut self) -> Symbol {
+    pub fn gensym(&mut self) -> Symbol {
         let ret = Symbol(self.current_id);
         self.current_id += 1;
         ret
@@ -62,7 +65,7 @@ impl SymbolIntern {
             self.string_to_sym[symbol_str.as_ref()]
         } else {
             let symbol_str = symbol_str.into();
-            let symbol = self.gen_sym();
+            let symbol = self.gensym();
             self.sym_to_string.insert(symbol, symbol_str.clone());
             self.string_to_sym.insert(symbol_str, symbol);
             symbol
@@ -70,7 +73,7 @@ impl SymbolIntern {
     }
 
     pub fn gen_sym_prefix<S: AsRef<str> + Into<String>>(&mut self, prefix: S) -> Symbol {
-        let sym = self.gen_sym();
+        let sym = self.gensym();
         let Symbol(id) = sym;
         let sym_str = format!("{}{}", prefix.as_ref(), id);
         self.sym_to_string.insert(sym, sym_str.clone());

@@ -10,12 +10,21 @@ pub use self::error::EmitError;
 pub use self::emit_buffer::EmitBuffer;
 
 #[allow(unused_variables)]
-pub fn emit<'a, 'b>(ast: &'b Bound<'a, 'b>,
+pub fn emit<'bound, 'ast: 'bound>(ast: &'bound Bound<'bound, 'ast>,
                     compile_context: &mut CompileContext,
                     out: &mut EmitBuffer,
                     inside_lambda: Option<&LambdaBindings>)
                     -> Result<(), EmitError> {
     match ast {
+        &Bound::Block(ref bound_bodies, _) => {
+            for body in &bound_bodies[..bound_bodies.len() - 1] {
+                try!(emit(body, compile_context, out, inside_lambda));
+                out.push(Instr::Pop);
+            }
+            if let Some(last_body) = bound_bodies.last() {
+                try!(emit(last_body, compile_context, out, inside_lambda));
+            }
+        }
         &Bound::Add(ref operands, _) => {
             for operand in &operands[..] {
                 try!(emit(operand, compile_context, out, inside_lambda));
@@ -73,7 +82,7 @@ pub fn emit<'a, 'b>(ast: &'b Bound<'a, 'b>,
             out.fulfill(fulfill_false, Instr::Jump(len_with_true_code as u32));
             out.merge(false_code);
         }
-        &Bound::Lambda { ref arg_symbols, ref bound_bodies, ref bindings, ..} => {
+        &Bound::Lambda { ref arg_symbols, ref body, ref bindings, ..} => {
             const INSTRS_BEFORE_LAMBDA_CODE: u32 = 3;
             let prior_code_len = out.len();
 
@@ -97,13 +106,8 @@ pub fn emit<'a, 'b>(ast: &'b Bound<'a, 'b>,
 
             debug_assert_eq!(prior_code_len + INSTRS_BEFORE_LAMBDA_CODE as usize,
                              out.len());
-            for body in &bound_bodies[..bound_bodies.len() - 1] {
-                try!(emit(body, compile_context, out, Some(bindings)));
-                out.push(Instr::Pop);
-            }
-            if let Some(last_body) = bound_bodies.last() {
-                try!(emit(last_body, compile_context, out, Some(bindings)));
-            }
+
+            try!(emit(body, compile_context, out, Some(bindings)));
             out.push(Instr::Ret);
 
             let next = out.len() as u32;
@@ -261,8 +265,8 @@ mod test {
     fn emit_no_arg_lambda() {
         let a = Arena::new();
         let ast = Ast::Lambda(vec![],
-                              vec![a.alloc(Ast::IntLit(10, Span::dummy())),
-                                   a.alloc(Ast::IntLit(5, Span::dummy()))],
+                              a.alloc(Ast::Block(vec![a.alloc(Ast::IntLit(10, Span::dummy())),
+                                   a.alloc(Ast::IntLit(5, Span::dummy()))], Span::dummy())),
                               Span::dummy());
 
         let (out, _) = compile_this(&ast, None);
@@ -303,7 +307,7 @@ mod test {
 
         let arg1 = interner.intern("test");
         let ast = Ast::Lambda(vec![arg1],
-                              vec![a.alloc(Ast::Symbol(arg1, Span::dummy()))],
+                              a.alloc(Ast::Block(vec![a.alloc(Ast::Symbol(arg1, Span::dummy()))], Span::dummy())),
                               Span::dummy());
 
         let (out, _) = compile_this(&ast, Some(interner));

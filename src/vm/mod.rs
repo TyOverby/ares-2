@@ -805,7 +805,7 @@ fn test_optimizations() {
 
     // SymbolLit - Eq
     let mut vm = Vm::new();
-    let s = vm.interner.gen_sym();
+    let s = vm.interner.gensym();
     vm.stack.push(Value::Symbol(s)).unwrap();
     vm.load_and_execute(&[Instr::SymbolLit(s), Instr::Eq], 1).unwrap();
     let result = vm.stack.pop().unwrap();

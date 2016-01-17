@@ -17,7 +17,5 @@ itertools = "*"
 typed-arena = "1.0.*"
 
 [dependencies.gc]
-git = "https://github.com/Manishearth/rust-gc.git"
-
-[dependencies.gc_plugin]
-git = "https://github.com/Manishearth/rust-gc.git"
+path = "../rust-gc/gc/"
+#git = "https://github.com/Manishearth/rust-gc.git"

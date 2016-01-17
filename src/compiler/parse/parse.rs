@@ -81,6 +81,9 @@ fn one_expr<'a, 'b, 'ast>(tok: Token,
                         } else {
                             Err(MalformedDefine(tok.span.join(end_tok.span)))
                         }
+                    } else if values[0].is_symbol_lit_with(&interner.precomputed.block) {
+                        values.remove(0); // Remove the "block"
+                        Ok(arena.alloc(Ast::Block(values, tok.span.join(end_tok.span))))
                     } else if values[0].is_symbol_lit_with(&interner.precomputed.lambda) {
                         // TODO: take varargs into account
                         if values.len() < 2 {
@@ -98,8 +101,10 @@ fn one_expr<'a, 'b, 'ast>(tok: Token,
                                     return Err(BadLambdaArgs(t));
                                 }
                             }
+                            let block = arena.alloc(
+                                Ast::Block(bodies, tok.span.join(end_tok.span)));
                             Ok(arena.alloc(Ast::Lambda(arg_list,
-                                                       bodies,
+                                                       block,
                                                        tok.span.join(end_tok.span))))
                         } else {
                             return Err(BadLambdaArgs(tok.span.join(end_tok.span)));
@@ -275,9 +280,12 @@ pub mod test {
     fn test_parse_lambda_no_args() {
         let arena = Arena::new();
         let (ast, _) = ok_parse_1("(lambda () 5)", &arena);
-        let should = arena.alloc(Ast::Lambda(vec![],
-                                             vec![arena.alloc(Ast::IntLit(5, Span::dummy()))],
-                                             Span::dummy()));
+        let should = arena.alloc(
+            Ast::Lambda(vec![],
+                arena.alloc(Ast::Block(
+                                vec![arena.alloc(Ast::IntLit(5, Span::dummy()))],
+                                Span::dummy())),
+                Span::dummy()));
         assert!(ast.equals_sans_span(should),
                 "\n{:?}\n!=\n{:?}",
                 ast,
@@ -292,14 +300,35 @@ pub mod test {
         let b = interner.intern("b");
         let c = interner.intern("c");
 
-        let should = arena.alloc(Ast::Lambda(vec![a, b, c],
-                                             vec![arena.alloc(Ast::Add(vec![
+        let should =
+            arena.alloc(Ast::Lambda(vec![a, b, c],
+                arena.alloc(Ast::Block(
+                    vec![
+                        arena.alloc(Ast::Add(vec![
+                            arena.alloc(Ast::Symbol(a, Span::dummy())),
+                            arena.alloc(Ast::Symbol(b, Span::dummy())),
+                            arena.alloc(Ast::Symbol(c, Span::dummy()))],
+                            Span::dummy()))],
+                    Span::dummy())),
+                Span::dummy()));
+        assert!(ast.equals_sans_span(should));
+    }
+
+    #[test]
+    fn test_parse_block() {
+        let arena = Arena::new();
+        let (ast, mut interner) = ok_parse_1("(block a (+ 1 2))", &arena);
+        let a = interner.intern("a");
+
+        let should = arena.alloc(Ast::Block(vec![
                           arena.alloc(Ast::Symbol(a, Span::dummy())),
-                          arena.alloc(Ast::Symbol(b, Span::dummy())),
-                          arena.alloc(Ast::Symbol(c, Span::dummy())),
-                          ],
-                                                                       Span::dummy()))],
-                                             Span::dummy()));
+
+                          arena.alloc(Ast::Add(vec![
+                              arena.alloc(Ast::IntLit(1, Span::dummy())),
+                              arena.alloc(Ast::IntLit(2, Span::dummy())),
+                          ], Span::dummy()))], Span::dummy()));
+        println!("{:#?}", ast);
+        println!("{:#?}", should);
         assert!(ast.equals_sans_span(should));
     }
 }
