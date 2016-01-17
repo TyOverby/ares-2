@@ -1,13 +1,22 @@
 use super::*;
-
-#[derive(Debug)]
-#[allow(raw_pointer_derive)]
 pub struct Stack {
     capacity: usize,
     size: usize,
     ptr: *mut Value,
     pushes: u64,
     pops: u64,
+}
+
+impl ::std::fmt::Debug for Stack {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+        try!(writeln!(f, "Stack"));
+        try!(writeln!(f, "-----"));
+        for v in self.as_slice() {
+            try!(writeln!(f, "{:?}", v));
+        }
+        try!(writeln!(f, "-----"));
+        Ok(())
+    }
 }
 
 impl Stack {
@@ -40,8 +49,10 @@ impl Stack {
             self.size = size;
             Ok(())
         } else {
-            Err(InterpError::InternalInterpError(
-            format!("stack.truncate({}) with a current size of {}", size, self.size)))
+            Err(InterpError::InternalInterpError(format!("stack.truncate({}) with a current \
+                                                          size of {}",
+                                                         size,
+                                                         self.size)))
         }
     }
 
@@ -56,7 +67,8 @@ impl Stack {
         unsafe {
             let mut out = uninitialized();
             self.size -= 1;
-            swap(&mut out, transmute::<*mut _, &mut _>(self.ptr.offset(self.size as isize)));
+            swap(&mut out,
+                 transmute::<*mut _, &mut _>(self.ptr.offset(self.size as isize)));
             Ok(out)
         }
     }
@@ -87,22 +99,17 @@ impl Stack {
             return Err(InterpError::StackOutOfBounds);
         }
 
-        unsafe {
-            Ok(transmute::<*mut _, &mut _>(self.ptr.offset(self.size as isize - 1)))
-        }
+        unsafe { Ok(transmute::<*mut _, &mut _>(self.ptr.offset(self.size as isize - 1))) }
     }
 
     #[inline(always)]
     pub fn peek_n_up(&mut self, n: usize) -> Result<&mut Value, InterpError> {
         use std::mem::transmute;
-        println!("size: {}, ask: {}", self.size, n);
         if n >= self.size {
             return Err(InterpError::StackOutOfBounds);
         }
 
-        unsafe {
-            Ok(transmute::<*mut _, &mut _>(self.ptr.offset(n as isize)))
-        }
+        unsafe { Ok(transmute::<*mut _, &mut _>(self.ptr.offset(n as isize))) }
     }
 
     #[inline(always)]
@@ -162,14 +169,10 @@ impl Stack {
     }
 
     pub fn as_slice(&self) -> &[Value] {
-        unsafe {
-            ::std::slice::from_raw_parts(self.ptr, self.size)
-        }
+        unsafe { ::std::slice::from_raw_parts(self.ptr, self.size) }
     }
 
     pub fn as_slice_mut(&mut self) -> &mut [Value] {
-        unsafe {
-            ::std::slice::from_raw_parts_mut(self.ptr, self.size)
-        }
+        unsafe { ::std::slice::from_raw_parts_mut(self.ptr, self.size) }
     }
 }

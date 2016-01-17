@@ -3,8 +3,10 @@ use compiler::parse::Ast;
 
 pub fn immediate_value<'ast>(v: &'ast Ast<'ast>, interner: &mut SymbolIntern) -> bool {
     match v {
-        &Ast::MapLit(ref m, _) =>
-            m.iter().all(|&(ref k, ref v)| immediate_value(k, interner) && immediate_value(v, interner)),
+        &Ast::MapLit(ref m, _) => {
+            m.iter()
+             .all(|&(ref k, ref v)| immediate_value(k, interner) && immediate_value(v, interner))
+        }
         &Ast::Quote(_, _) => true,
         &Ast::Symbol(_, _) => false,
         _ => true,
@@ -30,7 +32,7 @@ pub fn can_be_hash_key(v: &Ast, interner: &mut SymbolIntern) -> bool {
             } else {
                 can_be_hash_key(&*quoted, interner)
             }
-        },
-        _ => false
+        }
+        _ => false,
     }
 }

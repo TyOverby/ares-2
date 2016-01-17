@@ -105,14 +105,14 @@ impl Close {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     pub tt: TokenType,
-    pub span: Span
+    pub span: Span,
 }
 
 impl Token {
     pub fn new(t: TokenType, start: Position, end: Position) -> Token {
         Token {
             tt: t,
-            span: Span::from_pos(start, end)
+            span: Span::from_pos(start, end),
         }
     }
 
@@ -166,8 +166,7 @@ pub struct TokenIter<'a> {
     iter: Peekable<CharIndicesPos<'a>>,
 }
 
-impl<'a> Iterator for TokenIter<'a>
-{
+impl<'a> Iterator for TokenIter<'a> {
     type Item = Result<Token, ParseError>;
     fn next<'b>(&'b mut self) -> Option<Self::Item> {
         use self::TokenType::*;
@@ -192,8 +191,9 @@ impl<'a> Iterator for TokenIter<'a>
                 }
                 c if is_symbol_start_c(c) => Some(self.read_symbol(c, start, pos)),
                 c if c.is_digit(10) => Some(self.read_number(start, pos)),
-                '(' | ')' | '[' | ']' | '{' | '}' =>
-                    Some(Ok(Token::new_delim(curchar, pos).unwrap())),
+                '(' | ')' | '[' | ']' | '{' | '}' => {
+                    Some(Ok(Token::new_delim(curchar, pos).unwrap()))
+                }
                 '"' => Some(self.read_string(start + 1, pos)),
                 _ => None,
             }
@@ -217,8 +217,7 @@ macro_rules! delimcheck {
     })
 }
 
-impl<'a> TokenIter<'a>
-{
+impl<'a> TokenIter<'a> {
     pub fn new(s: &'a str) -> TokenIter<'a> {
         let iter = CharIndicesPos::new(Position(1, 0), s.char_indices());
         TokenIter {
@@ -258,8 +257,10 @@ impl<'a> TokenIter<'a>
         let brace = brace.unwrap_or(self.input.len());
         match chars.len() {
             0 => Err(UnterminatedString(string_start.into_span())),
-            l if l > 8 => Err(BadEscape(escape_start.into_span(),
-                                        self.input[start..chars[8].0].into())),
+            l if l > 8 => {
+                Err(BadEscape(escape_start.into_span(),
+                              self.input[start..chars[8].0].into()))
+            }
             l => {
                 if chars[0].1 != '{' ||
                    !(chars.iter()
@@ -267,14 +268,15 @@ impl<'a> TokenIter<'a>
                           .take(l - 1)
                           .map(|&(_, c, _)| c)
                           .all(|c| c.is_digit(16))) {
-                    Err(BadEscape(escape_start.into_span(), self.input[start..brace + 1].into()))
+                    Err(BadEscape(escape_start.into_span(),
+                                  self.input[start..brace + 1].into()))
                 } else {
                     let ival = chars.iter()
                                     .skip(1)
                                     .take(l - 1)
                                     .fold(0, |acc, &(_, c, _)| acc * 16 + (c as u32 - '0' as u32));
-                    char::from_u32(ival)
-                        .ok_or(BadEscape(escape_start.into_span(), self.input[start..brace + 1].into()))
+                    char::from_u32(ival).ok_or(BadEscape(escape_start.into_span(),
+                                                         self.input[start..brace + 1].into()))
                 }
             }
         }
@@ -296,16 +298,20 @@ impl<'a> TokenIter<'a>
             let c1 = v[0].1;
             let (end_index, c2, _) = v[1];
             if c1 > '7' || c1 < '0' {
-                Err(BadEscape(escape_start.into_span(), self.input[start..end_index].into()))
+                Err(BadEscape(escape_start.into_span(),
+                              self.input[start..end_index].into()))
             } else {
                 match c2 {
                     '0'...'9' | 'a'...'f' | 'A'...'F' => {
                         let zero = '0' as u32;
                         let ival = (c1 as u32 - zero) * 16 + (c2 as u32 - zero);
-                        char::from_u32(ival)
-                            .ok_or(BadEscape(escape_start.into_span(), self.input[start..end_index].into()))
+                        char::from_u32(ival).ok_or(BadEscape(escape_start.into_span(),
+                                                             self.input[start..end_index].into()))
                     }
-                    _ => Err(BadEscape(escape_start.into_span(), self.input[start..end_index + 1].into())),
+                    _ => {
+                        Err(BadEscape(escape_start.into_span(),
+                                      self.input[start..end_index + 1].into()))
+                    }
                 }
             }
         }

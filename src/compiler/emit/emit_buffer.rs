@@ -18,7 +18,7 @@ pub struct EmitBuffer {
     // they should be filled by.
     fulfilled: HashMap<Fulfill, Instr>,
     // A list of positions that have relative instructions
-    relative_instrs: Vec<usize>
+    relative_instrs: Vec<usize>,
 }
 
 impl EmitBuffer {
@@ -44,8 +44,8 @@ impl EmitBuffer {
                 let len = self.code.len();
                 self.code.push(a);
                 self.relative_instrs.push(len);
-            },
-            a => panic!("non-relative instruction pushed: `push_relative({:?})`", a)
+            }
+            a => panic!("non-relative instruction pushed: `push_relative({:?})`", a),
         }
     }
 
@@ -90,13 +90,16 @@ impl EmitBuffer {
                 &mut Instr::IntLit(ref mut i) => {
                     *i += left_length as i32;
                 }
-                &mut Instr::Call(ref mut p)  => {
+                &mut Instr::Call(ref mut p) => {
                     *p += left_length as u32;
                 }
                 &mut Instr::Jump(ref mut p) => {
                     *p += left_length as u32;
                 }
-                a => panic!("non-relative instruction found in relative positions: `{:?}`", a)
+                a => {
+                    panic!("non-relative instruction found in relative positions: `{:?}`",
+                           a)
+                }
             }
         }
         self.code.extend(code)
@@ -121,9 +124,6 @@ fn basic_emit_buffer_test() {
     buffer.fulfill(fulfill, Instr::IntLit(5));
     buffer.push_standin(standin);
     assert_eq!(buffer.code,
-        vec![
-               Instr::AddInt,
-               Instr::IntLit(5),
-               Instr::IntLit(5)]);
+               vec![Instr::AddInt, Instr::IntLit(5), Instr::IntLit(5)]);
     assert_eq!(buffer.rewrite.len(), 0);
 }

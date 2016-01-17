@@ -27,7 +27,7 @@ pub enum InterpError {
     StackOutOfBounds,
     BadArity {
         got: u32,
-        expected: u32
+        expected: u32,
     },
 }
 
@@ -39,7 +39,7 @@ pub struct ReferenceMap {
 #[derive(Debug, Eq, PartialEq)]
 pub struct Return {
     code_pos: u32,
-    stack_frame: u32
+    stack_frame: u32,
 }
 
 #[derive(Debug)]
@@ -203,7 +203,7 @@ impl Vm {
                     (&Instr::IntLit(_), &Instr::Pop) |
                     (&Instr::BoolLit(_), &Instr::Pop) |
                     (&Instr::SymbolLit(_), &Instr::Pop) |
-                    (&Instr::LoadConstant(_), &Instr::Pop) => { }
+                    (&Instr::LoadConstant(_), &Instr::Pop) => {}
 
                     (&Instr::IntLit(added_with), &Instr::AddInt) => {
                         let cur = try!(try!(stack.peek()).expect_int_ref_mut());
@@ -279,11 +279,12 @@ impl Vm {
                     println!("{:?}", try!(stack.peek()));
                 }
                 &Instr::Dbg => {
-                    print!("{:?} - ", &stack.as_slice()[.. stack_frame as usize]);
-                    println!("{:?}", &stack.as_slice()[stack_frame as usize ..]);
+                    print!("{:?} - ", &stack.as_slice()[..stack_frame as usize]);
+                    println!("{:?}", &stack.as_slice()[stack_frame as usize..]);
                 }
                 &Instr::Dup(stack_pos) => {
-                    let value = try!(stack.peek_n_up(stack_frame as usize + stack_pos as usize)).clone();
+                    let value = try!(stack.peek_n_up(stack_frame as usize + stack_pos as usize))
+                                    .clone();
                     try!(stack.push(value));
                 }
                 &Instr::DupTop => {
@@ -298,14 +299,9 @@ impl Vm {
                     *borrow = value;
                 }
                 &Instr::Assign(frame_pos) => {
-                    {
-                        let value = try!(stack.pop());
-                        let cell = try!(stack.peek_n_up(stack_frame as usize + frame_pos as usize));
-                        *cell = value;
-                    }
-                    println!("after assign");
-                    print!("{:?} - ", &stack.as_slice()[.. stack_frame as usize]);
-                    println!("{:?}", &stack.as_slice()[stack_frame as usize ..]);
+                    let value = try!(stack.pop());
+                    let cell = try!(stack.peek_n_up(stack_frame as usize + frame_pos as usize));
+                    *cell = value;
                 }
                 &Instr::Pop => {
                     try!(stack.pop());
@@ -323,7 +319,7 @@ impl Vm {
                 &Instr::IntLit(int) => {
                     try!(stack.push(Value::Int(int as i64)));
                 }
-                &Instr::LoadConstant(c_id)=> {
+                &Instr::LoadConstant(c_id) => {
                     try!(stack.push(compile_context.get_constant(c_id)));
                 }
                 &Instr::Jump(location) => {
@@ -370,14 +366,14 @@ impl Vm {
                     if arg_count != expected_arg_count {
                         return Err(InterpError::BadArity {
                             got: arg_count,
-                            expected: expected_arg_count
+                            expected: expected_arg_count,
                         });
                     }
 
 
                     return_stack.push(Return {
                         code_pos: i,
-                        stack_frame: stack_frame
+                        stack_frame: stack_frame,
                     });
 
                     i = code_pos.wrapping_sub(1);
@@ -395,17 +391,16 @@ impl Vm {
                     try!(stack.push(instance.into()));
                 }
                 &Instr::ExecuteClosureN => {
-                    /*
-                    let lambda = try!(stack.pop().expect_lambda());
-                    let arg_count = try!(stack.pop().expect_int());
-                    let offset = lambda.code_offset;
-                    return_stack.push(Return {
-                        code_pos: i,
-                        stack_frame: stack_frame
-                    });
-                    i = offset.wrapping_sub(1);
-                    stack_frame = stack.len() as u32 - arg_count as u32;
-                    */
+                    // let lambda = try!(stack.pop().expect_lambda());
+                    // let arg_count = try!(stack.pop().expect_int());
+                    // let offset = lambda.code_offset;
+                    // return_stack.push(Return {
+                    // code_pos: i,
+                    // stack_frame: stack_frame
+                    // });
+                    // i = offset.wrapping_sub(1);
+                    // stack_frame = stack.len() as u32 - arg_count as u32;
+                    //
                     unimplemented!();
                 }
                 &Instr::Call(position) => {
@@ -413,7 +408,7 @@ impl Vm {
                     let offset = position;
                     return_stack.push(Return {
                         code_pos: i,
-                        stack_frame: stack_frame
+                        stack_frame: stack_frame,
                     });
                     i = offset.wrapping_sub(1);
                     stack_frame = stack.len() as u32 - arg_count as u32;
@@ -421,7 +416,7 @@ impl Vm {
                 &Instr::Ret => {
                     let return_info = match return_stack.pop() {
                         Some(ri) => ri,
-                        None => return Ok(())
+                        None => return Ok(()),
                     };
 
                     i = return_info.code_pos as u32;
@@ -541,12 +536,12 @@ fn test_if() {
         vm.stack.push(Value::Bool(true)).unwrap();
 
         vm.load_and_execute(&[Instr::If,
-                     Instr::Jump(3),
-                     Instr::Jump(5),
-                     Instr::AddInt,
-                     Instr::Halt,
-                     Instr::SubInt],
-                   3)
+                              Instr::Jump(3),
+                              Instr::Jump(5),
+                              Instr::AddInt,
+                              Instr::Halt,
+                              Instr::SubInt],
+                            3)
           .unwrap();
         assert_eq!(vm.stack.pop().unwrap(), Value::Int(15));
     }
@@ -557,12 +552,12 @@ fn test_if() {
         vm.stack.push(Value::Bool(false)).unwrap();
 
         vm.load_and_execute(&[Instr::If,
-                     Instr::Jump(3),
-                     Instr::Jump(5),
-                     Instr::AddInt,
-                     Instr::Halt,
-                     Instr::SubInt],
-                   3)
+                              Instr::Jump(3),
+                              Instr::Jump(5),
+                              Instr::AddInt,
+                              Instr::Halt,
+                              Instr::SubInt],
+                            3)
           .unwrap();
         assert_eq!(vm.stack.pop().unwrap(), Value::Int(5));
     }
@@ -573,12 +568,12 @@ fn test_if() {
         vm.stack.push(Value::Bool(true)).unwrap();
 
         vm.load_and_execute(&[Instr::Ifn,
-                     Instr::Jump(3),
-                     Instr::Jump(5),
-                     Instr::AddInt,
-                     Instr::Halt,
-                     Instr::SubInt],
-                   3)
+                              Instr::Jump(3),
+                              Instr::Jump(5),
+                              Instr::AddInt,
+                              Instr::Halt,
+                              Instr::SubInt],
+                            3)
           .unwrap();
         assert_eq!(vm.stack.pop().unwrap(), Value::Int(5));
     }
@@ -589,12 +584,12 @@ fn test_if() {
         vm.stack.push(Value::Bool(false)).unwrap();
 
         vm.load_and_execute(&[Instr::Ifn,
-                     Instr::Jump(3),
-                     Instr::Jump(5),
-                     Instr::AddInt,
-                     Instr::Halt,
-                     Instr::SubInt],
-                   3)
+                              Instr::Jump(3),
+                              Instr::Jump(5),
+                              Instr::AddInt,
+                              Instr::Halt,
+                              Instr::SubInt],
+                            3)
           .unwrap();
         assert_eq!(vm.stack.pop().unwrap(), Value::Int(15));
     }
@@ -678,15 +673,13 @@ fn test_call() {
     vm.stack.push(Value::Int(5)).unwrap();
     vm.stack.push(Value::Int(10)).unwrap();
 
-    vm.load_and_execute(
-        &[
-            Instr::IntLit(2), // 2 args
-            Instr::Call(3),   // call the adding function
-            Instr::Ret,       // return from main
-            Instr::AddInt,    // add the numbers
-            Instr::Ret,       // return from adding
-
-        ], 2).unwrap();
+    vm.load_and_execute(&[Instr::IntLit(2), // 2 args
+                          Instr::Call(3), // call the adding function
+                          Instr::Ret, // return from main
+                          Instr::AddInt, // add the numbers
+                          Instr::Ret /* return from adding */],
+                        2)
+      .unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Int(15));
 }
 
@@ -694,33 +687,32 @@ fn test_call() {
 fn naive_fib() {
     let mut vm = Vm::new();
     vm.stack.push(Value::Int(15)).unwrap();
-    vm.load_and_execute(
-               &[
-               Instr::Dbg,       //  0 [6]
-               Instr::Dup(0),    //  1 [6, 6]
-               Instr::Dup(0),    //  2 [6, 6, 6]
-               Instr::IntLit(0), //  3 [6, 6, 6, 0]
-               Instr::Eq,        //  4 [6, 6, false]
-               Instr::Swap,      //  5 [6, false, 6]
-               Instr::IntLit(1), //  6 [6, false, 6, 1]
-               Instr::Eq,        //  7 [6, false, false]
-               Instr::Or,        //  8 [6, false]
-               Instr::Dbg,
-               Instr::If,        //  9 [6]
-               Instr::Ret,       //  10 done
-               Instr::Dup(0),    // 11 [6, 6]
-               Instr::IntLit(1), // 12 [6, 6, 1]
-               Instr::SubInt,    // 13 [6, 5]
-               Instr::IntLit(1), // 14 [6, 5, 1]
-               Instr::Call(0),   // 15 [6, 5]
-               Instr::Swap,      // 16 [5, 6]
-               Instr::IntLit(2), // 16 [5, 6, 2]
-               Instr::SubInt,    // 17 [5, 4]
-               Instr::IntLit(1), // 18 [5, 4, 1]
-               Instr::Call(0),   // 19 [5, 3]
-               Instr::AddInt,    // 20 [8]
-               Instr::Ret,       // 21 finish this execution
-                 ], 1).unwrap();
+    vm.load_and_execute(&[Instr::Dbg, // 0 [6]
+                          Instr::Dup(0), // 1 [6, 6]
+                          Instr::Dup(0), // 2 [6, 6, 6]
+                          Instr::IntLit(0), // 3 [6, 6, 6, 0]
+                          Instr::Eq, // 4 [6, 6, false]
+                          Instr::Swap, // 5 [6, false, 6]
+                          Instr::IntLit(1), // 6 [6, false, 6, 1]
+                          Instr::Eq, // 7 [6, false, false]
+                          Instr::Or, // 8 [6, false]
+                          Instr::Dbg,
+                          Instr::If, // 9 [6]
+                          Instr::Ret, // 10 done
+                          Instr::Dup(0), // 11 [6, 6]
+                          Instr::IntLit(1), // 12 [6, 6, 1]
+                          Instr::SubInt, // 13 [6, 5]
+                          Instr::IntLit(1), // 14 [6, 5, 1]
+                          Instr::Call(0), // 15 [6, 5]
+                          Instr::Swap, // 16 [5, 6]
+                          Instr::IntLit(2), // 16 [5, 6, 2]
+                          Instr::SubInt, // 17 [5, 4]
+                          Instr::IntLit(1), // 18 [5, 4, 1]
+                          Instr::Call(0), // 19 [5, 3]
+                          Instr::AddInt, // 20 [8]
+                          Instr::Ret /* 21 finish this execution */],
+                        1)
+      .unwrap();
     assert!(vm.stack.len() == 1);
     assert_eq!(vm.stack.pop().unwrap(), Value::Int(610));
 }
@@ -742,7 +734,6 @@ fn test_stack() {
 
 #[test]
 fn test_optimizations() {
-    //
     // IntLit - AddInt
     //
     let mut vm = Vm::new();
@@ -753,7 +744,6 @@ fn test_optimizations() {
     assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
     assert_eq!(vm.stack.push_count(), 1); // this push is done in the test
 
-    //
     // IntLit - SubInt
     //
     let mut vm = Vm::new();
@@ -764,7 +754,6 @@ fn test_optimizations() {
     assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
     assert_eq!(vm.stack.push_count(), 1); // this push is done in the test
 
-    //
     // IntLit - MulInt
     //
     let mut vm = Vm::new();
@@ -775,7 +764,6 @@ fn test_optimizations() {
     assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
     assert_eq!(vm.stack.push_count(), 1); // this push is done in the test
 
-    //
     // IntLit - DivInt
     //
     let mut vm = Vm::new();
@@ -786,7 +774,6 @@ fn test_optimizations() {
     assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
     assert_eq!(vm.stack.push_count(), 1); // this push is done in the test
 
-    //
     // IntLit - Eq
     //
     let mut vm = Vm::new();
@@ -797,7 +784,6 @@ fn test_optimizations() {
     assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
     assert_eq!(vm.stack.push_count(), 1); // this push is done in the test
 
-    //
     // BoolLit - Eq
     //
     let mut vm = Vm::new();
@@ -808,10 +794,9 @@ fn test_optimizations() {
     assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
     assert_eq!(vm.stack.push_count(), 1); // this push is done in the test
 
-    //
     // SymbolLit - Eq
     let mut vm = Vm::new();
-    let s = vm.interner.gen_sym();
+    let s = vm.interner.gensym();
     vm.stack.push(Value::Symbol(s)).unwrap();
     vm.load_and_execute(&[Instr::SymbolLit(s), Instr::Eq], 1).unwrap();
     let result = vm.stack.pop().unwrap();
@@ -819,7 +804,6 @@ fn test_optimizations() {
     assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
     assert_eq!(vm.stack.push_count(), 1); // this push is done in the test
 
-    //
     // Or - If
     //
     let mut vm = Vm::new();
@@ -831,7 +815,6 @@ fn test_optimizations() {
     assert_eq!(vm.stack.pop_count(), 3);  // 1 from the test, two from popping the bools
     assert_eq!(vm.stack.push_count(), 3); // 2 from the test, one for the int-lit
 
-    //
     // Or - If
     //
     let mut vm = Vm::new();
@@ -843,7 +826,6 @@ fn test_optimizations() {
     assert_eq!(vm.stack.pop_count(), 3);  // 1 from the test, two from popping the bools
     assert_eq!(vm.stack.push_count(), 3); // 2 from the test, one for the int-lit
 
-    //
     // And - If
     //
     let mut vm = Vm::new();
@@ -855,7 +837,6 @@ fn test_optimizations() {
     assert_eq!(vm.stack.pop_count(), 3);  // 1 from the test, two from popping the bools
     assert_eq!(vm.stack.push_count(), 3); // 2 from the test, one for the int-lit
 
-    //
     // Or - If
     //
     let mut vm = Vm::new();
