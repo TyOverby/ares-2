@@ -86,12 +86,20 @@ impl PartialEq for Value {
             (&Bool(b1), &Bool(b2)) => b1 == b2,
             (&Symbol(ref id1), &Symbol(ref id2)) => id1 == id2,
             // (&Closure(ref l1, b1), &Closure(ref l2, b2)) => l1 == l2 && b1 == b2,
+            (&Cell(ref c1), &Cell(ref c2)) => &*c1.borrow() == &*c2.borrow(),
             _ => false,
         }
     }
 }
 
 impl Value {
+    pub fn cellify(self) -> Value {
+        match self {
+            c@Value::Cell(_) => c,
+            other => Value::Cell(Gc::new(GcCell::new(other))),
+        }
+    }
+
     pub fn expect_list(self) -> Result<Gc<Vec<Value>>, InterpError> {
         match self {
             Value::List(list) => Ok(list),

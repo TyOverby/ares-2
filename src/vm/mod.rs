@@ -2,6 +2,7 @@ mod intern;
 mod lambda;
 mod value;
 mod stack;
+mod module;
 
 use std::collections::HashMap;
 use gc::Trace;
@@ -12,6 +13,7 @@ pub use vm::intern::*;
 pub use vm::value::*;
 pub use vm::lambda::*;
 pub use vm::stack::*;
+pub use vm::module::*;
 
 #[derive(Debug)]
 pub enum InterpError {
@@ -40,6 +42,7 @@ pub struct ReferenceMap {
 pub struct Return {
     code_pos: u32,
     stack_frame: u32,
+    namespace: Symbol
 }
 
 #[derive(Debug)]
@@ -47,7 +50,7 @@ pub struct Vm {
     pub stack: Stack,
     return_stack: Vec<Return>,
     pub interner: intern::SymbolIntern,
-    globals: ReferenceMap,
+    globals: Globals,
     code: Vec<Instr>,
     pub compile_context: CompileContext,
 }
@@ -76,6 +79,13 @@ pub enum Instr {
     SymbolLit(Symbol),
     IntLit(i32),
     LoadConstant(u32),
+
+    /// Searches for the current symbol in the global
+    /// namespace and pushes it onto the stack
+    GetGlobal(Symbol),
+    /// Pops a value off of the stack and places it
+    /// in the global namespace.
+    PutGlobal(Symbol),
 
     /// Pop the top value and set it in the cell located
     /// at this position from the top of the stack
@@ -127,9 +137,6 @@ pub enum Instr {
     /// else skip the next instruction.
     Ifn,
 
-    /// Returns a symbol from the global scope
-    FetchGlobal(Symbol),
-
     /// Returns a symbol that has been closed over
     FetchUpvar(Symbol),
 }
@@ -164,7 +171,7 @@ impl Vm {
         Vm {
             stack: Stack::new(),
             interner: intern::SymbolIntern::new(),
-            globals: ReferenceMap::new(),
+            globals: Globals::new(),
             return_stack: Vec::new(),
             code: Vec::new(),
             compile_context: ::compiler::CompileContext::new(),
@@ -174,14 +181,15 @@ impl Vm {
     pub fn load_and_execute(&mut self, code: &[Instr], arg_count: u32) -> Result<(), InterpError> {
         let start = self.code.len() as u32;
         let stackframe = self.stack.len() - arg_count;
+        let default_ns = self.interner.intern("default");
         self.code.extend(code.iter().cloned());
-        self.execute(start, stackframe, None)
+        self.execute(start, stackframe, default_ns)
     }
 
-    pub fn execute(&mut self,
+    fn execute(&mut self,
                    start_at: u32,
                    mut stack_frame: u32,
-                   _upvars: Option<&ReferenceMap>)
+                   mut current_ns: Symbol)
                    -> Result<(), InterpError> {
         let &mut Vm {
             ref mut stack,
@@ -298,6 +306,19 @@ impl Vm {
                     let mut borrow = cell.borrow_mut();
                     *borrow = value;
                 }
+                &Instr::GetGlobal(symbol) => {
+                    if let Some(value) = globals.get(current_ns, symbol).cloned() {
+                        try!(stack.push(value));
+                    } else {
+                        return Err(InterpError::VariableNotFound(
+                                       interner.lookup_or_anon(symbol)))
+                    }
+                }
+                &Instr::PutGlobal(symbol) => {
+                    let value = try!(stack.pop());
+                    let value = value.cellify();
+                    globals.set(current_ns, symbol, value);
+                }
                 &Instr::Assign(frame_pos) => {
                     let value = try!(stack.pop());
                     let cell = try!(stack.peek_n_up(stack_frame as usize + frame_pos as usize));
@@ -370,10 +391,10 @@ impl Vm {
                         });
                     }
 
-
                     return_stack.push(Return {
                         code_pos: i,
                         stack_frame: stack_frame,
+                        namespace: current_ns,
                     });
 
                     i = code_pos.wrapping_sub(1);
@@ -409,6 +430,7 @@ impl Vm {
                     return_stack.push(Return {
                         code_pos: i,
                         stack_frame: stack_frame,
+                        namespace: current_ns,
                     });
                     i = offset.wrapping_sub(1);
                     stack_frame = stack.len() as u32 - arg_count as u32;
@@ -418,12 +440,18 @@ impl Vm {
                         Some(ri) => ri,
                         None => return Ok(()),
                     };
+                    let Return { 
+                        code_pos,
+                        stack_frame: sf,
+                        namespace
+                    } = return_info;
 
-                    i = return_info.code_pos as u32;
+                    i = code_pos as u32;
                     let return_value = try!(stack.pop());
                     try!(stack.truncate(stack_frame as usize));
                     try!(stack.push(return_value));
-                    stack_frame = return_info.stack_frame;
+                    stack_frame = sf;
+                    current_ns = namespace;
                 }
                 &Instr::If => {
                     let b = try!(try!(stack.pop()).expect_bool());
@@ -436,10 +464,6 @@ impl Vm {
                     if b {
                         i += 1
                     }
-                }
-                &Instr::FetchGlobal(symbol) => {
-                    let value = try!(globals.get(symbol, interner));
-                    try!(stack.push(value));
                 }
                 &Instr::FetchUpvar(_symbol) => {
                     unimplemented!();
@@ -483,10 +507,11 @@ fn test_addint() {
 fn get_global() {
     let mut vm = Vm::new();
     let symbol = vm.interner.intern("hi");
-    vm.globals.put(symbol, Value::Int(20));
-    vm.load_and_execute(&[Instr::FetchGlobal(symbol)], 0).unwrap();
+    vm.stack.push(Value::Int(20)).unwrap();
+    vm.load_and_execute(&[Instr::PutGlobal(symbol),
+                          Instr::GetGlobal(symbol)], 1).unwrap();
     let result = vm.stack.pop().unwrap();
-    assert_eq!(result, Value::Int(20));
+    assert_eq!(result, Value::Int(20).cellify());
 }
 
 #[test]
