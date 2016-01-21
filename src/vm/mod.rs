@@ -4,8 +4,7 @@ mod value;
 mod stack;
 mod module;
 
-use std::collections::HashMap;
-use gc::Trace;
+use std::marker::PhantomData;
 
 use compiler::CompileContext;
 
@@ -15,7 +14,7 @@ pub use vm::lambda::*;
 pub use vm::stack::*;
 pub use vm::module::*;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum InterpError {
     InternalInterpError(String),
     MismatchedType {
@@ -33,11 +32,6 @@ pub enum InterpError {
     },
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct ReferenceMap {
-    values: HashMap<Symbol, Value>,
-}
-
 #[derive(Debug, Eq, PartialEq)]
 pub struct Return {
     code_pos: u32,
@@ -46,13 +40,14 @@ pub struct Return {
 }
 
 #[derive(Debug)]
-pub struct Vm {
+pub struct Vm<S=()> {
     pub stack: Stack,
     return_stack: Vec<Return>,
     pub interner: intern::SymbolIntern,
     globals: Globals,
     code: Vec<Instr>,
     pub compile_context: CompileContext,
+    _phantom: PhantomData<S>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -141,33 +136,8 @@ pub enum Instr {
     FetchUpvar(Symbol),
 }
 
-unsafe impl Trace for ReferenceMap {
-    custom_trace!(this, {
-        for (_, v) in this.values.iter() {
-            mark(v);
-        }
-    });
-}
-
-impl ReferenceMap {
-    pub fn new() -> ReferenceMap {
-        ReferenceMap { values: HashMap::new() }
-    }
-
-    pub fn put(&mut self, name: Symbol, value: Value) {
-        self.values.insert(name, value);
-    }
-
-    pub fn get(&self, name: Symbol, interner: &mut SymbolIntern) -> Result<Value, InterpError> {
-        self.values
-            .get(&name)
-            .map(Clone::clone)
-            .ok_or_else(|| InterpError::VariableNotFound(interner.lookup_or_anon(name)))
-    }
-}
-
-impl Vm {
-    pub fn new() -> Vm {
+impl <S> Vm<S> {
+    pub fn new() -> Vm<S> {
         Vm {
             stack: Stack::new(),
             interner: intern::SymbolIntern::new(),
@@ -175,6 +145,7 @@ impl Vm {
             return_stack: Vec::new(),
             code: Vec::new(),
             compile_context: ::compiler::CompileContext::new(),
+            _phantom: PhantomData,
         }
     }
 
@@ -198,6 +169,7 @@ impl Vm {
             ref mut globals,
             ref mut code,
             ref compile_context,
+            ..
         } = self;
 
         let mut i = start_at;
@@ -495,7 +467,7 @@ fn assumptions() {
 
 #[test]
 fn test_addint() {
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(5)).unwrap();
     vm.stack.push(Value::Int(10)).unwrap();
     vm.load_and_execute(&[Instr::AddInt], 2).unwrap();
@@ -505,7 +477,7 @@ fn test_addint() {
 
 #[test]
 fn get_global() {
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     let symbol = vm.interner.intern("hi");
     vm.stack.push(Value::Int(20)).unwrap();
     vm.load_and_execute(&[Instr::PutGlobal(symbol),
@@ -517,7 +489,7 @@ fn get_global() {
 #[test]
 fn load_literals() {
     {
-        let mut vm = Vm::new();
+        let mut vm = Vm::<()>::new();
         let dummy = vm.interner.intern("dummy");
         vm.load_and_execute(&[Instr::SymbolLit(dummy)], 0).unwrap();
 
@@ -526,7 +498,7 @@ fn load_literals() {
     }
 
     {
-        let mut vm = Vm::new();
+        let mut vm = Vm::<()>::new();
         vm.load_and_execute(&[Instr::BoolLit(true)], 0).unwrap();
 
         let result = vm.stack.pop().unwrap();
@@ -534,7 +506,7 @@ fn load_literals() {
     }
 
     {
-        let mut vm = Vm::new();
+        let mut vm = Vm::<()>::new();
         vm.load_and_execute(&[Instr::IntLit(5)], 0).unwrap();
 
         let result = vm.stack.pop().unwrap();
@@ -544,7 +516,7 @@ fn load_literals() {
 
 #[test]
 fn test_jmp() {
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.load_and_execute(&[Instr::Jump(2), Instr::IntLit(5), Instr::IntLit(10)], 0)
       .unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Int(10));
@@ -555,7 +527,7 @@ fn test_jmp() {
 #[test]
 fn test_if() {
     {
-        let mut vm = Vm::new();
+        let mut vm = Vm::<()>::new();
         vm.stack.push(Value::Int(10)).unwrap();
         vm.stack.push(Value::Int(5)).unwrap();
         vm.stack.push(Value::Bool(true)).unwrap();
@@ -571,7 +543,7 @@ fn test_if() {
         assert_eq!(vm.stack.pop().unwrap(), Value::Int(15));
     }
     {
-        let mut vm = Vm::new();
+        let mut vm = Vm::<()>::new();
         vm.stack.push(Value::Int(10)).unwrap();
         vm.stack.push(Value::Int(5)).unwrap();
         vm.stack.push(Value::Bool(false)).unwrap();
@@ -587,7 +559,7 @@ fn test_if() {
         assert_eq!(vm.stack.pop().unwrap(), Value::Int(5));
     }
     {
-        let mut vm = Vm::new();
+        let mut vm = Vm::<()>::new();
         vm.stack.push(Value::Int(10)).unwrap();
         vm.stack.push(Value::Int(5)).unwrap();
         vm.stack.push(Value::Bool(true)).unwrap();
@@ -603,7 +575,7 @@ fn test_if() {
         assert_eq!(vm.stack.pop().unwrap(), Value::Int(5));
     }
     {
-        let mut vm = Vm::new();
+        let mut vm = Vm::<()>::new();
         vm.stack.push(Value::Int(10)).unwrap();
         vm.stack.push(Value::Int(5)).unwrap();
         vm.stack.push(Value::Bool(false)).unwrap();
@@ -622,7 +594,7 @@ fn test_if() {
 
 #[test]
 fn test_swap() {
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(10)).unwrap();
     vm.stack.push(Value::Int(5)).unwrap();
     vm.load_and_execute(&[Instr::Swap], 1).unwrap();
@@ -632,25 +604,25 @@ fn test_swap() {
 
 #[test]
 fn test_and() {
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.load_and_execute(&[Instr::And], 2).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Bool(true));
 
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(false)).unwrap();
     vm.load_and_execute(&[Instr::And], 2).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Bool(false));
 
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(false)).unwrap();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.load_and_execute(&[Instr::And], 2).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Bool(false));
 
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(false)).unwrap();
     vm.stack.push(Value::Bool(false)).unwrap();
     vm.load_and_execute(&[Instr::And], 2).unwrap();
@@ -659,25 +631,25 @@ fn test_and() {
 
 #[test]
 fn test_or() {
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.load_and_execute(&[Instr::Or], 2).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Bool(true));
 
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(false)).unwrap();
     vm.load_and_execute(&[Instr::Or], 2).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Bool(true));
 
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(false)).unwrap();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.load_and_execute(&[Instr::Or], 2).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Bool(true));
 
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(false)).unwrap();
     vm.stack.push(Value::Bool(false)).unwrap();
     vm.load_and_execute(&[Instr::Or], 2).unwrap();
@@ -686,7 +658,7 @@ fn test_or() {
 
 #[test]
 fn test_lone_ret() {
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(5)).unwrap();
     vm.load_and_execute(&[Instr::Ret], 0).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Int(5));
@@ -694,7 +666,7 @@ fn test_lone_ret() {
 
 #[test]
 fn test_call() {
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(5)).unwrap();
     vm.stack.push(Value::Int(10)).unwrap();
 
@@ -710,7 +682,7 @@ fn test_call() {
 
 #[test]
 fn naive_fib() {
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(15)).unwrap();
     vm.load_and_execute(&[Instr::Dbg, // 0 [6]
                           Instr::Dup(0), // 1 [6, 6]
@@ -761,7 +733,7 @@ fn test_stack() {
 fn test_optimizations() {
     // IntLit - AddInt
     //
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(5)).unwrap();
     vm.load_and_execute(&[Instr::IntLit(10), Instr::AddInt], 1).unwrap();
     let result = vm.stack.pop().unwrap();
@@ -771,7 +743,7 @@ fn test_optimizations() {
 
     // IntLit - SubInt
     //
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(10)).unwrap();
     vm.load_and_execute(&[Instr::IntLit(5), Instr::SubInt], 1).unwrap();
     let result = vm.stack.pop().unwrap();
@@ -781,7 +753,7 @@ fn test_optimizations() {
 
     // IntLit - MulInt
     //
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(5)).unwrap();
     vm.load_and_execute(&[Instr::IntLit(10), Instr::MulInt], 1).unwrap();
     let result = vm.stack.pop().unwrap();
@@ -791,7 +763,7 @@ fn test_optimizations() {
 
     // IntLit - DivInt
     //
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(10)).unwrap();
     vm.load_and_execute(&[Instr::IntLit(5), Instr::DivInt], 1).unwrap();
     let result = vm.stack.pop().unwrap();
@@ -801,7 +773,7 @@ fn test_optimizations() {
 
     // IntLit - Eq
     //
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(10)).unwrap();
     vm.load_and_execute(&[Instr::IntLit(10), Instr::Eq], 1).unwrap();
     let result = vm.stack.pop().unwrap();
@@ -811,7 +783,7 @@ fn test_optimizations() {
 
     // BoolLit - Eq
     //
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.load_and_execute(&[Instr::BoolLit(true), Instr::Eq], 1).unwrap();
     let result = vm.stack.pop().unwrap();
@@ -820,7 +792,7 @@ fn test_optimizations() {
     assert_eq!(vm.stack.push_count(), 1); // this push is done in the test
 
     // SymbolLit - Eq
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     let s = vm.interner.gensym();
     vm.stack.push(Value::Symbol(s)).unwrap();
     vm.load_and_execute(&[Instr::SymbolLit(s), Instr::Eq], 1).unwrap();
@@ -831,7 +803,7 @@ fn test_optimizations() {
 
     // Or - If
     //
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(false)).unwrap();
     vm.load_and_execute(&[Instr::Or, Instr::If, Instr::IntLit(5)], 2).unwrap();
@@ -842,7 +814,7 @@ fn test_optimizations() {
 
     // Or - If
     //
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(false)).unwrap();
     vm.load_and_execute(&[Instr::Or, Instr::Ifn, Instr::Nop, Instr::IntLit(5)], 2).unwrap();
@@ -853,7 +825,7 @@ fn test_optimizations() {
 
     // And - If
     //
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.load_and_execute(&[Instr::And, Instr::If, Instr::IntLit(5)], 2).unwrap();
@@ -864,7 +836,7 @@ fn test_optimizations() {
 
     // Or - If
     //
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.load_and_execute(&[Instr::And, Instr::Ifn, Instr::Nop, Instr::IntLit(5)], 2).unwrap();
@@ -876,7 +848,7 @@ fn test_optimizations() {
 
 #[test]
 fn load_constant() {
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     let instr = vm.compile_context.add_constant("hello world".into());
     assert_eq!(instr, Instr::LoadConstant(0));
     vm.load_and_execute(&[instr], 0).unwrap();
@@ -892,7 +864,7 @@ fn load_constant() {
 
 #[test]
 fn basic_lambdas() {
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     let closure_class_id = vm.compile_context.add_closure_class(ClosureClass {
         code_offset: 3,
         arg_count: 0,
@@ -915,7 +887,7 @@ fn basic_lambdas() {
 
 #[test]
 fn one_arg_lambda() {
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     let closure_class_id = vm.compile_context.add_closure_class(ClosureClass {
         code_offset: 4,
         arg_count: 1,

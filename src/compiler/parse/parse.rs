@@ -1,4 +1,3 @@
-use std::error::Error;
 use typed_arena::Arena;
 use vm::SymbolIntern;
 
@@ -20,7 +19,7 @@ fn one_expr<'a, 'b, 'ast>(tok: Token,
                 Ok(arena.alloc(Ast::IntLit(int, tok.span)))
             } else {
                 let as_float: Result<f64, _> = s.parse();
-                let as_float = as_float.map_err(|e| ConversionError(s, Box::new(e) as Box<Error>));
+                let as_float = as_float.map_err(|_| ConversionError(s));
                 as_float.map(|flt| arena.alloc(Ast::FloatLit(flt, tok.span)) as &_)
             }
         }

@@ -3,11 +3,11 @@ use std::fmt;
 use compiler::parse::tokens::Close;
 use compiler::parse::Span;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum ParseError {
     UnexpectedChar(char, Span, String),
     UnterminatedString(Span),
-    ConversionError(String, Box<Error>),
+    ConversionError(String),
     BadEscape(Span, String),
     MissingRightDelimiter(Close),
     ExtraRightDelimiter(Close, Span),
@@ -33,7 +33,7 @@ impl fmt::Display for ParseError {
             UnterminatedString(span) => {
                 write!(f, "Unterminated string beginning at {}", span.start)
             }
-            ConversionError(ref s, ref e) => write!(f, "Could not convert {}: {}", s, e),
+            ConversionError(ref s) => write!(f, "Could not convert {}", s),
             BadEscape(span, ref s) => {
                 write!(f,
                        "Invalid escape sequence starting at {}: {}",
@@ -67,7 +67,7 @@ impl Error for ParseError {
         match *self {
             UnexpectedChar(_, _, _) => "Unexpected character",
             UnterminatedString(_) => "Unterminated string",
-            ConversionError(_, ref e) => e.description(),
+            ConversionError(ref s) => s,
             BadEscape(..) => "Bad escape sequence",
             MissingRightDelimiter(..) => "Missing right delimiter",
             ExtraRightDelimiter(..) => "Extra right delimiter",

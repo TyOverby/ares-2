@@ -17,7 +17,7 @@ pub enum Value {
     Cell(Gc<GcCell<Value>>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum ValueKind {
     List,
     String,

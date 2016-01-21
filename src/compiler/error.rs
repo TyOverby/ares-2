@@ -2,7 +2,7 @@ use compiler::parse::ParseError;
 use compiler::emit::EmitError;
 use compiler::binding::BindingError;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum CompileError {
     ParseError(ParseError),
     EmitError(EmitError),

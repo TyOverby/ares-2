@@ -14,4 +14,5 @@ macro_rules! matches {
 
 pub mod compiler;
 pub mod vm;
+pub mod host;
 mod util;

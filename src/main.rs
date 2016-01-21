@@ -3,7 +3,7 @@ use ares::vm::*;
 
 fn main() {
 
-    let mut vm = Vm::new();
+    let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(30)).unwrap();
     vm.load_and_execute(&[Instr::Dup(0), // 1 [6, 6]
                           Instr::Dup(0), // 2 [6, 6, 6]

@@ -5,7 +5,7 @@ mod compile_context;
 mod binding;
 
 use typed_arena;
-use compiler::error::CompileError;
+pub use compiler::error::CompileError;
 use compiler::emit::EmitBuffer;
 use vm::{SymbolIntern, Instr};
 
