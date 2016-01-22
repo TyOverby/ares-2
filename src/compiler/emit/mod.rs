@@ -123,7 +123,7 @@ pub fn emit<'bound, 'ast: 'bound>(ast: &'bound Bound<'bound, 'ast>,
                 try!(emit(arg, compile_context, out, inside_lambda));
             }
             try!(emit(funclike, compile_context, out, inside_lambda));
-            out.push(Instr::ExecuteClosure(args.len() as u32));
+            out.push(Instr::Execute(args.len() as u32));
         }
         &Bound::Symbol { symbol, ast, source, } => {
             if let SymbolBindSource::Global(_) = source {
@@ -296,7 +296,7 @@ mod test {
                    vec![Instr::IntLit(2),
                         Instr::IntLit(3),
                         Instr::IntLit(1),
-                        Instr::ExecuteClosure(2)]);
+                        Instr::Execute(2)]);
     }
 
     #[test]

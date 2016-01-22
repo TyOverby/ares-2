@@ -3,16 +3,20 @@ mod lambda;
 mod value;
 mod stack;
 mod module;
+mod function;
 
 use std::marker::PhantomData;
 
 use compiler::CompileContext;
+use host::State;
 
 pub use vm::intern::*;
 pub use vm::value::*;
 pub use vm::lambda::*;
 pub use vm::stack::*;
 pub use vm::module::*;
+pub use vm::function::*;
+
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum InterpError {
@@ -30,6 +34,7 @@ pub enum InterpError {
         got: u32,
         expected: u32,
     },
+    UserFnWithWrongStateType,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -40,7 +45,7 @@ pub struct Return {
 }
 
 #[derive(Debug)]
-pub struct Vm<S=()> {
+pub struct Vm<S: State = ()> {
     pub stack: Stack,
     return_stack: Vec<Return>,
     pub interner: intern::SymbolIntern,
@@ -118,11 +123,11 @@ pub enum Instr {
 
     /// Execute a lambda on the top of the stack with
     /// a specified number of arguments
-    ExecuteClosure(u32),
+    Execute(u32),
     /// Execute a lambda on the top of the stack with
     /// an amount of arguments equal to the *next*
     /// thing on the stack.
-    ExecuteClosureN,
+    ExecuteN,
 
     /// Read a bool off the stack, if true, continue executing,
     /// else, skip the next instruction.
@@ -136,7 +141,7 @@ pub enum Instr {
     FetchUpvar(Symbol),
 }
 
-impl <S> Vm<S> {
+impl <S: State> Vm<S> {
     pub fn new() -> Vm<S> {
         Vm {
             stack: Stack::new(),
@@ -149,18 +154,19 @@ impl <S> Vm<S> {
         }
     }
 
-    pub fn load_and_execute(&mut self, code: &[Instr], arg_count: u32) -> Result<(), InterpError> {
+    pub fn load_and_execute(&mut self, code: &[Instr], arg_count: u32, state: &mut S) -> Result<(), InterpError> {
         let start = self.code.len() as u32;
         let stackframe = self.stack.len() - arg_count;
         let default_ns = self.interner.intern("default");
         self.code.extend(code.iter().cloned());
-        self.execute(start, stackframe, default_ns)
+        self.execute(start, stackframe, default_ns, state)
     }
 
     fn execute(&mut self,
                    start_at: u32,
                    mut stack_frame: u32,
-                   mut current_ns: Symbol)
+                   mut current_ns: Symbol,
+                   state: &mut S)
                    -> Result<(), InterpError> {
         let &mut Vm {
             ref mut stack,
@@ -347,33 +353,47 @@ impl <S> Vm<S> {
                     let b = try!(stack.peek());
                     *b = Value::Bool(&a == b);
                 }
-                &Instr::ExecuteClosure(arg_count) => {
-                    let closure = try!(try!(stack.pop()).expect_closure());
-                    let code_pos = closure.class.code_offset;
-                    let expected_arg_count = closure.class.arg_count;
-                    let local_defines_count = closure.class.local_defines_count;
-                    if closure.class.has_rest_params {
-                        unimplemented!();
-                    }
+                &Instr::Execute(arg_count) => {
+                    let callable = try!(stack.pop());
+                    let callable = callable.decell();
+                    match callable {
+                        Value::UserFn(ref gccell) => {
+                            let mut user_fn = gccell.borrow_mut();
+                            let user_fn = user_fn.correct::<S>();
+                            let mut user_fn = try!(user_fn.or(Err(
+                                InterpError::UserFnWithWrongStateType)));
+                            let result = user_fn.call(state, vec![]);
+                            try!(stack.push(result));
+                        }
+                        Value::Closure(ref closure) => {
+                            let code_pos = closure.class.code_offset;
+                            let expected_arg_count = closure.class.arg_count;
+                            let local_defines_count = closure.class.local_defines_count;
+                            if closure.class.has_rest_params {
+                                unimplemented!();
+                            }
 
-                    if arg_count != expected_arg_count {
-                        return Err(InterpError::BadArity {
-                            got: arg_count,
-                            expected: expected_arg_count,
-                        });
-                    }
+                            if arg_count != expected_arg_count {
+                                return Err(InterpError::BadArity {
+                                    got: arg_count,
+                                    expected: expected_arg_count,
+                                });
+                            }
 
-                    return_stack.push(Return {
-                        code_pos: i,
-                        stack_frame: stack_frame,
-                        namespace: current_ns,
-                    });
+                            return_stack.push(Return {
+                                code_pos: i,
+                                stack_frame: stack_frame,
+                                namespace: current_ns,
+                            });
 
-                    i = code_pos.wrapping_sub(1);
-                    stack_frame = stack.len() as u32 - arg_count as u32;
+                            i = code_pos.wrapping_sub(1);
+                            stack_frame = stack.len() as u32 - arg_count as u32;
 
-                    for _ in 0 .. local_defines_count {
-                        try!(stack.push(Value::Int(255)));
+                            for _ in 0 .. local_defines_count {
+                                try!(stack.push(Value::Int(255)));
+                            }
+                        }
+                        _ => panic!()
                     }
                 }
                 &Instr::CreateClosure(class_id) => {
@@ -383,7 +403,7 @@ impl <S> Vm<S> {
                     let instance = Closure { class: class, upvars: values};
                     try!(stack.push(instance.into()));
                 }
-                &Instr::ExecuteClosureN => {
+                &Instr::ExecuteN => {
                     // let lambda = try!(stack.pop().expect_lambda());
                     // let arg_count = try!(stack.pop().expect_int());
                     // let offset = lambda.code_offset;
@@ -470,7 +490,7 @@ fn test_addint() {
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(5)).unwrap();
     vm.stack.push(Value::Int(10)).unwrap();
-    vm.load_and_execute(&[Instr::AddInt], 2).unwrap();
+    vm.load_and_execute(&[Instr::AddInt], 2, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(15));
 }
@@ -481,7 +501,7 @@ fn get_global() {
     let symbol = vm.interner.intern("hi");
     vm.stack.push(Value::Int(20)).unwrap();
     vm.load_and_execute(&[Instr::PutGlobal(symbol),
-                          Instr::GetGlobal(symbol)], 1).unwrap();
+                          Instr::GetGlobal(symbol)], 1, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(20).cellify());
 }
@@ -491,7 +511,7 @@ fn load_literals() {
     {
         let mut vm = Vm::<()>::new();
         let dummy = vm.interner.intern("dummy");
-        vm.load_and_execute(&[Instr::SymbolLit(dummy)], 0).unwrap();
+        vm.load_and_execute(&[Instr::SymbolLit(dummy)], 0, &mut ()).unwrap();
 
         let result = vm.stack.pop().unwrap();
         assert_eq!(result, Value::Symbol(dummy));
@@ -499,7 +519,7 @@ fn load_literals() {
 
     {
         let mut vm = Vm::<()>::new();
-        vm.load_and_execute(&[Instr::BoolLit(true)], 0).unwrap();
+        vm.load_and_execute(&[Instr::BoolLit(true)], 0, &mut ()).unwrap();
 
         let result = vm.stack.pop().unwrap();
         assert_eq!(result, Value::Bool(true));
@@ -507,7 +527,7 @@ fn load_literals() {
 
     {
         let mut vm = Vm::<()>::new();
-        vm.load_and_execute(&[Instr::IntLit(5)], 0).unwrap();
+        vm.load_and_execute(&[Instr::IntLit(5)], 0, &mut ()).unwrap();
 
         let result = vm.stack.pop().unwrap();
         assert_eq!(result, Value::Int(5));
@@ -517,7 +537,7 @@ fn load_literals() {
 #[test]
 fn test_jmp() {
     let mut vm = Vm::<()>::new();
-    vm.load_and_execute(&[Instr::Jump(2), Instr::IntLit(5), Instr::IntLit(10)], 0)
+    vm.load_and_execute(&[Instr::Jump(2), Instr::IntLit(5), Instr::IntLit(10)], 0, &mut ())
       .unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Int(10));
     assert!(vm.stack.len() == 0);
@@ -538,7 +558,7 @@ fn test_if() {
                               Instr::AddInt,
                               Instr::Halt,
                               Instr::SubInt],
-                            3)
+                            3, &mut ())
           .unwrap();
         assert_eq!(vm.stack.pop().unwrap(), Value::Int(15));
     }
@@ -554,7 +574,7 @@ fn test_if() {
                               Instr::AddInt,
                               Instr::Halt,
                               Instr::SubInt],
-                            3)
+                            3, &mut ())
           .unwrap();
         assert_eq!(vm.stack.pop().unwrap(), Value::Int(5));
     }
@@ -570,7 +590,7 @@ fn test_if() {
                               Instr::AddInt,
                               Instr::Halt,
                               Instr::SubInt],
-                            3)
+                            3, &mut ())
           .unwrap();
         assert_eq!(vm.stack.pop().unwrap(), Value::Int(5));
     }
@@ -586,7 +606,7 @@ fn test_if() {
                               Instr::AddInt,
                               Instr::Halt,
                               Instr::SubInt],
-                            3)
+                            3, &mut ())
           .unwrap();
         assert_eq!(vm.stack.pop().unwrap(), Value::Int(15));
     }
@@ -597,7 +617,7 @@ fn test_swap() {
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(10)).unwrap();
     vm.stack.push(Value::Int(5)).unwrap();
-    vm.load_and_execute(&[Instr::Swap], 1).unwrap();
+    vm.load_and_execute(&[Instr::Swap], 1, &mut ()).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Int(10));
     assert_eq!(vm.stack.pop().unwrap(), Value::Int(5));
 }
@@ -607,25 +627,25 @@ fn test_and() {
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(true)).unwrap();
-    vm.load_and_execute(&[Instr::And], 2).unwrap();
+    vm.load_and_execute(&[Instr::And], 2, &mut ()).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Bool(true));
 
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(false)).unwrap();
-    vm.load_and_execute(&[Instr::And], 2).unwrap();
+    vm.load_and_execute(&[Instr::And], 2, &mut ()).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Bool(false));
 
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(false)).unwrap();
     vm.stack.push(Value::Bool(true)).unwrap();
-    vm.load_and_execute(&[Instr::And], 2).unwrap();
+    vm.load_and_execute(&[Instr::And], 2, &mut ()).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Bool(false));
 
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(false)).unwrap();
     vm.stack.push(Value::Bool(false)).unwrap();
-    vm.load_and_execute(&[Instr::And], 2).unwrap();
+    vm.load_and_execute(&[Instr::And], 2, &mut ()).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Bool(false));
 }
 
@@ -634,25 +654,25 @@ fn test_or() {
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(true)).unwrap();
-    vm.load_and_execute(&[Instr::Or], 2).unwrap();
+    vm.load_and_execute(&[Instr::Or], 2, &mut ()).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Bool(true));
 
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(false)).unwrap();
-    vm.load_and_execute(&[Instr::Or], 2).unwrap();
+    vm.load_and_execute(&[Instr::Or], 2, &mut ()).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Bool(true));
 
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(false)).unwrap();
     vm.stack.push(Value::Bool(true)).unwrap();
-    vm.load_and_execute(&[Instr::Or], 2).unwrap();
+    vm.load_and_execute(&[Instr::Or], 2, &mut ()).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Bool(true));
 
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(false)).unwrap();
     vm.stack.push(Value::Bool(false)).unwrap();
-    vm.load_and_execute(&[Instr::Or], 2).unwrap();
+    vm.load_and_execute(&[Instr::Or], 2, &mut ()).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Bool(false));
 }
 
@@ -660,7 +680,7 @@ fn test_or() {
 fn test_lone_ret() {
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(5)).unwrap();
-    vm.load_and_execute(&[Instr::Ret], 0).unwrap();
+    vm.load_and_execute(&[Instr::Ret], 0, &mut ()).unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Int(5));
 }
 
@@ -675,7 +695,7 @@ fn test_call() {
                           Instr::Ret, // return from main
                           Instr::AddInt, // add the numbers
                           Instr::Ret /* return from adding */],
-                        2)
+                        2, &mut ())
       .unwrap();
     assert_eq!(vm.stack.pop().unwrap(), Value::Int(15));
 }
@@ -708,7 +728,7 @@ fn naive_fib() {
                           Instr::Call(0), // 19 [5, 3]
                           Instr::AddInt, // 20 [8]
                           Instr::Ret /* 21 finish this execution */],
-                        1)
+                        1, &mut ())
       .unwrap();
     assert!(vm.stack.len() == 1);
     assert_eq!(vm.stack.pop().unwrap(), Value::Int(610));
@@ -735,7 +755,7 @@ fn test_optimizations() {
     //
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(5)).unwrap();
-    vm.load_and_execute(&[Instr::IntLit(10), Instr::AddInt], 1).unwrap();
+    vm.load_and_execute(&[Instr::IntLit(10), Instr::AddInt], 1, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(15));
     assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
@@ -745,7 +765,7 @@ fn test_optimizations() {
     //
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(10)).unwrap();
-    vm.load_and_execute(&[Instr::IntLit(5), Instr::SubInt], 1).unwrap();
+    vm.load_and_execute(&[Instr::IntLit(5), Instr::SubInt], 1, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(5));
     assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
@@ -755,7 +775,7 @@ fn test_optimizations() {
     //
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(5)).unwrap();
-    vm.load_and_execute(&[Instr::IntLit(10), Instr::MulInt], 1).unwrap();
+    vm.load_and_execute(&[Instr::IntLit(10), Instr::MulInt], 1, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(50));
     assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
@@ -765,7 +785,7 @@ fn test_optimizations() {
     //
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(10)).unwrap();
-    vm.load_and_execute(&[Instr::IntLit(5), Instr::DivInt], 1).unwrap();
+    vm.load_and_execute(&[Instr::IntLit(5), Instr::DivInt], 1, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(2));
     assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
@@ -775,7 +795,7 @@ fn test_optimizations() {
     //
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Int(10)).unwrap();
-    vm.load_and_execute(&[Instr::IntLit(10), Instr::Eq], 1).unwrap();
+    vm.load_and_execute(&[Instr::IntLit(10), Instr::Eq], 1, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Bool(true));
     assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
@@ -785,7 +805,7 @@ fn test_optimizations() {
     //
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
-    vm.load_and_execute(&[Instr::BoolLit(true), Instr::Eq], 1).unwrap();
+    vm.load_and_execute(&[Instr::BoolLit(true), Instr::Eq], 1, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Bool(true));
     assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
@@ -795,7 +815,7 @@ fn test_optimizations() {
     let mut vm = Vm::<()>::new();
     let s = vm.interner.gensym();
     vm.stack.push(Value::Symbol(s)).unwrap();
-    vm.load_and_execute(&[Instr::SymbolLit(s), Instr::Eq], 1).unwrap();
+    vm.load_and_execute(&[Instr::SymbolLit(s), Instr::Eq], 1, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Bool(true));
     assert_eq!(vm.stack.pop_count(), 1);  // This pop is done in the test
@@ -806,7 +826,7 @@ fn test_optimizations() {
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(false)).unwrap();
-    vm.load_and_execute(&[Instr::Or, Instr::If, Instr::IntLit(5)], 2).unwrap();
+    vm.load_and_execute(&[Instr::Or, Instr::If, Instr::IntLit(5)], 2, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(5));
     assert_eq!(vm.stack.pop_count(), 3);  // 1 from the test, two from popping the bools
@@ -817,7 +837,7 @@ fn test_optimizations() {
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(false)).unwrap();
-    vm.load_and_execute(&[Instr::Or, Instr::Ifn, Instr::Nop, Instr::IntLit(5)], 2).unwrap();
+    vm.load_and_execute(&[Instr::Or, Instr::Ifn, Instr::Nop, Instr::IntLit(5)], 2, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(5));
     assert_eq!(vm.stack.pop_count(), 3);  // 1 from the test, two from popping the bools
@@ -828,7 +848,7 @@ fn test_optimizations() {
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(true)).unwrap();
-    vm.load_and_execute(&[Instr::And, Instr::If, Instr::IntLit(5)], 2).unwrap();
+    vm.load_and_execute(&[Instr::And, Instr::If, Instr::IntLit(5)], 2, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(5));
     assert_eq!(vm.stack.pop_count(), 3);  // 1 from the test, two from popping the bools
@@ -839,7 +859,7 @@ fn test_optimizations() {
     let mut vm = Vm::<()>::new();
     vm.stack.push(Value::Bool(true)).unwrap();
     vm.stack.push(Value::Bool(true)).unwrap();
-    vm.load_and_execute(&[Instr::And, Instr::Ifn, Instr::Nop, Instr::IntLit(5)], 2).unwrap();
+    vm.load_and_execute(&[Instr::And, Instr::Ifn, Instr::Nop, Instr::IntLit(5)], 2, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, Value::Int(5));
     assert_eq!(vm.stack.pop_count(), 3);  // 1 from the test, two from popping the bools
@@ -851,13 +871,13 @@ fn load_constant() {
     let mut vm = Vm::<()>::new();
     let instr = vm.compile_context.add_constant("hello world".into());
     assert_eq!(instr, Instr::LoadConstant(0));
-    vm.load_and_execute(&[instr], 0).unwrap();
+    vm.load_and_execute(&[instr], 0, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, "hello world".into());
 
     let instr = vm.compile_context.add_constant("bye world".into());
     assert_eq!(instr, Instr::LoadConstant(1));
-    vm.load_and_execute(&[instr], 0).unwrap();
+    vm.load_and_execute(&[instr], 0, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, "bye world".into());
 }
@@ -875,11 +895,11 @@ fn basic_lambdas() {
 
     vm.load_and_execute(&[
         Instr::CreateClosure(closure_class_id as u32),
-        Instr::ExecuteClosure(0), // 0 arguments
+        Instr::Execute(0), // 0 arguments
         Instr::Jump(5),
         Instr::IntLit(30),
         Instr::Ret
-    ], 0).unwrap();
+    ], 0, &mut ()).unwrap();
     println!("{:?}", vm.stack);
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, 30.into());
@@ -899,12 +919,12 @@ fn one_arg_lambda() {
     vm.load_and_execute(&[
         Instr::IntLit(10),
         Instr::CreateClosure(closure_class_id as u32),
-        Instr::ExecuteClosure(1), // 1 argument
+        Instr::Execute(1), // 1 argument
         Instr::Jump(6),
         Instr::Dup(0),
         Instr::MulInt,
         Instr::Ret
-    ], 0).unwrap();
+    ], 0, &mut ()).unwrap();
 
     let result = vm.stack.pop().unwrap();
     assert_eq!(result, 100.into());

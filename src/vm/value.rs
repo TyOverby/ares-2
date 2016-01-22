@@ -3,6 +3,7 @@ use std::ops::Deref;
 use std::collections::HashMap;
 use vm::intern::{Symbol, SymbolIntern};
 use vm::{InterpError, Closure};
+use vm::function::UserFunction;
 
 #[derive(Clone)]
 pub enum Value {
@@ -14,6 +15,7 @@ pub enum Value {
     Bool(bool),
     Symbol(Symbol),
     Closure(Gc<Closure>),
+    UserFn(Gc<GcCell<UserFunction<()>>>),
     Cell(Gc<GcCell<Value>>),
 }
 
@@ -93,6 +95,13 @@ impl PartialEq for Value {
 }
 
 impl Value {
+    pub fn decell(self) -> Value {
+        match self {
+            Value::Cell(i) => i.borrow().clone(),
+            other => other
+        }
+    }
+
     pub fn cellify(self) -> Value {
         match self {
             c@Value::Cell(_) => c,
@@ -440,6 +449,11 @@ pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
         &Value::Bool(b) => format!("{}", b),
         &Value::Symbol(s) => format!("'{}", interner.lookup_or_anon(s)),
         &Value::Closure(_) => format!("<Closure>"),
+        &Value::UserFn(ref f) => {
+            let f = f.borrow();
+            let name = f.name().unwrap_or("{anon}");
+            format!("<UserFn {}>", name)
+        }
         &Value::Cell(ref t) => to_string_helper(&*t.borrow(), interner),
 
         &ref l@Value::List(_) | &ref l@Value::Map(_) => {
@@ -518,18 +532,21 @@ impl ::std::hash::Hash for Value {
             }
             &Value::String(ref rc) => rc.hash(state),
             &Value::Float(f) => unsafe { state.write(&transmute::<_, [u8; 8]>(f)) },
-            &Value::Int(i) => unsafe { state.write(&transmute::<_, [u8; 8]>(i)) },
+            &Value::Int(i) => state.write_i64(i),
             &Value::Bool(b) => {
                 let byte = if b {
                     1
                 } else {
                     0
                 };
-                state.write(&[byte])
+                state.write_u8(byte);
             }
             &Value::Symbol(ref rc) => rc.hash(state),
             &Value::Cell(ref t) => t.borrow().hash(state),
-            &Value::Closure(_) => state.write(&[]),
+            &Value::Closure(ref c) => state.write_usize(unsafe {transmute(&*c)}),
+            &Value::UserFn(ref f) => {
+                state.write_usize(unsafe {transmute(&*f.borrow())})
+            }
         }
     }
 }

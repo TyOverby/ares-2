@@ -1,19 +1,21 @@
 use super::vm::{Vm, Value};
 
 mod error;
+mod state;
 
 pub use self::error::*;
+pub use self::state::State;
 
-pub struct Context<S> {
+pub struct Context<S: State> {
     vm: Vm<S>,
 }
 
-pub struct LoadedContext<'a, S: 'a> {
+pub struct LoadedContext<'a, S: State + 'a> {
     context: &'a mut Context<S>,
     state: &'a mut S
 }
 
-impl <S> Context<S> {
+impl <S: State> Context<S> {
     pub fn new() -> Context<S> {
         Context {
             vm: Vm::new(),
@@ -25,7 +27,7 @@ impl <S> Context<S> {
     }
 }
 
-impl <'a, S> LoadedContext<'a, S> {
+impl <'a, S: State> LoadedContext<'a, S> {
     fn new(ctx: &'a mut Context<S>, state: &'a mut S) -> LoadedContext<'a, S> {
         LoadedContext {
             context: ctx,
@@ -41,7 +43,7 @@ impl <'a, S> LoadedContext<'a, S> {
         };
 
         let stack_size = self.context.vm.stack.len();
-        try!(self.context.vm.load_and_execute(&instrs[..], 0));
+        try!(self.context.vm.load_and_execute(&instrs[..], 0, self.state));
         let result = try!(self.context.vm.stack.pop());
         assert!(stack_size == self.context.vm.stack.len());
         Ok(result)

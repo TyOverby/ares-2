@@ -27,7 +27,7 @@ fn main() {
                           Instr::Call(0), // 19 [5, 3]
                           Instr::AddInt, // 20 [8]
                           Instr::Ret /* 21 finish this execution */],
-                        1)
+                        1, &mut ())
       .unwrap();
     assert!(vm.stack.len() == 1);
     println!("{:?}", vm.stack.pop());
