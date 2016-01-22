@@ -135,10 +135,10 @@ fn context_with_user_fn() {
         assert_eq!(res.unwrap(), 1.into());
     }
     assert_eq!(state, 1);
-    /*
     {
         let mut lctx = ctx.load(&mut state);
         let res = lctx.eval("(foo)");
         assert_eq!(res.unwrap(), 2.into());
-    }*/
+    }
+    assert_eq!(state, 2);
 }
