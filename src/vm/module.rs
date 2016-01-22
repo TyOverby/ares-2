@@ -38,15 +38,19 @@ impl Globals {
         }).next()
     }
 
-    pub fn set(&mut self, namespace: Symbol, name: Symbol, value: Value) {
+    pub fn set(&mut self, namespace: Symbol, name: Symbol, value: Value) -> Option<Value> {
+        use ::std::mem::swap;
+        let mut value = value;
         if let Some(existing) = self.get_mut(namespace, name) {
-            *existing = value;
-            return;
+            swap(&mut value, existing);
+            return Some(value);
         }
 
         self.globals.push((GlobalName {
             namespace: namespace,
             name: name
         }, value));
+        return None;
     }
 }
+

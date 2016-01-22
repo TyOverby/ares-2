@@ -126,8 +126,8 @@ pub fn emit<'bound, 'ast: 'bound>(ast: &'bound Bound<'bound, 'ast>,
             out.push(Instr::Execute(args.len() as u32));
         }
         &Bound::Symbol { symbol, ast, source, } => {
-            if let SymbolBindSource::Global(_) = source {
-                unimplemented!();
+            if let SymbolBindSource::Global(symbol) = source {
+                out.push(Instr::GetGlobal(symbol));
             } else {
                 let binder = inside_lambda.unwrap();
                 out.push(Instr::Dup(binder.compute_stack_offset(source)));

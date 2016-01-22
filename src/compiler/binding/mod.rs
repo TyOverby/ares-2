@@ -181,8 +181,8 @@ impl Binder for BuckStopsHereBinder {
         false
     }
 
-    fn lookup(&self, _symbol: Symbol) -> Option<SymbolBindSource> {
-        None
+    fn lookup(&self, symbol: Symbol) -> Option<SymbolBindSource> {
+        Some(SymbolBindSource::Global(symbol))
     }
 }
 

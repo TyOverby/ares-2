@@ -20,6 +20,7 @@ pub struct PrecomputedSymbols {
     pub define: Symbol,
     pub lambda: Symbol,
     pub block: Symbol,
+    pub default_namespace: Symbol,
 }
 
 impl PrecomputedSymbols {
@@ -32,6 +33,7 @@ impl PrecomputedSymbols {
             define: Symbol(0),
             lambda: Symbol(0),
             block: Symbol(0),
+            default_namespace: Symbol(0),
         }
     }
 }
@@ -51,6 +53,7 @@ impl SymbolIntern {
         interner.precomputed.define = interner.intern("define");
         interner.precomputed.lambda = interner.intern("lambda");
         interner.precomputed.block = interner.intern("block");
+        interner.precomputed.default_namespace = interner.gensym();
         interner
     }
 

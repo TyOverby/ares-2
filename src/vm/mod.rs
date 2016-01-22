@@ -49,7 +49,7 @@ pub struct Vm<S: State = ()> {
     pub stack: Stack,
     return_stack: Vec<Return>,
     pub interner: intern::SymbolIntern,
-    globals: Globals,
+    pub globals: Globals,
     code: Vec<Instr>,
     pub compile_context: CompileContext,
     _phantom: PhantomData<S>,
@@ -157,7 +157,7 @@ impl <S: State> Vm<S> {
     pub fn load_and_execute(&mut self, code: &[Instr], arg_count: u32, state: &mut S) -> Result<(), InterpError> {
         let start = self.code.len() as u32;
         let stackframe = self.stack.len() - arg_count;
-        let default_ns = self.interner.intern("default");
+        let default_ns = self.interner.precomputed.default_namespace;
         self.code.extend(code.iter().cloned());
         self.execute(start, stackframe, default_ns, state)
     }
