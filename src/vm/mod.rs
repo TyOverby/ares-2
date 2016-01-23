@@ -8,7 +8,7 @@ mod function;
 use std::marker::PhantomData;
 
 use compiler::CompileContext;
-use host::State;
+use host::{State, EphemeralContext};
 
 pub use vm::intern::*;
 pub use vm::value::*;
@@ -358,11 +358,13 @@ impl <S: State> Vm<S> {
                     let callable = callable.decell();
                     match callable {
                         Value::UserFn(ref gccell) => {
+                            let args = try!(stack.take_top(arg_count));
                             let mut user_fn = gccell.borrow_mut();
                             let user_fn = user_fn.correct::<S>();
                             let mut user_fn = try!(user_fn.or(Err(
                                 InterpError::UserFnWithWrongStateType)));
-                            let result = user_fn.call(state, vec![]);
+                            let mut ctx = EphemeralContext::new(globals, interner);
+                            let result = user_fn.call(state, args, &mut ctx);
                             try!(stack.push(result));
                         }
                         Value::Closure(ref closure) => {

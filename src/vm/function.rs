@@ -2,17 +2,17 @@ use std::any::TypeId;
 
 use gc::{Trace, Gc, GcCell};
 
-use ::host::State;
+use ::host::{State, EphemeralContext};
 use ::vm::Value;
 
 pub struct UserFunction<S: State + ?Sized> {
     name: Option<String>,
-    f: Box<FnMut(&mut S, Vec<Value>) -> Value + 'static>,
+    f: Box<FnMut(Vec<Value>, &mut S, &mut EphemeralContext<S>) -> Value + 'static>,
     state_typeid: TypeId,
 }
 
 pub fn user_function<S: ?Sized, F>(name: Option<String>, f: F) -> Value where
-S: State, F: FnMut(&mut S, Vec<Value>)->Value + 'static {
+S: State, F: FnMut(Vec<Value>, &mut S, &mut EphemeralContext<S>)->Value + 'static {
     let user_function = UserFunction {
         name: name,
         f: Box::new(f),
@@ -26,8 +26,8 @@ impl <S: State + ?Sized> UserFunction<S> {
         self.name.as_ref().map(|s| &s[..])
     }
 
-    pub fn call(&mut self, state: &mut S, args: Vec<Value>) -> Value {
-        (self.f)(state, args)
+    pub fn call(&mut self, state: &mut S, args: Vec<Value>, ctx: &mut EphemeralContext<S>) -> Value {
+        (self.f)(args, state, ctx)
     }
 
     pub fn erase(self) -> UserFunction<()> {

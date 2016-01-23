@@ -1,4 +1,5 @@
-use super::vm::{Vm, Value, Symbol, SymbolIntern};
+use super::vm::{Vm, Value, Symbol, SymbolIntern, Globals};
+use std::marker::PhantomData;
 
 mod error;
 mod state;
@@ -6,22 +7,45 @@ mod state;
 pub use self::error::*;
 pub use self::state::State;
 
-pub struct Context<S: State> {
+pub struct UnloadedContext<S: State> {
     vm: Vm<S>,
 }
 
 pub struct LoadedContext<'a, S: State + 'a> {
-    context: &'a mut Context<S>,
+    context: &'a mut UnloadedContext<S>,
     state: &'a mut S
+}
+
+pub struct EphemeralContext<'a, S: ?Sized + State + 'a> {
+    globals: &'a mut Globals,
+    interner: &'a mut SymbolIntern,
+    _phantom: PhantomData<S>
 }
 
 pub trait GlobalPath {
     fn into(self, default_symbol: Symbol, interner: &mut SymbolIntern) -> (Symbol, Symbol);
 }
 
-impl <S: State> Context<S> {
-    pub fn new() -> Context<S> {
-        Context {
+pub trait Context<S: State> {
+    fn set_global<P: GlobalPath>(&mut self, path: P, value: Value) -> Option<Value>;
+    fn get_global<P: GlobalPath>(&mut self, path: P) -> Option<&Value>;
+    fn get_global_mut<P: GlobalPath>(&mut self, path: P) -> Option<&mut Value>;
+    fn format_value(&self, value: &Value) -> String;
+}
+
+impl <'a, S: State> EphemeralContext<'a, S> {
+    pub fn new(globals: &'a mut Globals, interner: &'a mut SymbolIntern) -> EphemeralContext<'a, S> {
+        EphemeralContext {
+            globals: globals,
+            interner: interner,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl <S: State> UnloadedContext<S> {
+    pub fn new() -> UnloadedContext<S> {
+        UnloadedContext {
             vm: Vm::new(),
         }
     }
@@ -29,28 +53,58 @@ impl <S: State> Context<S> {
     pub fn load<'a>(&'a mut self, state: &'a mut S) -> LoadedContext<'a, S> {
         LoadedContext::new(self, state)
     }
+}
 
-    pub fn set_global<P: GlobalPath>(&mut self, path: P, value: Value) -> Option<Value> {
+impl <S: State> Context<S> for UnloadedContext<S> {
+    fn set_global<P: GlobalPath>(&mut self, path: P, value: Value) -> Option<Value> {
         let default_namespace = self.vm.interner.precomputed.default_namespace;
         let (namespace, name) = path.into(default_namespace, &mut self.vm.interner);
         self.vm.globals.set(namespace, name, value)
     }
 
-    pub fn get_global<P: GlobalPath>(&mut self, path: P) -> Option<&Value> {
+    fn get_global<P: GlobalPath>(&mut self, path: P) -> Option<&Value> {
         let default_namespace = self.vm.interner.precomputed.default_namespace;
         let (namespace, name) = path.into(default_namespace, &mut self.vm.interner);
         self.vm.globals.get(namespace, name)
     }
 
-    pub fn get_global_mut<P: GlobalPath>(&mut self, path: P) -> Option<&mut Value> {
+    fn get_global_mut<P: GlobalPath>(&mut self, path: P) -> Option<&mut Value> {
         let default_namespace = self.vm.interner.precomputed.default_namespace;
         let (namespace, name) = path.into(default_namespace, &mut self.vm.interner);
         self.vm.globals.get_mut(namespace, name)
     }
+
+    fn format_value(&self, value: &Value) -> String {
+        ::vm::to_string_helper(&value, &self.vm.interner)
+    }
+}
+
+impl <'a, S: State> Context<S> for EphemeralContext<'a, S> {
+    fn set_global<P: GlobalPath>(&mut self, path: P, value: Value) -> Option<Value> {
+        let default_namespace = self.interner.precomputed.default_namespace;
+        let (namespace, name) = path.into(default_namespace, self.interner);
+        self.globals.set(namespace, name, value)
+    }
+
+    fn get_global<P: GlobalPath>(&mut self, path: P) -> Option<&Value> {
+        let default_namespace = self.interner.precomputed.default_namespace;
+        let (namespace, name) = path.into(default_namespace, self.interner);
+        self.globals.get(namespace, name)
+    }
+
+    fn get_global_mut<P: GlobalPath>(&mut self, path: P) -> Option<&mut Value> {
+        let default_namespace = self.interner.precomputed.default_namespace;
+        let (namespace, name) = path.into(default_namespace, self.interner);
+        self.globals.get_mut(namespace, name)
+    }
+
+    fn format_value(&self, value: &Value) -> String {
+        ::vm::to_string_helper(&value, &self.interner)
+    }
 }
 
 impl <'a, S: State> LoadedContext<'a, S> {
-    fn new(ctx: &'a mut Context<S>, state: &'a mut S) -> LoadedContext<'a, S> {
+    fn new(ctx: &'a mut UnloadedContext<S>, state: &'a mut S) -> LoadedContext<'a, S> {
         LoadedContext {
             context: ctx,
             state: state
@@ -69,6 +123,21 @@ impl <'a, S: State> LoadedContext<'a, S> {
         let result = try!(self.context.vm.stack.pop());
         assert!(stack_size == self.context.vm.stack.len());
         Ok(result)
+    }
+}
+
+impl <'a, S: State> Context<S> for LoadedContext<'a, S> {
+    fn set_global<P: GlobalPath>(&mut self, path: P, value: Value) -> Option<Value> {
+        self.context.set_global(path, value)
+    }
+    fn get_global<P: GlobalPath>(&mut self, path: P) -> Option<&Value> {
+        self.context.get_global(path)
+    }
+    fn get_global_mut<P: GlobalPath>(&mut self, path: P) -> Option<&mut Value> {
+        self.context.get_global_mut(path)
+    }
+    fn format_value(&self, value: &Value) -> String {
+        self.context.format_value(value)
     }
 }
 
@@ -99,14 +168,14 @@ impl <'a> GlobalPath for &'a str {
 #[test]
 fn basic_context() {
     let mut state = ();
-    let mut ctx = Context::new();
+    let mut ctx = UnloadedContext::new();
     let mut lctx = ctx.load(&mut state);
     assert_eq!(lctx.eval("(+ 1 2 3)"), Ok(6.into()));
 }
 
 #[test]
 fn test_globals() {
-    let mut ctx = Context::<()>::new();
+    let mut ctx = UnloadedContext::<()>::new();
 
     ctx.set_global("foo", Value::Int(5));
     assert_eq!(ctx.get_global("foo").cloned().unwrap(), 5.into());
@@ -121,9 +190,9 @@ fn test_globals() {
 fn context_with_user_fn() {
     use vm::user_function;
     let mut state = 0i64;
-    let mut ctx = Context::new();
+    let mut ctx = UnloadedContext::new();
     ctx.set_global("foo", user_function(None,
-        |state: &mut i64, _| {
+        |_, state: &mut i64, _| {
             *state += 1;
             Value::Int(*state)
         }

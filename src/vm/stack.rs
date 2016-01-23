@@ -36,6 +36,15 @@ impl Stack {
         }
     }
 
+    pub fn take_top(&mut self, n: u32) -> Result<Vec<Value>, InterpError> {
+        let mut v = vec![];
+        for _ in 0 .. n {
+            v.push(try!(self.pop()));
+        }
+        v.reverse();
+        Ok(v)
+    }
+
     pub fn push_count(&self) -> u64 {
         self.pushes
     }
