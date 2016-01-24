@@ -24,7 +24,15 @@ pub fn compile(source: &str,
     for ast in &asts {
         let bound = binding::Bound::bind_top(ast, &bound_arena, interner);
         try!(emit::emit(try!(bound), compile_context, &mut out, None));
+        // Pop because an expression just completed, so we don't
+        // want to just leave the result on the stack.
+        out.push(Instr::Pop);
     }
+    if out.len() != 0 {
+        // Pop the last pop.
+        out.pop();
+    }
+
     Ok(out.into_instructions())
 }
 

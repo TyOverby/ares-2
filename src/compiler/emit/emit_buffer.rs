@@ -113,6 +113,10 @@ impl EmitBuffer {
     pub fn len(&self) -> usize {
         self.code.len()
     }
+
+    pub fn pop(&mut self) {
+        self.code.pop();
+    }
 }
 
 #[test]
