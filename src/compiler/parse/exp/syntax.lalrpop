@@ -1,0 +1,32 @@
+use std::str::FromStr;
+use super::Ast;
+use std::boxed::Box;
+
+grammar;
+
+pub Expr: Ast = {
+    <l:Expr> "+" <r:Factor> => Ast::Add(Box::new(l), Box::new(r)),
+    <l:Expr> "-" <r:Factor> => Ast::Sub(Box::new(l), Box::new(r)),
+    Factor,
+};
+
+Factor: Ast = {
+    <l:Factor> "*" <r:Term> => Ast::Mul(Box::new(l), Box::new(r)),
+    <l:Factor> "/" <r:Term> => Ast::Div(Box::new(l), Box::new(r)),
+    Term,
+};
+
+Term: Ast = {
+    FloatLit,
+    IntLit,
+    "(" <Expr> ")" 
+};
+
+IntLit: Ast = {
+    r"[0-9]+" => Ast::IntLit(i64::from_str(<>).unwrap())
+};
+
+FloatLit: Ast = {
+    r"[0-9]+\.[0-9]*" => Ast::FloatLit(f64::from_str(<>).unwrap())
+};
+

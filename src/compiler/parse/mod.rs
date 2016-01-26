@@ -3,7 +3,7 @@ mod tokens;
 mod parse;
 mod util;
 mod validate;
-
+mod exp;
 
 #[cfg(test)]
 pub use self::parse::test;

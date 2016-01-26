@@ -2,6 +2,7 @@
 name = "ares"
 version = "0.1.0"
 authors = ["Ty Overby <ty@pre-alpha.com>"]
+build = "build.rs"
 
 [lib]
 name = "ares"
@@ -19,3 +20,9 @@ typed-arena = "1.0.*"
 [dependencies.gc]
 #path = "../rust-gc/gc/"
 git = "https://github.com/Manishearth/rust-gc.git"
+
+[dependencies.lalrpop-util]
+version = "0.9.0"
+
+[build-dependencies.lalrpop]
+version = "0.9.0"
