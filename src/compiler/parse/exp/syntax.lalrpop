@@ -1,32 +1,46 @@
 use std::str::FromStr;
-use super::Ast;
+use super::{Ast, Ident};
 use std::boxed::Box;
 
 grammar;
 
-pub Expr: Ast = {
+pub Expr: Ast<'input> = {
     <l:Expr> "+" <r:Factor> => Ast::Add(Box::new(l), Box::new(r)),
     <l:Expr> "-" <r:Factor> => Ast::Sub(Box::new(l), Box::new(r)),
     Factor,
 };
 
-Factor: Ast = {
+Factor: Ast<'input> = {
     <l:Factor> "*" <r:Term> => Ast::Mul(Box::new(l), Box::new(r)),
     <l:Factor> "/" <r:Term> => Ast::Div(Box::new(l), Box::new(r)),
     Term,
 };
 
-Term: Ast = {
+Term: Ast<'input> = {
     FloatLit,
     IntLit,
+    StringLit,
+    SymbolLit,
+    Ident => Ast::Identifier(<>),
     "(" <Expr> ")" 
 };
 
-IntLit: Ast = {
+IntLit: Ast<'input> = {
     r"[0-9]+" => Ast::IntLit(i64::from_str(<>).unwrap())
 };
 
-FloatLit: Ast = {
+FloatLit: Ast<'input> = {
     r"[0-9]+\.[0-9]*" => Ast::FloatLit(f64::from_str(<>).unwrap())
 };
 
+StringLit: Ast<'input> = {
+    r##""(\\.|[^"])*""## => Ast::StringLit(&<>[1 .. <>.len() - 1])
+};
+
+SymbolLit: Ast<'input> = {
+    r"'[_a-zA-Z][_a-zA-Z0-9]*" => Ast::SymbolLit(&<>[1..])
+};
+
+Ident: Ident<'input> = {
+    r"[_a-zA-Z][_a-zA-Z0-9]*" => Ident(<>)
+};
