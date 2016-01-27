@@ -2,7 +2,7 @@ use std::str::FromStr;
 use super::{Ast, Ident};
 use std::boxed::Box;
 
-grammar;
+grammar["LALR(1)"];
 
 Comma<T>: Vec<T> = {
     <v:(<T> ",")*> <e:T?> => match e { 
