@@ -4,15 +4,32 @@ use std::boxed::Box;
 
 grammar;
 
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T?> => match e { 
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};
+
 pub Expr: Ast<'input> = {
     <l:Expr> "+" <r:Factor> => Ast::Add(Box::new(l), Box::new(r)),
     <l:Expr> "-" <r:Factor> => Ast::Sub(Box::new(l), Box::new(r)),
     Factor,
+    Closure,
+    FunctionCall,
 };
 
 Factor: Ast<'input> = {
     <l:Factor> "*" <r:Term> => Ast::Mul(Box::new(l), Box::new(r)),
     <l:Factor> "/" <r:Term> => Ast::Div(Box::new(l), Box::new(r)),
+    Reserved,
+};
+
+Reserved: Ast<'input> = {
     Term,
 };
 
@@ -21,8 +38,22 @@ Term: Ast<'input> = {
     IntLit,
     StringLit,
     SymbolLit,
-    Ident => Ast::Identifier(<>),
+    Identifier => Ast::Identifier(<>),
     "(" <Expr> ")" 
+};
+
+Closure: Ast<'input> = {
+    "fn" <name: Identifier?> <p_list: ParamList+> "{" "}" => 
+        Ast::Closure(name, p_list, vec![]),
+
+};
+
+ParamList: Vec<Ident<'input>> = {
+    "(" <params: Comma<Identifier>> ")" => params,
+};
+
+FunctionCall: Ast<'input> = {
+    <r: Expr> "(" <args: Comma<Expr>> ")" => Ast::FnCall(Box::new(r), args),
 };
 
 IntLit: Ast<'input> = {
@@ -41,6 +72,6 @@ SymbolLit: Ast<'input> = {
     r"'[_a-zA-Z][_a-zA-Z0-9]*" => Ast::SymbolLit(&<>[1..])
 };
 
-Ident: Ident<'input> = {
+Identifier: Ident<'input> = {
     r"[_a-zA-Z][_a-zA-Z0-9]*" => Ident(<>)
 };
