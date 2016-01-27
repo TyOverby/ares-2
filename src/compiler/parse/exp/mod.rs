@@ -26,11 +26,12 @@ mod test {
     use super::syntax::parse_Expr;
 
     #[test]
-    fn literals() {
+    fn terminals() {
         assert_eq!(parse_Expr("5").unwrap(), Ast::IntLit(5));
         assert_eq!(parse_Expr("5.5").unwrap(), Ast::FloatLit(5.5));
         assert_eq!(parse_Expr("\"hello\"").unwrap(), Ast::StringLit("hello"));
         assert_eq!(parse_Expr("'foo").unwrap(), Ast::SymbolLit("foo"));
+        assert_eq!(parse_Expr("foobar").unwrap(), Ast::Identifier(Ident("foobar")));
     }
 
     #[test]
