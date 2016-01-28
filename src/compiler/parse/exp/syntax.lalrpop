@@ -22,9 +22,10 @@ pub Expr: Ast<'a> = {
         Ast::Add(arena.alloc(l), arena.alloc(r), Span(0, 0)),
      <l:Expr> "-" <r:Factor>  =>
         Ast::Sub(arena.alloc(l), arena.alloc(r), Span(0, 0)),
-    Factor,
     Closure,
     FunctionCall,
+    IfExpression,
+    Factor,
 };
 
 Factor: Ast<'a> = {
@@ -50,6 +51,14 @@ Term: Ast<'a> = {
 
 Statement: Ast<'a> = {
     <e: Expr> ";" => e
+};
+
+IfExpression: Ast<'a> = {
+    "if" <cond: Expr> "then" "{" <tru: Expr> "}" "else" "{" <fals: Expr> "}" =>
+        Ast::IfExpression(arena.alloc(cond),
+                          arena.alloc(tru),
+                          arena.alloc(fals),
+                          Span(0, 0))
 };
 
 Closure: Ast<'a> = {

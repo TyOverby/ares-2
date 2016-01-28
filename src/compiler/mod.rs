@@ -35,7 +35,7 @@ pub fn compile(source: &str,
 
     Ok(out.into_instructions())
 }
-
+/*
 macro_rules! ast {
     ($arena: expr, $intern: expr, BoolLit($value: expr)) => {
         $arena.alloc(Ast::BoolLit($value, Span::dummy()))
@@ -122,4 +122,4 @@ mod test_macro {
         let _ = ast!(arena, inter, Define(x, Symbol(y)));
         let _ = ast!(arena, inter, Lambda((a, b, c), Symbol(x), BoolLit(false)));
     }
-}
+}*/
