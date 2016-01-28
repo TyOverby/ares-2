@@ -17,70 +17,74 @@ Comma<T>: Vec<T> = {
     }
 };
 
-pub Expr: Ast<'input> = {
-    <ll: @L> <l:Expr> "+" <r:Factor> <rr: @R> =>
-        Ast::Add(Box::new(l), Box::new(r), Span(ll, rr)),
-    <ll: @L> <l:Expr> "-" <r:Factor> <rr: @R> =>
-        Ast::Sub(Box::new(l), Box::new(r)),
+pub Expr: Ast<'a> = {
+     <l:Expr> "+" <r:Factor>  =>
+        Ast::Add(arena.alloc(l), arena.alloc(r), Span(0, 0)),
+     <l:Expr> "-" <r:Factor>  =>
+        Ast::Sub(arena.alloc(l), arena.alloc(r), Span(0, 0)),
     Factor,
     Closure,
     FunctionCall,
 };
 
-Factor: Ast<'input> = {
-    <ll: @L> <l:Factor> "*" <r:Term> <rr: @R> =>
-        Ast::Mul(arena.alloc(l), arena.alloc(r), Span(ll, rr)),
-    <ll: @L> <l:Factor> "/" <r:Term> <rr: @R> =>
-        Ast::Div(arena.alloc(l), arena.alloc(r), Span(ll, rr)),
+Factor: Ast<'a> = {
+     <l:Factor> "*" <r:Term>  =>
+        Ast::Mul(arena.alloc(l), arena.alloc(r), Span(0, 0)),
+     <l:Factor> "/" <r:Term>  =>
+        Ast::Div(arena.alloc(l), arena.alloc(r), Span(0, 0)),
     Reserved,
 };
 
-Reserved: Ast<'input> = {
+Reserved: Ast<'a> = {
     Term,
 };
 
-Term: Ast<'input> = {
+Term: Ast<'a> = {
     FloatLit,
     IntLit,
     StringLit,
     SymbolLit,
-    <l: @L> Identifier <r: @R> => Ast::Identifier(<>, Span(l, r)),
+     Identifier  => Ast::Identifier(<>, Span(0, 0)),
     "(" <Expr> ")" 
 };
 
-Closure: Ast<'input> = {
-    <l: @L> "fn" <name: Identifier?> <p_list: ParamList+> "{" "}" <r: @R> =>
-        Ast::Closure(name, p_list, vec![], Span(l, r)),
+Statement: Ast<'a> = {
+    <e: Expr> ";" => e
+};
+
+Closure: Ast<'a> = {
+     "fn" <name: Identifier?> <p_list: ParamList+> "{" "}"  =>
+        Ast::Closure(name, p_list, vec![], Span(0, 0)),
 
 };
 
-ParamList: Vec<Ident<'input>> = {
+ParamList: Vec<Symbol> = {
     "(" <params: Comma<Identifier>> ")" => params,
 };
 
-FunctionCall: Ast<'input> = {
-    <l: @L> <recv: Expr> "(" <args: Comma<Expr>> ")" <r: @R> =>
-    Ast::FnCall(Box::new(recv), args, Span(l, r)),
+FunctionCall: Ast<'a> = {
+     <recv: Expr> "(" <args: Comma<Expr>> ")"  =>
+    Ast::FnCall(arena.alloc(recv), args, Span(0, 0)),
 };
 
-IntLit: Ast<'input> = {
-    <l: @L> <int: r"[0-9]+"> <r: @R> =>
-        Ast::IntLit(i64::from_str(int).unwrap(), Span(l, r))
+IntLit: Ast<'a> = {
+     <int: r"[0-9]+">  =>
+        Ast::IntLit(i64::from_str(int).unwrap(), Span(0, 0))
 };
 
-FloatLit: Ast<'input> = {
-    <l: @L> <float: r"[0-9]+\.[0-9]*"> <r: @R> =>
-        Ast::FloatLit(f64::from_str(float).unwrap(), Span(l, r))
+FloatLit: Ast<'a> = {
+     <float: r"[0-9]+\.[0-9]*">  =>
+        Ast::FloatLit(f64::from_str(float).unwrap(), Span(0, 0))
 };
 
-StringLit: Ast<'input> = {
-    <l: @L> <string: r##""(\\.|[^"])*""##> <r: @R> =>
-        Ast::StringLit(string[1 .. string.len() - 1].into(), Span(l, r))
+StringLit: Ast<'a> = {
+     <string: r##""(\\.|[^"])*""##>  =>
+        Ast::StringLit(string[1 .. string.len() - 1].into(), Span(0, 0))
 };
 
-SymbolLit: Ast<'input> = {
-   <l: @L> <symbol: r"'[_a-zA-Z][_a-zA-Z0-9]*"> <r: @R> =>
-       Ast::SymbolLit(interner.intern(&symbol[1..]), Span(l, r))
+SymbolLit: Ast<'a> = {
+    <symbol: r"'[_a-zA-Z][_a-zA-Z0-9]*">  =>
+       Ast::SymbolLit(interner.intern(&symbol[1..]), Span(0, 0))
 };
 
 Identifier: Symbol = {

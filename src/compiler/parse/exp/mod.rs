@@ -1,4 +1,5 @@
 use std::boxed::Box;
+use vm::Symbol;
 
 /*
 #[derive(Debug, PartialEq)]
@@ -16,6 +17,7 @@ pub enum Ast<'input> {
     Closure(Option<Ident<'input>>, Vec<Vec<Ident<'input>>>, Vec<Ast<'input>>),
 }*/
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Span(u32, u32);
 
 #[derive(Clone, Debug, PartialEq)]
@@ -28,16 +30,16 @@ pub enum Ast<'ast> {
     Identifier(Symbol, Span),
 //  ListLit(Vec<&'ast Ast<'ast>>, Span),
 //  MapLit(Vec<(&'ast Ast<'ast>, &'ast Ast<'ast>)>, Span),
-    Add(&'ast Ast<'ast>, &'ast Ast<'ast>),
-    Sub(&'ast Ast<'ast>, &'ast Ast<'ast>),
-    Mul(&'ast Ast<'ast>, &'ast Ast<'ast>),
-    Div(&'ast Ast<'ast>, &'ast Ast<'ast>),
-    FnCall(&'ast Ast<'ast>, Vec<Ast<'ast>>),
+    Add(&'ast Ast<'ast>, &'ast Ast<'ast>, Span),
+    Sub(&'ast Ast<'ast>, &'ast Ast<'ast>, Span),
+    Mul(&'ast Ast<'ast>, &'ast Ast<'ast>, Span),
+    Div(&'ast Ast<'ast>, &'ast Ast<'ast>, Span),
+    FnCall(&'ast Ast<'ast>, Vec<Ast<'ast>>, Span),
 //  Quote(&'ast Ast<'ast>, Span),
-//  If(&'ast Ast<'ast>, &'ast Ast<'ast>, &'ast Ast<'ast>, Span),
-    Lambda(Vec<Vec<Symbol>>, &'ast Ast<'ast>, Span),
-//    Define(Symbol, &'ast Ast<'ast>, Span),
-//    Block(Vec<&'ast Ast<'ast>>, Span),
+    IfExpr(&'ast Ast<'ast>, &'ast Ast<'ast>, &'ast Ast<'ast>, Span),
+    Closure(Option<Symbol>, Vec<Vec<Symbol>>, Vec<Ast<'ast>>, Span),
+//  Define(Symbol, &'ast Ast<'ast>, Span),
+//  Block(Vec<&'ast Ast<'ast>>, Span),
 }
 
 mod syntax;
