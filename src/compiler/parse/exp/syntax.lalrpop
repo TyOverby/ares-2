@@ -1,8 +1,10 @@
 use std::str::FromStr;
-use super::{Ast, Ident};
+use super::{Ast, Span};
 use std::boxed::Box;
+use typed_arena::Arena;
+use vm::{SymbolIntern, Symbol};
 
-grammar["LALR(1)"];
+grammar<'a>(arena: &'a Arena<Ast<'a>>, interner: &mut SymbolIntern)["LALR(1)"];
 
 Comma<T>: Vec<T> = {
     <v:(<T> ",")*> <e:T?> => match e { 
@@ -16,16 +18,20 @@ Comma<T>: Vec<T> = {
 };
 
 pub Expr: Ast<'input> = {
-    <l:Expr> "+" <r:Factor> => Ast::Add(Box::new(l), Box::new(r)),
-    <l:Expr> "-" <r:Factor> => Ast::Sub(Box::new(l), Box::new(r)),
+    <ll: @L> <l:Expr> "+" <r:Factor> <rr: @R> =>
+        Ast::Add(Box::new(l), Box::new(r), Span(ll, rr)),
+    <ll: @L> <l:Expr> "-" <r:Factor> <rr: @R> =>
+        Ast::Sub(Box::new(l), Box::new(r)),
     Factor,
     Closure,
     FunctionCall,
 };
 
 Factor: Ast<'input> = {
-    <l:Factor> "*" <r:Term> => Ast::Mul(Box::new(l), Box::new(r)),
-    <l:Factor> "/" <r:Term> => Ast::Div(Box::new(l), Box::new(r)),
+    <ll: @L> <l:Factor> "*" <r:Term> <rr: @R> =>
+        Ast::Mul(arena.alloc(l), arena.alloc(r), Span(ll, rr)),
+    <ll: @L> <l:Factor> "/" <r:Term> <rr: @R> =>
+        Ast::Div(arena.alloc(l), arena.alloc(r), Span(ll, rr)),
     Reserved,
 };
 
@@ -38,13 +44,13 @@ Term: Ast<'input> = {
     IntLit,
     StringLit,
     SymbolLit,
-    Identifier => Ast::Identifier(<>),
+    <l: @L> Identifier <r: @R> => Ast::Identifier(<>, Span(l, r)),
     "(" <Expr> ")" 
 };
 
 Closure: Ast<'input> = {
-    "fn" <name: Identifier?> <p_list: ParamList+> "{" "}" => 
-        Ast::Closure(name, p_list, vec![]),
+    <l: @L> "fn" <name: Identifier?> <p_list: ParamList+> "{" "}" <r: @R> =>
+        Ast::Closure(name, p_list, vec![], Span(l, r)),
 
 };
 
@@ -53,25 +59,30 @@ ParamList: Vec<Ident<'input>> = {
 };
 
 FunctionCall: Ast<'input> = {
-    <r: Expr> "(" <args: Comma<Expr>> ")" => Ast::FnCall(Box::new(r), args),
+    <l: @L> <recv: Expr> "(" <args: Comma<Expr>> ")" <r: @R> =>
+    Ast::FnCall(Box::new(recv), args, Span(l, r)),
 };
 
 IntLit: Ast<'input> = {
-    r"[0-9]+" => Ast::IntLit(i64::from_str(<>).unwrap())
+    <l: @L> <int: r"[0-9]+"> <r: @R> =>
+        Ast::IntLit(i64::from_str(int).unwrap(), Span(l, r))
 };
 
 FloatLit: Ast<'input> = {
-    r"[0-9]+\.[0-9]*" => Ast::FloatLit(f64::from_str(<>).unwrap())
+    <l: @L> <float: r"[0-9]+\.[0-9]*"> <r: @R> =>
+        Ast::FloatLit(f64::from_str(float).unwrap(), Span(l, r))
 };
 
 StringLit: Ast<'input> = {
-    r##""(\\.|[^"])*""## => Ast::StringLit(&<>[1 .. <>.len() - 1])
+    <l: @L> <string: r##""(\\.|[^"])*""##> <r: @R> =>
+        Ast::StringLit(string[1 .. string.len() - 1].into(), Span(l, r))
 };
 
 SymbolLit: Ast<'input> = {
-    r"'[_a-zA-Z][_a-zA-Z0-9]*" => Ast::SymbolLit(&<>[1..])
+   <l: @L> <symbol: r"'[_a-zA-Z][_a-zA-Z0-9]*"> <r: @R> =>
+       Ast::SymbolLit(interner.intern(&symbol[1..]), Span(l, r))
 };
 
-Identifier: Ident<'input> = {
-    r"[_a-zA-Z][_a-zA-Z0-9]*" => Ident(<>)
+Identifier: Symbol = {
+    r"[_a-zA-Z][_a-zA-Z0-9]*" => interner.intern(<>)
 };
