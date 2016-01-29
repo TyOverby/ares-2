@@ -17,63 +17,130 @@ Comma<T>: Vec<T> = {
     }
 };
 
-pub Expr: Ast<'a> = {
-     <l:Expr> "+" <r:Factor>  =>
-        Ast::Add(arena.alloc(l), arena.alloc(r), Span(0, 0)),
-     <l:Expr> "-" <r:Factor>  =>
-        Ast::Sub(arena.alloc(l), arena.alloc(r), Span(0, 0)),
-    Closure,
-    FunctionCall,
-    IfExpression,
-    Factor,
-};
-
-Factor: Ast<'a> = {
-     <l:Factor> "*" <r:Term>  =>
-        Ast::Mul(arena.alloc(l), arena.alloc(r), Span(0, 0)),
-     <l:Factor> "/" <r:Term>  =>
-        Ast::Div(arena.alloc(l), arena.alloc(r), Span(0, 0)),
-    Reserved,
-};
-
-Reserved: Ast<'a> = {
-    Term,
-};
-
-Term: Ast<'a> = {
+PrimaryExpression: Ast<'a> = {
     FloatLit,
     IntLit,
     StringLit,
     SymbolLit,
-     Identifier  => Ast::Identifier(<>, Span(0, 0)),
-    "(" <Expr> ")" 
+    Identifier  => Ast::Identifier(<>, Span(0, 0)),
+    "(" <e: Expr> ")" => e,
 };
 
-Statement: Ast<'a> = {
-    <e: Expr> ";" => e
+PostfixExpression: Ast<'a> = {
+    PrimaryExpression,
+    <r: PostfixExpression> "[" <e: Expr> "]" => unimplemented!(),
+    <r: PostfixExpression> "(" <e: Expr*> ")" => unimplemented!(),
+    <r: PostfixExpression> "." <e: Identifier> => unimplemented!(),
+};
+
+UnaryExpression: Ast<'a> = {
+    PostfixExpression,
+    "-" <e: UnaryExpression> => unimplemented!(),
+    "+" <e: UnaryExpression> => unimplemented!(),
+    "~" <e: UnaryExpression> => unimplemented!(),
+    "!" <e: UnaryExpression> => unimplemented!(),
+};
+
+MultiplicativeExpression: Ast<'a> = {
+    UnaryExpression,
+    <l: MultiplicativeExpression> "*" <r: UnaryExpression> =>
+        Ast::Mul(arena.alloc(l), arena.alloc(r)),
+    <l: MultiplicativeExpression> "/" <r: UnaryExpression> =>
+        Ast::Div(arena.alloc(l), arena.alloc(r)),
+    <l: MultiplicativeExpression> "%" <r: UnaryExpression> =>
+        unimplemented!()
+};
+
+AdditiveExpression: Ast<'a> = {
+    MultiplicativeExpression,
+    <l: AdditiveExpression> "+" <r: MultiplicativeExpression> =>
+        Ast::Add(arena.alloc(l), arena.alloc(r)),
+    <l: AdditiveExpression> "-" <r: MultiplicativeExpression> =>
+        Ast::Sub(arena.alloc(l), arena.alloc(r)),
+};
+
+ShiftExpression: Ast<'a> = {
+    AdditiveExpression,
+    <l: ShiftExpression> "<<" <r: AdditiveExpression> =>
+        unimplemented!(),
+    <l: ShiftExpression> ">>" <r: AdditiveExpression> =>
+        unimplemented!(),
+};
+
+RelationalExpression: Ast<'a> = {
+    ShiftExpression,
+    <l: RelationalExpression> ">" <r: ShiftExpression> => unimplemented!(),
+    <l: RelationalExpression> "<" <r: ShiftExpression> => unimplemented!(),
+    <l: RelationalExpression> ">=" <r: ShiftExpression> => unimplemented!(),
+    <l: RelationalExpression> "<=" <r: ShiftExpression> => unimplemented!(),
+};
+
+EqualityExpression: Ast<'a> = {
+    RelationalExpression,
+    <l: EqualityExpression> "==" <r: RelationalExpression> => unimplemented!(),
+    <l: EqualityExpression> "!=" <r: RelationalExpression> => unimplemented!(),
+};
+
+BitAndExpression: Ast<'a> = {
+    EqualityExpression,
+    <l: BitAndExpression> "&" <r: EqualityExpression> => unimplemented!(),
+};
+
+BitXorExpression: Ast<'a> = {
+    BitAndExpression,
+    <l: BitXorExpression> "^" <r: BitAndExpression> => unimplemented!(),
+};
+
+BitOrExpression: Ast<'a> = {
+    BitXorExpression,
+    <l: BitOrExpression> "|" <r: BitXorExpression> => unimplemented!(),
+};
+
+LogicalAndExpression: Ast<'a> = {
+    BitOrExpression,
+    <l: LogicalAndExpression> "&&" <r: BitOrExpression> => unimplemented!(),
+};
+
+LogicalOrExpression: Ast<'a> = {
+    LogicalAndExpression,
+    <l: LogicalOrExpression> "||" <r: LogicalAndExpression> => unimplemented!(),
 };
 
 IfExpression: Ast<'a> = {
-    "if" <cond: Expr> "then" "{" <tru: Expr> "}" "else" "{" <fals: Expr> "}" =>
-        Ast::IfExpression(arena.alloc(cond),
-                          arena.alloc(tru),
-                          arena.alloc(fals),
-                          Span(0, 0))
+    LogicalOrExpression,
+    <a: LogicalOrExpression> "?" <t: Expr> ":" <f: IfExpression> => unimplemented!(),
+};
+
+AssignmentExpression: Ast<'a> = {
+    IfExpression,
+    <r: PostfixExpression> "=" <l: AssignmentExpression> => unimplemented!(),
+};
+
+pub Expr: Ast<'a> = {
+    AssignmentExpression
+};
+
+Statement: Ast<'a> = {
+    "if" <cond: Expr> "then" "{" <trus: Statement*> "}" =>
+        Ast::IfStatement(arena.alloc(cond),
+                          arena.alloc(trus),
+                          None,
+                          Span(0, 0)),
+    "if" <cond: Expr> "then" "{" <trus: Statement*> "}" "else" "{" <falss: Statement*> "}" =>
+        Ast::IfStatement(arena.alloc(cond),
+                          arena.alloc(trus),
+                          arena.alloc(falss),
+                          Span(0, 0)),
 };
 
 Closure: Ast<'a> = {
-     "fn" <name: Identifier?> <p_list: ParamList+> "{" "}"  =>
+     "fn" <name: Identifier?> <p_list: ParamList+> "{" <bodies: Statement*> "}"  =>
         Ast::Closure(name, p_list, vec![], Span(0, 0)),
 
 };
 
 ParamList: Vec<Symbol> = {
     "(" <params: Comma<Identifier>> ")" => params,
-};
-
-FunctionCall: Ast<'a> = {
-     <recv: Expr> "(" <args: Comma<Expr>> ")"  =>
-    Ast::FnCall(arena.alloc(recv), args, Span(0, 0)),
 };
 
 IntLit: Ast<'a> = {

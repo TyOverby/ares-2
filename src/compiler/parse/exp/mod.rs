@@ -80,8 +80,8 @@ macro_rules! ast {
         $arena.alloc(Ast::Quote(ast!($arena, $intern, $name $args), Span::dummy()))
     };
 
-    ($arena: expr, $intern: expr, If($cond_name:tt $cond_args:tt, $tru_name:tt $tru_args:tt, $fal_name:tt $fal_args:tt)) => {
-        $arena.alloc(Ast::If(
+    ($arena: expr, $intern: expr, IfExpr($cond_name:tt $cond_args:tt, $tru_name:tt $tru_args:tt, $fal_name:tt $fal_args:tt)) => {
+        $arena.alloc(Ast::IfExpression(
                 ast!($arena, $intern, $cond_name $cond_args),
                 ast!($arena, $intern, $tru_name $tru_args),
                 ast!($arena, $intern, $fal_name $fal_args),
@@ -128,7 +128,7 @@ macro_rules! ast {
 #[cfg(test)]
 mod test {
     use super::*;
-    use super::syntax::parse_Expr;
+    use super::syntax::{parse_Expr, parse_Statement};
     use typed_arena::Arena;
     use vm::SymbolIntern;
 
@@ -234,5 +234,31 @@ mod test {
         assert_eq!(&parse_Expr(arena, interner, "fn(a, b) {} (1, 2)").unwrap(),
             ast!(arena, interner,
                  FnCall(Lambda(((a, b)),) (IntLit(1), IntLit(2)))));
+    }
+
+    #[test]
+    fn if_expr() {
+        let arena = Arena::new();
+        let mut interner = SymbolIntern::new();
+        let arena = &arena;
+        let interner = &mut interner;
+
+        assert_eq!(&parse_Expr(arena, interner, "if a then {b} else {c}").unwrap(),
+                   ast!(arena, interner,
+                        IfExpr(Identifier(a), Identifier(b), Identifier(c))));
+        assert!(&parse_Expr(arena, interner, "if a then { b }").is_err());
+    }
+
+    #[test]
+    fn statements() {
+        let arena = Arena::new();
+        let mut interner = SymbolIntern::new();
+        let arena = &arena;
+        let interner = &mut interner;
+
+        assert!(&parse_Statement(arena, interner, "1 + 2").is_err());
+        assert!(&parse_Expr(arena, interner, "if a then {b} else {c}").is_err());
+        assert_eq!(&parse_Statement(arena, interner, "1 + 2;").unwrap(),
+            ast!(arena, interner, Add(IntLit(1), IntLit(2))));
     }
 }
