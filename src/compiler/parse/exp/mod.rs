@@ -92,7 +92,6 @@ macro_rules! ast {
         $arena.alloc(Ast::Closure(
                 None,
                 vec![$(vec![$($intern.intern(stringify!($symbol))),*]),*],
-//                ast!($arena, $intern, Block($($name $arg),*)),
                 vec![$(ast!($arena, $intern, $name $arg))*],
                 Span::dummy()))
     };
@@ -100,7 +99,6 @@ macro_rules! ast {
         $arena.alloc(Ast::Closure(
                 Some($intern.intern(stringify!($c_name))),
                 vec![$(vec![$($intern.intern(stringify!($symbol))),*]),*],
-//                ast!($arena, $intern, Block($($name $arg),*)),
                 vec![$(ast!($arena, $intern, $name $arg))*],
                 Span::dummy()))
     };
@@ -116,6 +114,14 @@ macro_rules! ast {
         $arena.alloc(Ast::Block(vec![
             $(ast!($arena, $intern, $name $args)),*
         ], Span::dummy()))
+    };
+    ($arena: expr, $intern: expr, FnCall($r_name:tt $r_args:tt ($($name:tt $args: tt),*))) =>  {
+        $arena.alloc(Ast::FnCall(
+            ast!($arena, $intern, $r_name $r_args),
+            vec![$(ast!($arena, $intern, $name $args)),*].iter()
+                                                         .map(|a| (**a).clone())
+                                                         .collect(),
+            Span::dummy()))
     };
 }
 
@@ -181,6 +187,7 @@ mod test {
 
         assert!(parse_Expr(arena, interner, "fn foo {}").is_err());
         assert!(parse_Expr(arena, interner, "fn").is_err());
+        assert!(parse_Expr(arena, interner, "if").is_err());
 
         // no name
         assert_eq!(&parse_Expr(arena, interner, "fn() { }").unwrap(),
@@ -204,33 +211,28 @@ mod test {
                    ast!(arena, interner, Lambda(foo, ((a, b), (c, d), (e, f)),) ));
     }
 
-/*
     #[test]
     fn func_calling() {
         let arena = Arena::new();
-        let interner = SymbolIntern::new();
+        let mut interner = SymbolIntern::new();
+        let arena = &arena;
+        let interner = &mut interner;
 
-        assert_eq!(parse_Expr(arena, interner, "foo(a, b)").unwrap(),
-            Ast::FnCall(arena.alloc(Ast::Identifier(Ident("foo"))),
-                        vec![Ast::Identifier(Ident("a")),
-                             Ast::Identifier(Ident("b"))]));
+        assert_eq!(&parse_Expr(arena, interner, "foo(a, b)").unwrap(),
+                   ast!(arena, interner,
+                        FnCall(Identifier(foo) (Identifier(a), Identifier(b)))));
 
-        assert_eq!(parse_Expr(arena, interner, "foo(a, b)(c, d)").unwrap(),
-            Ast::FnCall(arena.alloc(Ast::FnCall(arena.alloc(Ast::Identifier(Ident("foo"))),
-                                             vec![Ast::Identifier(Ident("a")),
-                                                 Ast::Identifier(Ident("b"))])),
-                        vec![Ast::Identifier(Ident("c")),
-                             Ast::Identifier(Ident("d"))]));
+        assert_eq!(&parse_Expr(arena, interner, "foo(a, b)(c, d)").unwrap(),
+            ast!(arena, interner,
+                 FnCall(FnCall(Identifier(foo) (Identifier(a), Identifier(b)))
+                        (Identifier(c), Identifier(d)))));
 
-        assert_eq!(parse_Expr(arena, interner, "fn foo(a, b) {} (1, 2)").unwrap(),
-            Ast::FnCall(arena.alloc(
-                    Ast::Closure(Some(Ident("foo")),
-                                 vec![vec![Ident("a"), Ident("b")]], vec![])),
-                    vec![Ast::IntLit(1), Ast::IntLit(2)]));
+        assert_eq!(&parse_Expr(arena, interner, "fn foo(a, b) {} (1, 2)").unwrap(),
+            ast!(arena, interner,
+                 FnCall(Lambda(foo, ((a, b)),) (IntLit(1), IntLit(2)))));
 
-        assert_eq!(parse_Expr(arena, interner, "fn(a, b) {} (1, 2)").unwrap(),
-            Ast::FnCall(arena.alloc(
-                    Ast::Closure(None, vec![vec![Ident("a"), Ident("b")]], vec![])),
-                    vec![Ast::IntLit(1), Ast::IntLit(2)]));
-    }*/
+        assert_eq!(&parse_Expr(arena, interner, "fn(a, b) {} (1, 2)").unwrap(),
+            ast!(arena, interner,
+                 FnCall(Lambda(((a, b)),) (IntLit(1), IntLit(2)))));
+    }
 }
