@@ -1,7 +1,7 @@
 use gc::{Gc, Trace, GcCell};
 use std::ops::Deref;
 use std::collections::HashMap;
-use vm::intern::{Symbol, SymbolIntern};
+use ares_syntax::{Symbol, SymbolIntern};
 use vm::{InterpError, Closure};
 use vm::function::UserFunction;
 

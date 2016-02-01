@@ -1,4 +1,3 @@
-mod intern;
 mod lambda;
 mod value;
 mod stack;
@@ -10,13 +9,13 @@ use std::marker::PhantomData;
 use compiler::CompileContext;
 use host::{State, EphemeralContext};
 
-pub use vm::intern::*;
 pub use vm::value::*;
 pub use vm::lambda::*;
 pub use vm::stack::*;
 pub use vm::module::*;
 pub use vm::function::*;
 
+use ares_syntax::*;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum InterpError {
@@ -48,7 +47,7 @@ pub struct Return {
 pub struct Vm<S: State = ()> {
     pub stack: Stack,
     return_stack: Vec<Return>,
-    pub interner: intern::SymbolIntern,
+    pub interner: SymbolIntern,
     pub globals: Globals,
     code: Vec<Instr>,
     pub compile_context: CompileContext,
@@ -145,7 +144,7 @@ impl <S: State> Vm<S> {
     pub fn new() -> Vm<S> {
         Vm {
             stack: Stack::new(),
-            interner: intern::SymbolIntern::new(),
+            interner: SymbolIntern::new(),
             globals: Globals::new(),
             return_stack: Vec::new(),
             code: Vec::new(),

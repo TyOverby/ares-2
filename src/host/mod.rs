@@ -1,4 +1,5 @@
-use super::vm::{Vm, Value, Symbol, SymbolIntern, Globals};
+use vm::{Vm, Value, Globals};
+use ares_syntax::{Symbol, SymbolIntern};
 use std::marker::PhantomData;
 
 mod error;

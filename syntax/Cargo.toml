@@ -1,0 +1,19 @@
+[package]
+name = "ares-syntax"
+version = "0.1.0"
+authors = ["Ty Overby <ty@pre-alpha.com>"]
+build = "build.rs"
+
+[lib]
+name = "ares_syntax"
+path = "./src/lib.rs"
+
+[dependencies]
+itertools = "*"
+typed-arena = "1.0.*"
+
+[dependencies.lalrpop-util]
+version = "0.9.0"
+
+[build-dependencies.lalrpop]
+version = "0.9.0"

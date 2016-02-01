@@ -3,13 +3,12 @@ mod tokens;
 mod parse;
 mod util;
 mod validate;
-mod exp;
 
 #[cfg(test)]
 pub use self::parse::test;
 
 use typed_arena::Arena;
-use vm::{Symbol, SymbolIntern};
+use ares_syntax::{Symbol, SymbolIntern};
 use compiler::parse::tokens::Position;
 use util::iterators_same;
 

@@ -7,7 +7,8 @@ mod binding;
 use typed_arena;
 pub use compiler::error::CompileError;
 use compiler::emit::EmitBuffer;
-use vm::{SymbolIntern, Instr};
+use ares_syntax::SymbolIntern;
+use vm::Instr;
 
 pub use self::compile_context::CompileContext;
 

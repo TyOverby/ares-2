@@ -1,5 +1,5 @@
 use typed_arena::Arena;
-use vm::SymbolIntern;
+use ares_syntax::SymbolIntern;
 
 use compiler::parse::Ast;
 use compiler::parse::tokens::{TokenType, Token, Open, TokenIter};
@@ -211,7 +211,7 @@ pub fn parse<'ast>(input: &str,
 pub mod test {
     use compiler::parse::{Ast, Span};
     use typed_arena::Arena;
-    use vm::SymbolIntern;
+    use ares_syntax::SymbolIntern;
     use super::parse;
 
     pub fn ok_parse<'ast>(s: &str,

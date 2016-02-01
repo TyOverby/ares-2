@@ -1,4 +1,4 @@
-use vm::SymbolIntern;
+use ares_syntax::SymbolIntern;
 use compiler::parse::Ast;
 
 pub fn immediate_value<'ast>(v: &'ast Ast<'ast>, interner: &mut SymbolIntern) -> bool {

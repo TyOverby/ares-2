@@ -1,4 +1,5 @@
 use super::*;
+use ares_syntax::*;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
 struct GlobalName {

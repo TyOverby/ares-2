@@ -155,14 +155,13 @@ mod test {
     use vm::{Instr, Value};
     use compiler::parse::{Ast, Span};
     use compiler::CompileContext;
-    use vm::SymbolIntern;
+    use ares_syntax::{SymbolIntern};
     use typed_arena::Arena;
 
     fn compile_this(ast: &Ast, interner: Option<SymbolIntern>) -> (Vec<Instr>, CompileContext) {
         use compiler::emit::emit;
         use compiler::emit::EmitBuffer;
         use compiler::binding::Bound;
-        use vm::SymbolIntern;
 
         let mut out = EmitBuffer::new();
         let mut compile_context = CompileContext::new();

@@ -1,4 +1,4 @@
-use vm::Symbol;
+use ares_syntax::Symbol;
 use compiler::parse::Span;
 
 #[derive(Debug, Eq, PartialEq)]

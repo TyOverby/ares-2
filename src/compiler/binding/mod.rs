@@ -5,8 +5,7 @@ mod error;
 pub use self::error::BindingError;
 
 use compiler::parse::Ast;
-use vm::Symbol;
-use vm::SymbolIntern;
+use ares_syntax::{Symbol, SymbolIntern};
 use util::iterators_same;
 
 // 2 concepts, Binders and Bound nodes

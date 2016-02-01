@@ -2,7 +2,7 @@ use std::str::FromStr;
 use super::{Ast, Span};
 use std::boxed::Box;
 use typed_arena::Arena;
-use vm::{SymbolIntern, Symbol};
+use ::{SymbolIntern, Symbol};
 
 grammar<'a>(arena: &'a Arena<Ast<'a>>, interner: &mut SymbolIntern)["LALR(1)"];
 
@@ -24,145 +24,156 @@ PrimaryExpression: Ast<'a> = {
     SymbolLit,
     Identifier  => Ast::Identifier(<>, Span(0, 0)),
     "(" <e: Expr> ")" => e,
+    Closure,
 };
 
 PostfixExpression: Ast<'a> = {
-    PrimaryExpression,
     <r: PostfixExpression> "[" <e: Expr> "]" => unimplemented!(),
-    <r: PostfixExpression> "(" <e: Expr*> ")" => unimplemented!(),
+    <r: PostfixExpression> "(" <e: Comma<Expr>> ")" =>
+        Ast::FnCall(arena.alloc(r), e, Span(0, 0)),
     <r: PostfixExpression> "." <e: Identifier> => unimplemented!(),
+    PrimaryExpression,
 };
 
 UnaryExpression: Ast<'a> = {
-    PostfixExpression,
     "-" <e: UnaryExpression> => unimplemented!(),
     "+" <e: UnaryExpression> => unimplemented!(),
     "~" <e: UnaryExpression> => unimplemented!(),
     "!" <e: UnaryExpression> => unimplemented!(),
+    PostfixExpression,
 };
 
 MultiplicativeExpression: Ast<'a> = {
-    UnaryExpression,
     <l: MultiplicativeExpression> "*" <r: UnaryExpression> =>
-        Ast::Mul(arena.alloc(l), arena.alloc(r)),
+        Ast::Mul(arena.alloc(l), arena.alloc(r), Span(0, 0)),
     <l: MultiplicativeExpression> "/" <r: UnaryExpression> =>
-        Ast::Div(arena.alloc(l), arena.alloc(r)),
+        Ast::Div(arena.alloc(l), arena.alloc(r), Span(0, 0)),
     <l: MultiplicativeExpression> "%" <r: UnaryExpression> =>
-        unimplemented!()
+        unimplemented!(),
+    UnaryExpression,
 };
 
 AdditiveExpression: Ast<'a> = {
-    MultiplicativeExpression,
     <l: AdditiveExpression> "+" <r: MultiplicativeExpression> =>
-        Ast::Add(arena.alloc(l), arena.alloc(r)),
+        Ast::Add(arena.alloc(l), arena.alloc(r), Span(0, 0)),
     <l: AdditiveExpression> "-" <r: MultiplicativeExpression> =>
-        Ast::Sub(arena.alloc(l), arena.alloc(r)),
+        Ast::Sub(arena.alloc(l), arena.alloc(r), Span(0, 0)),
+    MultiplicativeExpression,
 };
 
 ShiftExpression: Ast<'a> = {
-    AdditiveExpression,
     <l: ShiftExpression> "<<" <r: AdditiveExpression> =>
         unimplemented!(),
     <l: ShiftExpression> ">>" <r: AdditiveExpression> =>
         unimplemented!(),
+    AdditiveExpression,
 };
 
 RelationalExpression: Ast<'a> = {
-    ShiftExpression,
     <l: RelationalExpression> ">" <r: ShiftExpression> => unimplemented!(),
     <l: RelationalExpression> "<" <r: ShiftExpression> => unimplemented!(),
     <l: RelationalExpression> ">=" <r: ShiftExpression> => unimplemented!(),
     <l: RelationalExpression> "<=" <r: ShiftExpression> => unimplemented!(),
+    ShiftExpression,
 };
 
 EqualityExpression: Ast<'a> = {
-    RelationalExpression,
     <l: EqualityExpression> "==" <r: RelationalExpression> => unimplemented!(),
     <l: EqualityExpression> "!=" <r: RelationalExpression> => unimplemented!(),
+    RelationalExpression,
 };
 
 BitAndExpression: Ast<'a> = {
-    EqualityExpression,
     <l: BitAndExpression> "&" <r: EqualityExpression> => unimplemented!(),
+    EqualityExpression,
 };
 
 BitXorExpression: Ast<'a> = {
-    BitAndExpression,
     <l: BitXorExpression> "^" <r: BitAndExpression> => unimplemented!(),
+    BitAndExpression,
 };
 
 BitOrExpression: Ast<'a> = {
-    BitXorExpression,
     <l: BitOrExpression> "|" <r: BitXorExpression> => unimplemented!(),
+    BitXorExpression,
 };
 
 LogicalAndExpression: Ast<'a> = {
-    BitOrExpression,
     <l: LogicalAndExpression> "&&" <r: BitOrExpression> => unimplemented!(),
+    BitOrExpression,
 };
 
 LogicalOrExpression: Ast<'a> = {
-    LogicalAndExpression,
     <l: LogicalOrExpression> "||" <r: LogicalAndExpression> => unimplemented!(),
+    LogicalAndExpression,
 };
 
 IfExpression: Ast<'a> = {
+    "if" <a: LogicalOrExpression> "then" <t: Expr> "else" <f: IfExpression> =>
+        Ast::IfExpression(arena.alloc(a), arena.alloc(t), arena.alloc(f), Span(0, 0)),
     LogicalOrExpression,
-    <a: LogicalOrExpression> "?" <t: Expr> ":" <f: IfExpression> => unimplemented!(),
 };
 
 AssignmentExpression: Ast<'a> = {
-    IfExpression,
     <r: PostfixExpression> "=" <l: AssignmentExpression> => unimplemented!(),
+    IfExpression,
+};
+
+AssignmentExpressionStatement: Ast<'a> = {
+    <r: PostfixExpression> "=" <l: AssignmentExpression> => unimplemented!(),
+    LogicalOrExpression,
 };
 
 pub Expr: Ast<'a> = {
     AssignmentExpression
 };
 
-Statement: Ast<'a> = {
-    "if" <cond: Expr> "then" "{" <trus: Statement*> "}" =>
-        Ast::IfStatement(arena.alloc(cond),
-                          arena.alloc(trus),
-                          None,
-                          Span(0, 0)),
-    "if" <cond: Expr> "then" "{" <trus: Statement*> "}" "else" "{" <falss: Statement*> "}" =>
-        Ast::IfStatement(arena.alloc(cond),
-                          arena.alloc(trus),
-                          arena.alloc(falss),
-                          Span(0, 0)),
+pub Statement: Ast<'a> = {
+    "if" <a: LogicalOrExpression> "then" "{" <trs: Statement*> "}" "else" "{" <fls: Statement*> "}" =>
+        Ast::IfStatement(arena.alloc(a), trs, Some(fls), Span(0, 0)),
+    "if" <a: LogicalOrExpression> "then" "{" <trs: Statement*> "}" =>
+        Ast::IfStatement(arena.alloc(a), trs, None, Span(0, 0)),
+    <e: AssignmentExpressionStatement> ";" => e,
 };
 
+#[inline]
 Closure: Ast<'a> = {
      "fn" <name: Identifier?> <p_list: ParamList+> "{" <bodies: Statement*> "}"  =>
         Ast::Closure(name, p_list, vec![], Span(0, 0)),
-
 };
 
 ParamList: Vec<Symbol> = {
     "(" <params: Comma<Identifier>> ")" => params,
 };
 
+//
+// TERMINALS
+//
+#[inline]
 IntLit: Ast<'a> = {
      <int: r"[0-9]+">  =>
         Ast::IntLit(i64::from_str(int).unwrap(), Span(0, 0))
 };
 
+#[inline]
 FloatLit: Ast<'a> = {
      <float: r"[0-9]+\.[0-9]*">  =>
         Ast::FloatLit(f64::from_str(float).unwrap(), Span(0, 0))
 };
 
+#[inline]
 StringLit: Ast<'a> = {
      <string: r##""(\\.|[^"])*""##>  =>
         Ast::StringLit(string[1 .. string.len() - 1].into(), Span(0, 0))
 };
 
+#[inline]
 SymbolLit: Ast<'a> = {
     <symbol: r"'[_a-zA-Z][_a-zA-Z0-9]*">  =>
        Ast::SymbolLit(interner.intern(&symbol[1..]), Span(0, 0))
 };
 
+#[inline]
 Identifier: Symbol = {
     r"[_a-zA-Z][_a-zA-Z0-9]*" => interner.intern(<>)
 };
