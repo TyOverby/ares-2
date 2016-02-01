@@ -271,3 +271,90 @@ if child == 0 {
 }
 do_other_things();
 ```
+
+## Cooperating coroutines
+Coroutines are a way to schedule execution of multiple "threads" of activity
+onto a single OS thread (or in this case, a single interpreter.)  Good coroutine
+implementations will switch contexts on IO, and also whenever the programmers
+yields control of the coroutine.
+
+Because of how ares is written, all functions are *implicitly* cooperating.
+They yield activity whenever any blocking operation is submitted and an implicit
+reschedule occurs with the library function "next_tick()".
+
+However, sometimes it would be nice to not go back out to the event loop in order to
+schedule threads that don't need to do io.
+
+In that case, we can write something like this:
+
+```ares
+fn coro_manager() {
+    object {
+        routines: [],
+        running: false,
+        cancled: false,
+        spawn: fn(self, f) {
+            self.enqueue(f);
+            if !running {
+                self.run();
+            }
+        },
+        enqueue: fn(self, f) {
+            self.routines.push(f);
+        }
+        yield: fn(self) {
+            shift('async) k {
+                routines.push(k);
+            }
+        }
+        cancel: fn(self) {
+            self.cancled = true;
+        }
+        run: fn(self) {
+            if self.running { return; }
+            self.running = true;
+            let f = future();
+            async {
+                while !routines.is_empty() {
+                    if self.cancled { break; }
+                    routines.pop()();
+                }
+                self.running = false;
+                f.complete();
+            }
+            f
+        }
+        yield: fn(self) {
+            self.spawn(shift('async) k { k });
+        }
+    }
+}
+```
+
+This function will create a coroutine manager that can spawn
+coroutines.
+
+Here's an example of them in use:
+
+```ares
+let co = coro_manager();
+
+co.enqueue {
+    while true {
+        print("ping");
+        co.yield();
+    }
+};
+
+co.enqueue {
+    while true {
+        print("pong");
+        co.yield();
+    }
+};
+
+co.enqueue {
+    sleep(10_000);
+    co.cancel();
+}
+```
