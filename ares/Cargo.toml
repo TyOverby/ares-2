@@ -21,4 +21,4 @@ typed-arena = "1.0.*"
 git = "https://github.com/Manishearth/rust-gc.git"
 
 [dependencies.ares-syntax]
-path = "./syntax"
+path = "../syntax"

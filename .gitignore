@@ -2,4 +2,4 @@ target
 Cargo.lock
 *.swp
 *.swo
-syntax/src/compiler/parse/exp/syntax.rs
+syntax/src/syntax.rs
