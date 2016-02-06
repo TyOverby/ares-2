@@ -287,57 +287,62 @@ schedule threads that don't need to do io.
 
 In that case, we can write something like this:
 
+This function will create a coroutine manager that can spawn
+coroutines.
+
 ```ares
-fn coro_manager() {
+fn coro() {
     object {
-        routines: [],
+        enqueued: [],
         running: false,
         cancled: false,
+        outstanding: 0,
+        enqueue: fn(self, f) {
+            let [future, completer] = future();
+            self.enqueued.push([f, completer]);
+            future
+        },
         spawn: fn(self, f) {
-            self.enqueue(f);
+            let future = self.enqueue(f);
             if !running {
                 self.run();
             }
         },
-        enqueue: fn(self, f) {
-            self.routines.push(f);
-        }
-        yield: fn(self) {
-            shift('async) k {
-                routines.push(k);
-            }
-        }
         cancel: fn(self) {
             self.cancled = true;
-        }
+        },
         run: fn(self) {
-            if self.running { return; }
+            if self.running || self.cancled { return; }
             self.running = true;
-            let f = future();
-            async {
-                while !routines.is_empty() {
-                    if self.cancled { break; }
-                    routines.pop()();
+            for [f, c] in self.enqueued.consume() {
+                if self.cancled { break; }
+                async {
+                    self.outstanding += 1;
+                    let r = f();
+                    self.outstanding -= 1;
+                    if c != nil {
+                        c.complete(r);
+                    }
                 }
-                self.running = false;
-                f.complete();
             }
-            f
-        }
+            self.running = false;
+        },
         yield: fn(self) {
-            self.spawn(shift('async) k { k });
+            shift('async) k {
+                self.enqueued.push([k, nil]);
+                self.run();
+            }
         }
     }
 }
 ```
 
-This function will create a coroutine manager that can spawn
-coroutines.
-
 Here's an example of them in use:
 
+This code will print "ping", "pong" for 3 seconds.
+
 ```ares
-let co = coro_manager();
+let co = coro();
 
 co.enqueue {
     while true {
@@ -354,7 +359,8 @@ co.enqueue {
 };
 
 co.enqueue {
-    sleep(10_000);
+    sleep(3_000);
     co.cancel();
 }
+co.run();
 ```
