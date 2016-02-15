@@ -7,8 +7,8 @@ use ares::host::{Context, UnloadedContext};
 use ares::vm::user_function;
 
 #[test]
-pub fn basic() {
-    run_test("basic");
+pub fn literals() {
+    run_test("literals");
 }
 
 fn get_lines(contents: String) -> (String, Vec<String>) {

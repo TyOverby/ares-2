@@ -64,6 +64,9 @@ pub fn emit<'bound, 'ast: 'bound>(ast: &'bound Bound<'bound, 'ast>,
                 &Ast::FloatLit(f, _) => {
                     out.push(compile_context.add_constant(f.into()));
                 }
+                &Ast::SymbolLit(s, _) => {
+                    out.push(Instr::SymbolLit(s))
+                }
                 _ => panic!("non-literal ast found in Bound::Literal"),
             }
         }

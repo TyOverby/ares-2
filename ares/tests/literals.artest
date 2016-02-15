@@ -1,0 +1,13 @@
+print(5);
+print("hi");
+print('foo);
+print(3.14);
+print(true);
+print(false)
+=========
+5
+hi
+'foo
+3.14
+true
+false
