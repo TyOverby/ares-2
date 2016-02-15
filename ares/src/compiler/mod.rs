@@ -21,14 +21,16 @@ pub fn compile(source: &str,
     let bound_arena: typed_arena::Arena<binding::Bound> = typed_arena::Arena::new();
 
     let mut out = EmitBuffer::new();
-    let asts = try!(parse::parse(source, interner, &ast_arena));
-    for ast in &asts {
+    let asts: Vec<parse::Ast> = try!(parse::parse(source, interner, &ast_arena));
+    let asts: Vec<&parse::Ast> = asts.into_iter().map(|a| ast_arena.alloc(a) as &_).collect();
+    for ast in asts {
         let bound = binding::Bound::bind_top(ast, &bound_arena, interner);
         try!(emit::emit(try!(bound), compile_context, &mut out, None));
         // Pop because an expression just completed, so we don't
         // want to just leave the result on the stack.
         out.push(Instr::Pop);
     }
+
     if out.len() != 0 {
         // Pop the last pop.
         out.pop();

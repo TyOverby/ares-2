@@ -176,17 +176,33 @@ export fn yield(value) {
     return shift(generator_symbol) k { [value, k] };
 }
 
-export fn generator(f, args...) {
+export fn generator(f) {
     let continuation = reset(generator_symbol) {
-        f.apply(args);
-        fn done() { [nil, done] }
+        f();
+        done
     };
 
-    return fn(passback?) {
+    return fn(passback) {
         let [value, k] = continuation(passback);
         continuation = k;
         return value;
     }
+}
+```
+
+Usage
+
+```ares
+fn powers_of_two() {
+    x = 1;
+    while true {
+        yield(x);
+        x *= 2;
+    }
+}
+
+for x in generator(powers_of_two) {
+    print(x);
 }
 ```
 
@@ -363,4 +379,139 @@ co.enqueue {
     co.cancel();
 }
 co.run();
+```
+
+## "Actors"
+Actors can be implemented via delimited continuations in a way that preserves
+the sequential processing model that we are all used to when programming in
+typical procedural languages.  Before we dive into the implementation of actors,
+we first need to build an async-aware message-queue.
+
+```ares
+fn async_queue() {
+    object {
+        // objects on the queue
+        q: [],
+        // Waiting continuations
+        waiting: [],
+        // Send a message into the queue
+        send: fn(self, m) {
+            if self.waiting.is_empty() {
+                self.q.push(m);
+            } else {
+                self.waiting.shift()(m);
+            }
+        },
+        // Receive a message out of the queue.
+        // This function may be synchronous or asynchronous
+        // depending on if an item is already in the queue or not
+        recv: fn(self) {
+            if self.q.is_empty() {
+                shift('async) k {
+                    self.waiting.push(k);
+                }
+            } else {
+                self.q.pop()
+            }
+        }
+    }
+}
+```
+
+Now we have an event queue that is synchronous when messages are buffered, but will
+wait for a message asynchronously if there isn't anything buffered.
+
+This event-queue is the backbone for actor communication.
+
+```ares
+fn actor(f) {
+    let queue = async_queue();
+    async {
+        f(queue)
+    };
+    queue
+}
+```
+
+That simple function creates a queue and passes it to the "actor function" in which it
+is executed inside of an async block.
+
+```ares
+let a1 = actor(fn (messages) {
+    while true {
+        let m = messages.recv();
+        print("a1 got: " + m);
+    }
+});
+
+let a2 = actor(fn (messages) {
+    while true {
+        let m = messages.recv();
+        print("a2 got: " + m);
+        a1.send(m);
+    }
+});
+
+a2.send("1");
+a2.send("2");
+a2.send("3");
+```
+
+This is sufficient for message passing, but it would be handy to have
+an actual "actor" representation outside of just a queue.  This actor
+object could track dead/alive state and also track which actor a message comes
+from.
+
+```ares
+fn actor(f) {
+    let queue = async_queue();
+    let actor = object {
+        queue: queue,
+        dead: false,
+        send: fn(self, message, sender) {
+            if self.dead {
+                return 'dead;
+            }
+            self.queue.send([message, sender]);
+            return 'sent;
+        },
+        recv: fn(self) {
+            self.queue.recv()
+        },
+    };
+
+    async {
+        f(actor);
+        actor.dead = true;
+    };
+
+    actor
+}
+```
+
+Now actors can send and receive messages from actors and optionally
+pass along an actor reference to inform the receiver of which actor
+sent the message.
+
+```ares
+let a1 = actor(fn(self) {
+    while true {
+        let [message, from] = self.recv();
+        from.send("hi, I got " + message);
+    }
+});
+
+let a2 = actor(fn(self) {
+    while true {
+        let [message, from] = self.recv();
+        if from != null {
+            a1.send(message, self);
+        } else {
+            print("got message back from a1");
+        }
+    }
+});
+
+a2.send("hi");
+a2.send("bye");
 ```

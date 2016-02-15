@@ -17,6 +17,11 @@ Comma<T>: Vec<T> = {
     }
 };
 
+#[inline]
+Block: Ast<'a> = {
+    "{" <e: Statement*> "}" => Ast::Block(e, Span(0, 0)),
+};
+
 PrimaryExpression: Ast<'a> = {
     FloatLit,
     IntLit,
@@ -24,6 +29,7 @@ PrimaryExpression: Ast<'a> = {
     SymbolLit,
     Identifier  => Ast::Identifier(<>, Span(0, 0)),
     "(" <e: Expr> ")" => e,
+    Block,
     Closure,
 };
 
@@ -115,7 +121,7 @@ IfExpression: Ast<'a> = {
 };
 
 AssignmentExpression: Ast<'a> = {
-    <r: PostfixExpression> "=" <l: AssignmentExpression> => unimplemented!(),
+    <r: Identifier> "=" <l: IfExpression> => Ast::Define(r, arena.alloc(l), Span(0, 0)),
     IfExpression,
 };
 
@@ -136,10 +142,14 @@ pub Statement: Ast<'a> = {
     <e: AssignmentExpressionStatement> ";" => e,
 };
 
+pub Statements: Vec<Ast<'a>> = {
+    Statement*
+};
+
 #[inline]
 Closure: Ast<'a> = {
-     "fn" <name: Identifier?> <p_list: ParamList+> "{" <bodies: Statement*> "}"  =>
-        Ast::Closure(name, p_list, vec![], Span(0, 0)),
+     "fn" <name: Identifier?> <p_list: ParamList+> <body: Block> =>
+        Ast::Closure(name, p_list, arena.alloc(body), Span(0, 0)),
 };
 
 ParamList: Vec<Symbol> = {

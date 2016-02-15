@@ -17,8 +17,10 @@ itertools = "*"
 typed-arena = "1.0.*"
 
 [dependencies.gc]
-#path = "../rust-gc/gc/"
 git = "https://github.com/Manishearth/rust-gc.git"
 
 [dependencies.ares-syntax]
 path = "../syntax"
+
+[dependencies.lalrpop-util]
+version = "0.9.0"

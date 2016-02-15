@@ -25,17 +25,25 @@ pub fn emit<'bound, 'ast: 'bound>(ast: &'bound Bound<'bound, 'ast>,
                 try!(emit(last_body, compile_context, out, inside_lambda));
             }
         }
-        &Bound::Add(ref operands, _) => {
-            for operand in &operands[..] {
-                try!(emit(operand, compile_context, out, inside_lambda));
-            }
-            if operands.len() == 0 {
-                out.push(Instr::IntLit(0));
-            } else {
-                for _ in 0..operands.len() - 1 {
-                    out.push(Instr::AddInt);
-                }
-            }
+        &Bound::Add(ref l, ref r, _) => {
+            try!(emit(l, compile_context, out, inside_lambda));
+            try!(emit(r, compile_context, out, inside_lambda));
+            out.push(Instr::AddInt);
+        }
+        &Bound::Sub(ref l, ref r, _) => {
+            try!(emit(l, compile_context, out, inside_lambda));
+            try!(emit(r, compile_context, out, inside_lambda));
+            out.push(Instr::SubInt);
+        }
+        &Bound::Mul(ref l, ref r, _) => {
+            try!(emit(l, compile_context, out, inside_lambda));
+            try!(emit(r, compile_context, out, inside_lambda));
+            out.push(Instr::MulInt);
+        }
+        &Bound::Div(ref l, ref r, _) => {
+            try!(emit(l, compile_context, out, inside_lambda));
+            try!(emit(r, compile_context, out, inside_lambda));
+            out.push(Instr::DivInt);
         }
         &Bound::Literal(ast) => {
             match ast {
@@ -59,7 +67,7 @@ pub fn emit<'bound, 'ast: 'bound>(ast: &'bound Bound<'bound, 'ast>,
                 _ => panic!("non-literal ast found in Bound::Literal"),
             }
         }
-        &Bound::If(ref cond, ref tru, ref fals, _) => {
+        &Bound::IfExpression(ref cond, ref tru, ref fals, _) => {
             let mut true_code = EmitBuffer::new();
             let mut false_code = EmitBuffer::new();
 
@@ -82,6 +90,7 @@ pub fn emit<'bound, 'ast: 'bound>(ast: &'bound Bound<'bound, 'ast>,
             out.fulfill(fulfill_false, Instr::Jump(len_with_true_code as u32));
             out.merge(false_code);
         }
+        &Bound::IfStatement(_, _, _, _) => unimplemented!(),
         &Bound::Lambda { ref arg_symbols, ref body, ref bindings, ..} => {
             const INSTRS_BEFORE_LAMBDA_CODE: u32 = 2;
             let prior_code_len = out.len();
@@ -113,12 +122,7 @@ pub fn emit<'bound, 'ast: 'bound>(ast: &'bound Bound<'bound, 'ast>,
             let next = out.len() as u32;
             out.fulfill(eol_fulfill, Instr::Jump(next));
         }
-        &Bound::List(ref elements, _) => {
-            if elements.len() == 0 {
-                return Err(EmitError::CallWithEmptyList);
-            }
-            let funclike = &elements[0];
-            let args = &elements[1..];
+        &Bound::FnCall(ref funclike, ref args, _) => {
             for arg in args {
                 try!(emit(arg, compile_context, out, inside_lambda));
             }
@@ -144,8 +148,7 @@ pub fn emit<'bound, 'ast: 'bound>(ast: &'bound Bound<'bound, 'ast>,
             }
         }
         &Bound::ListLit(_, _) |
-        &Bound::MapLit(_, _) |
-        &Bound::Quote {..} => unimplemented!(),
+        &Bound::MapLit(_, _) => unimplemented!(),
     }
     Ok(())
 }

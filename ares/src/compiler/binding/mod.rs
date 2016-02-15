@@ -4,7 +4,7 @@ use std::collections::HashMap;
 mod error;
 pub use self::error::BindingError;
 
-use compiler::parse::Ast;
+use compiler::parse::{Ast, AstRef};
 use ares_syntax::{Symbol, SymbolIntern};
 use util::iterators_same;
 
@@ -17,35 +17,48 @@ use util::iterators_same;
 // Each bound node has a reference to the AST that it was from,
 //
 
+pub type BoundRef<'bound, 'ast> = &'bound Bound<'bound, 'ast>;
+
 #[derive(Debug)]
 pub enum Bound<'bound, 'ast: 'bound> {
-    Literal(&'ast Ast<'ast>),
+    Literal(AstRef<'ast>),
     Symbol {
         symbol: Symbol,
-        ast: &'ast Ast<'ast>,
+        ast: AstRef<'ast>,
         source: SymbolBindSource,
     },
 
-    ListLit(Vec<&'bound Bound<'bound, 'ast>>, &'ast Ast<'ast>),
-    MapLit(Vec<(&'bound Bound<'bound, 'ast>, &'bound Bound<'bound, 'ast>)>, &'ast Ast<'ast>),
-    Add(Vec<&'bound Bound<'bound, 'ast>>, &'ast Ast<'ast>),
-    Quote {
-        quoting: &'ast Ast<'ast>,
-        ast: &'ast Ast<'ast>,
-    },
-    List(Vec<&'bound Bound<'bound, 'ast>>, &'ast Ast<'ast>),
-    If(&'bound Bound<'bound, 'ast>,
-       &'bound Bound<'bound, 'ast>,
-       &'bound Bound<'bound, 'ast>,
-       &'ast Ast<'ast>),
+    ListLit(Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
+    MapLit(Vec<(BoundRef<'bound, 'ast>, BoundRef<'bound, 'ast>)>, AstRef<'ast>),
+    Add(BoundRef<'bound, 'ast>,
+        BoundRef<'bound, 'ast>,
+        AstRef<'ast>),
+    Sub(BoundRef<'bound, 'ast>,
+        BoundRef<'bound, 'ast>,
+        AstRef<'ast>),
+    Mul(BoundRef<'bound, 'ast>,
+        BoundRef<'bound, 'ast>,
+        AstRef<'ast>),
+    Div(BoundRef<'bound, 'ast>,
+        BoundRef<'bound, 'ast>,
+        AstRef<'ast>),
+    FnCall(BoundRef<'bound, 'ast>, Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
+    IfExpression(BoundRef<'bound, 'ast>,
+       BoundRef<'bound, 'ast>,
+       BoundRef<'bound, 'ast>,
+       AstRef<'ast>),
+    IfStatement(BoundRef<'bound, 'ast>,
+       Vec<BoundRef<'bound, 'ast>>,
+       Option<Vec<BoundRef<'bound, 'ast>>>,
+       AstRef<'ast>),
     Lambda {
         arg_symbols: Vec<Symbol>,
-        body: &'bound Bound<'bound, 'ast>,
-        ast: &'ast Ast<'ast>,
+        body: BoundRef<'bound, 'ast>,
+        ast: AstRef<'ast>,
         bindings: LambdaBindings,
     },
-    Block(Vec<&'bound Bound<'bound, 'ast>>, &'ast Ast<'ast>),
-    Define(Symbol, SymbolBindSource, &'bound Bound<'bound, 'ast>, &'ast Ast<'ast>),
+    Block(Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
+    Define(Symbol, SymbolBindSource, BoundRef<'bound, 'ast>, AstRef<'ast>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -186,23 +199,46 @@ impl Binder for BuckStopsHereBinder {
 }
 
 impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
-    pub fn bind_top(ast: &'ast Ast<'ast>,
+    pub fn bind_top(ast: AstRef<'ast>,
                     arena: &'bound Arena<Bound<'bound, 'ast>>,
                     interner: &mut SymbolIntern)
-                    -> Result<&'bound Bound<'bound, 'ast>, BindingError> {
+                    -> Result<BoundRef<'bound, 'ast>, BindingError> {
         let mut buck = BuckStopsHereBinder;
         Bound::bind(ast, arena, &mut buck, interner)
     }
 
-    fn bind(ast: &'ast Ast<'ast>,
+    fn bind_all<I>(asts: I, 
             arena: &'bound Arena<Bound<'bound, 'ast>>,
             binder: &mut Binder,
             interner: &mut SymbolIntern)
-            -> Result<&'bound Bound<'bound, 'ast>, BindingError> {
+            -> Result<Vec<BoundRef<'bound, 'ast>>, BindingError>
+    where I: IntoIterator<Item=AstRef<'ast>> {
+        let mut out_ok = vec![];
+        let mut out_err = vec![];
+        for ast in asts {
+            match Bound::bind(ast, arena, binder, interner) {
+                Ok(o) => out_ok.push(o),
+                Err(e) => out_err.push(e),
+            }
+        }
+
+        if !out_err.is_empty() {
+            Err(BindingError::Multiple(out_err))
+        } else {
+            Ok(out_ok)
+        }
+    }
+
+    fn bind(ast: AstRef<'ast>,
+            arena: &'bound Arena<Bound<'bound, 'ast>>,
+            binder: &mut Binder,
+            interner: &mut SymbolIntern)
+            -> Result<BoundRef<'bound, 'ast>, BindingError> {
         Ok(arena.alloc(match ast {
             &Ast::BoolLit(_, _) |
             &Ast::StringLit(_, _) |
             &Ast::FloatLit(_, _) |
+            &Ast::SymbolLit(_, _) |
             &Ast::IntLit(_, _) => Bound::Literal(ast),
             &Ast::ListLit(ref elements, _) => {
                 Bound::ListLit(try!(elements.iter()
@@ -221,7 +257,7 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 }
                 Bound::MapLit(bound, ast)
             }
-            &Ast::Symbol(symbol, span) => {
+            &Ast::Identifier(symbol, span) => {
                 let source = match binder.lookup(symbol) {
                     Some(source) => source,
                     None => return Err(BindingError::CouldNotBind(symbol, span)),
@@ -233,37 +269,50 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                     source: source,
                 }
             }
-            &Ast::Add(ref elements, _) => {
-                let mut bound = Vec::with_capacity(elements.len());
-                for element in elements {
-                    bound.push(try!(Bound::bind(element, arena, binder, interner)));
-                }
-                Bound::Add(bound, ast)
+            &Ast::Add(ref left, ref right, _) => {
+                Bound::Add(try!(Bound::bind(left, arena, binder, interner)),
+                           try!(Bound::bind(right, arena, binder, interner)),
+                           ast)
             }
-            &Ast::Quote(ref q, _) => {
-                Bound::Quote {
-                    quoting: q,
-                    ast: ast,
-                }
+            &Ast::Sub(ref left, ref right, _) => {
+                Bound::Sub(try!(Bound::bind(left, arena, binder, interner)),
+                           try!(Bound::bind(right, arena, binder, interner)),
+                           ast)
             }
-            &Ast::List(ref elements, _) => {
-                let mut bound = Vec::with_capacity(elements.len());
-                for element in elements {
-                    bound.push(try!(Bound::bind(element, arena, binder, interner)));
-                }
-                Bound::List(bound, ast)
+            &Ast::Mul(ref left, ref right, _) => {
+                Bound::Mul(try!(Bound::bind(left, arena, binder, interner)),
+                           try!(Bound::bind(right, arena, binder, interner)),
+                           ast)
             }
-            &Ast::If(ref a, ref b, ref c, _) => {
-                Bound::If(try!(Bound::bind(a, arena, binder, interner)) as &_,
+            &Ast::Div(ref left, ref right, _) => {
+                Bound::Div(try!(Bound::bind(left, arena, binder, interner)),
+                           try!(Bound::bind(right, arena, binder, interner)),
+                           ast)
+            }
+            &Ast::FnCall(ref receiver, ref arguments, _) => {
+                let bound_receiver = try!(Bound::bind(receiver, arena, binder, interner));
+                let bound_arguments = try!(Bound::bind_all(arguments, arena, binder, interner));
+                Bound::FnCall(bound_receiver, bound_arguments, ast)
+            }
+            &Ast::IfExpression(ref a, ref b, ref c, _) => {
+                Bound::IfExpression(try!(Bound::bind(a, arena, binder, interner)) as &_,
                           try!(Bound::bind(b, arena, binder, interner)) as &_,
                           try!(Bound::bind(c, arena, binder, interner)) as &_,
                           ast)
             }
-            &Ast::Lambda(ref args, ref body_block, _) => {
-                let mut new_binder = LambdaBinder::new(binder, args);
+            &Ast::IfStatement(ref a, ref b, ref c, _) => {
+                Bound::IfStatement(try!(Bound::bind(a, arena, binder, interner)) as &_,
+                          try!(Bound::bind_all(b.iter(), arena, binder, interner)),
+                          try!(rearrange(c.as_ref().map(|c| Bound::bind_all(c.iter(), arena, binder, interner)))),
+                          ast)
+            }
+            &Ast::Closure(ref _name, ref args, ref body_block, _) => {
+                // TODO: Bind name to "this function"
+                assert!(args.len() == 1);
+                let mut new_binder = LambdaBinder::new(binder, &args[0]);
                 let bound_body = try!(Bound::bind(body_block, arena, &mut new_binder, interner));
                 Bound::Lambda {
-                    arg_symbols: args.clone(),
+                    arg_symbols: args[0].clone(),
                     body: bound_body,
                     ast: ast,
                     bindings: new_binder.bindings,
@@ -271,10 +320,7 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             }
             &Ast::Block(ref bodies, _) => {
                 let mut new_binder = BlockBinder::new(binder);
-                let mut bound_bodies = Vec::with_capacity(bodies.len());
-                for body in bodies {
-                    bound_bodies.push(try!(Bound::bind(body, arena, &mut new_binder, interner)));
-                }
+                let bound_bodies = try!(Bound::bind_all(bodies, arena, &mut new_binder, interner));
                 Bound::Block(bound_bodies, ast)
             }
             &Ast::Define(symbol, value, _) => {
@@ -288,7 +334,7 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
         }))
     }
 
-    fn equals_sans_ast(&self, other: &'bound Bound<'bound, 'ast>) -> bool {
+    fn equals_sans_ast(&self, other: BoundRef<'bound, 'ast>) -> bool {
         match (self, other) {
             (&Bound::Literal(ref a), &Bound::Literal(ref b)) => {
                 let res = a.equals_sans_span(b);
@@ -307,12 +353,13 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             }) => symbol_a == symbol_b && source_a == source_b,
 
             (&Bound::ListLit(ref list_a, _),
-             &Bound::ListLit(ref list_b, _)) |
-            (&Bound::List(ref list_a, _), &Bound::List(ref list_b, _)) |
-            (&Bound::Add(ref list_a, _), &Bound::Add(ref list_b, _)) => {
-                iterators_same(list_a.iter(),
-                               list_b.iter(),
-                               |&a, &b| Bound::equals_sans_ast(a, b))
+             &Bound::ListLit(ref list_b, _)) => {
+                iterators_same(list_a.iter(), list_b.iter(), |a, b| {
+                    Bound::equals_sans_ast(a, b)
+                })
+            }
+            (&Bound::Add(ref la, ref ra, _), &Bound::Add(ref lb, ref rb, _)) => {
+                Bound::equals_sans_ast(la, lb) && Bound::equals_sans_ast(ra, rb)
             }
 
             (&Bound::MapLit(ref list_a, _), &Bound::MapLit(ref list_b, _)) => {
@@ -320,10 +367,8 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                     Bound::equals_sans_ast(k1, k2) && Bound::equals_sans_ast(v1, v2)
                 })
             }
-            (&Bound::Quote { quoting: quoting_a, ..  },
-             &Bound::Quote { quoting: quoting_b, ..  }) => quoting_a.equals_sans_span(quoting_b),
-            (&Bound::If(ref a1, ref a2, ref a3, _),
-             &Bound::If(ref b1, ref b2, ref b3, _)) => {
+            (&Bound::IfExpression(ref a1, ref a2, ref a3, _),
+             &Bound::IfExpression(ref b1, ref b2, ref b3, _)) => {
                 a1.equals_sans_ast(b1) && a2.equals_sans_ast(b2) && a3.equals_sans_ast(b3)
             }
             (&Bound::Lambda{arg_symbols: ref args_a, body: ref body_a, bindings: ref bindings_a, ast: ref _asta },
@@ -345,6 +390,14 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             }
             _ => false,
         }
+    }
+}
+
+fn rearrange<T, E>(obj: Option<Result<T, E>>) -> Result<Option<T>, E> {
+    match obj {
+        None => Ok(None),
+        Some(Ok(t)) => Ok(Some(t)),
+        Some(Err(e)) => Err(e)
     }
 }
 

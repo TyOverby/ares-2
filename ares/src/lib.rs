@@ -5,6 +5,7 @@ extern crate gc;
 extern crate libc;
 extern crate typed_arena;
 extern crate ares_syntax;
+extern crate lalrpop_util;
 
 macro_rules! matches {
     ($e: expr, $p: pat) => {

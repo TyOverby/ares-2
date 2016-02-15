@@ -5,4 +5,5 @@ use compiler::parse::Span;
 pub enum BindingError {
     CouldNotBind(Symbol, Span),
     AlreadyDefined(Symbol),
+    Multiple(Vec<BindingError>)
 }

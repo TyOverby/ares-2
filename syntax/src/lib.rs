@@ -4,9 +4,10 @@ mod intern;
 mod syntax;
 
 pub use intern::*;
-pub use syntax::*;
+pub use syntax::{parse_Expr, parse_Statement, parse_Statements};
+use typed_arena::Arena;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Span(u32, u32);
 
 impl Span {
@@ -14,6 +15,8 @@ impl Span {
         Span(0, 0)
     }
 }
+
+pub type AstRef<'ast> = &'ast Ast<'ast>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Ast<'ast> {
@@ -23,19 +26,49 @@ pub enum Ast<'ast> {
     FloatLit(f64, Span),
     SymbolLit(Symbol, Span),
     Identifier(Symbol, Span),
-//  ListLit(Vec<&'ast Ast<'ast>>, Span),
-//  MapLit(Vec<(&'ast Ast<'ast>, &'ast Ast<'ast>)>, Span),
-    Add(&'ast Ast<'ast>, &'ast Ast<'ast>, Span),
-    Sub(&'ast Ast<'ast>, &'ast Ast<'ast>, Span),
-    Mul(&'ast Ast<'ast>, &'ast Ast<'ast>, Span),
-    Div(&'ast Ast<'ast>, &'ast Ast<'ast>, Span),
-    FnCall(&'ast Ast<'ast>, Vec<Ast<'ast>>, Span),
-//  Quote(&'ast Ast<'ast>, Span),
-    IfExpression(&'ast Ast<'ast>, &'ast Ast<'ast>, &'ast Ast<'ast>, Span),
-    IfStatement(&'ast Ast<'ast>, Vec<Ast<'ast>>, Option<Vec<Ast<'ast>>>, Span),
-    Closure(Option<Symbol>, Vec<Vec<Symbol>>, Vec<Ast<'ast>>, Span),
-//  Define(Symbol, &'ast Ast<'ast>, Span),
-//  Block(Vec<&'ast Ast<'ast>>, Span),
+    ListLit(Vec<AstRef<'ast>>, Span),
+    MapLit(Vec<(AstRef<'ast>, AstRef<'ast>)>, Span),
+    Add(AstRef<'ast>, AstRef<'ast>, Span),
+    Sub(AstRef<'ast>, AstRef<'ast>, Span),
+    Mul(AstRef<'ast>, AstRef<'ast>, Span),
+    Div(AstRef<'ast>, AstRef<'ast>, Span),
+    FnCall(AstRef<'ast>, Vec<Ast<'ast>>, Span),
+    IfExpression(AstRef<'ast>, AstRef<'ast>, AstRef<'ast>, Span),
+    IfStatement(AstRef<'ast>, Vec<Ast<'ast>>, Option<Vec<Ast<'ast>>>, Span),
+    Closure(Option<Symbol>, Vec<Vec<Symbol>>, AstRef<'ast>, Span),
+    Define(Symbol, AstRef<'ast>, Span),
+    Block(Vec<Ast<'ast>>, Span),
+}
+
+impl <'ast> Ast<'ast> {
+    fn with_default_span(self, arena: &Arena<Ast<'ast>>) -> Ast<'ast> {
+        use self::Ast::*;
+        match self {
+            BoolLit(a, _) => BoolLit(a, Span::dummy()),
+            StringLit(a, _) => StringLit(a, Span::dummy()),
+            IntLit(a, _) => IntLit(a, Span::dummy()),
+            FloatLit(a, _) => FloatLit(a, Span::dummy()),
+            SymbolLit(a, _) => SymbolLit(a, Span::dummy()),
+            Identifier(a, _) => Identifier(a, Span::dummy()),
+            ListLit(a,  _) => ListLit(a, Span::dummy()),
+            MapLit(a, _) => MapLit(a, Span::dummy()),
+            Add(l, r, _) => Add(l, r, Span::dummy()),
+            Sub(l, r, _) => Sub(l, r, Span::dummy()),
+            Mul(l, r, _) => Mul(l, r, Span::dummy()),
+            Div(l, r, _) => Div(l, r, Span::dummy()),
+            FnCall(o, a, _) => FnCall(o, a, Span::dummy()),
+            IfExpression(c, t, f, _) => IfExpression(c, t, f, Span::dummy()),
+            IfStatement(c, t, f, _) => IfStatement(c, t, f, Span::dummy()),
+            Closure(n, a, b, _) => Closure(n, a, b, Span::dummy()),
+            Define(n, v, _) => Define(n, v, Span::dummy()),
+            Block(b, _) => Block(b, Span::dummy()),
+        }
+    }
+
+    pub fn equals_sans_span(&self, other: &Ast<'ast>) -> bool {
+        let arena = Arena::new();
+        self.clone().with_default_span(&arena) == other.clone().with_default_span(&arena)
+    }
 }
 
 
