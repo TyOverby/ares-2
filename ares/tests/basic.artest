@@ -1,5 +1,5 @@
-(print 5)
-(print "hi")
+print(5);
+print("hi")
 =========
 5
 hi

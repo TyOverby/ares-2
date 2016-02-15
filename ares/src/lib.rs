@@ -4,6 +4,7 @@
 extern crate gc;
 extern crate libc;
 extern crate typed_arena;
+#[macro_use(ast)]
 extern crate ares_syntax;
 extern crate lalrpop_util;
 

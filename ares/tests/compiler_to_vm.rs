@@ -16,6 +16,7 @@ fn run_this(src: &str) -> Value {
     vm.stack.pop().unwrap()
 }
 
+/*
 #[test]
 fn test_add() {
     assert_eq!(run_this("(+ 1)"), Value::Int(1));
@@ -62,4 +63,4 @@ fn test_defines() {
     assert_eq!(run_this("((lambda () (define x 5) x))"), 5.into());
     assert_eq!(run_this("((lambda () (define x 5) (define y 10) (+ x y)))"), 15.into());
 //    assert_eq!(run_this("((lambda () (define x 5) (define x 10) x))"), 10.into());
-}
+}*/

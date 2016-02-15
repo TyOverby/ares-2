@@ -19,12 +19,13 @@ Comma<T>: Vec<T> = {
 
 #[inline]
 Block: Ast<'a> = {
-    "{" <e: Statement*> "}" => Ast::Block(e, Span(0, 0)),
+    "{" <e: BlockInner> "}" => Ast::Block(e, Span(0, 0)),
 };
 
 PrimaryExpression: Ast<'a> = {
     FloatLit,
     IntLit,
+    BoolLit,
     StringLit,
     SymbolLit,
     Identifier  => Ast::Identifier(<>, Span(0, 0)),
@@ -142,8 +143,17 @@ pub Statement: Ast<'a> = {
     <e: AssignmentExpressionStatement> ";" => e,
 };
 
-pub Statements: Vec<Ast<'a>> = {
-    Statement*
+#[inline]
+BlockInner: Vec<Ast<'a>> = {
+    <s:Statement*> <e: IfExpression> => {
+        let mut s = s;
+        s.push(e);
+        s
+    }
+};
+
+pub PublicBlockInner: Vec<Ast<'a>> = {
+    BlockInner
 };
 
 #[inline]
@@ -152,6 +162,7 @@ Closure: Ast<'a> = {
         Ast::Closure(name, p_list, arena.alloc(body), Span(0, 0)),
 };
 
+#[inline]
 ParamList: Vec<Symbol> = {
     "(" <params: Comma<Identifier>> ")" => params,
 };
@@ -159,10 +170,17 @@ ParamList: Vec<Symbol> = {
 //
 // TERMINALS
 //
+
 #[inline]
 IntLit: Ast<'a> = {
      <int: r"[0-9]+">  =>
         Ast::IntLit(i64::from_str(int).unwrap(), Span(0, 0))
+};
+
+#[inline]
+BoolLit: Ast<'a> = {
+    "true"=> Ast::BoolLit(true, Span(0, 0)),
+    "false"=> Ast::BoolLit(false, Span(0, 0)),
 };
 
 #[inline]

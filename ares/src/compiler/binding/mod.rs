@@ -412,7 +412,7 @@ mod test {
     fn bind_lambda_one_arg() {
         let parse_arena = Arena::new();
         let bind_arena = Arena::new();
-        let (ast, mut interner) = ok_parse_1("(lambda (a) a)", &parse_arena);
+        let (ast, mut interner) = ok_parse_1("fn(a) { a }");
         let bound = Bound::bind_top(ast, &bind_arena, &mut interner);
 
         let should = bind_arena.alloc(Bound::Lambda {
@@ -439,12 +439,12 @@ mod test {
     fn bind_lambda_two_args() {
         let parse_arena = Arena::new();
         let bind_arena = Arena::new();
-        let (ast, mut interner) = ok_parse_1("(lambda (a b) (+ a b))", &parse_arena);
+        let (ast, mut interner) = ok_parse_1("fn(a, b) { a + b }");
         let bound = Bound::bind_top(ast, &bind_arena, &mut interner);
 
         let should = bind_arena.alloc(Bound::Lambda {
             arg_symbols: vec![interner.intern("a"), interner.intern("b")],
-            body: bind_arena.alloc(Bound::Block(vec![bind_arena.alloc(Bound::Add(vec![
+            body: bind_arena.alloc(Bound::Block(vec![bind_arena.alloc(Bound::Add(
                                   bind_arena.alloc(Bound::Symbol {
                                       symbol: interner.intern("a"),
                                       ast: parse_arena.alloc(Ast::dummy()),
@@ -454,8 +454,7 @@ mod test {
                                       symbol: interner.intern("b"),
                                       ast: parse_arena.alloc(Ast::dummy()),
                                       source: SymbolBindSource::Arg(1)
-                                  })
-                           ],
+                                  }),
                                                            parse_arena.alloc(Ast::dummy())))], parse_arena.alloc(Ast::dummy()))),
             ast: parse_arena.alloc(Ast::dummy()),
             bindings: LambdaBindings {

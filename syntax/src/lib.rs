@@ -4,7 +4,7 @@ mod intern;
 mod syntax;
 
 pub use intern::*;
-pub use syntax::{parse_Expr, parse_Statement, parse_Statements};
+pub use syntax::{parse_Expr, parse_Statement, parse_PublicBlockInner};
 use typed_arena::Arena;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -41,6 +41,9 @@ pub enum Ast<'ast> {
 }
 
 impl <'ast> Ast<'ast> {
+    pub fn dummy() -> Ast<'static> {
+        Ast::BoolLit(true, Span::dummy())
+    }
     fn with_default_span(self, arena: &Arena<Ast<'ast>>) -> Ast<'ast> {
         use self::Ast::*;
         match self {
@@ -72,6 +75,7 @@ impl <'ast> Ast<'ast> {
 }
 
 
+#[macro_export]
 macro_rules! ast {
     ($arena: expr, $intern: expr, BoolLit($value: expr)) => {
         (Ast::BoolLit($value, Span::dummy()))
@@ -148,14 +152,14 @@ macro_rules! ast {
         (Ast::Closure(
                 None,
                 vec![$(vec![$($intern.intern(stringify!($symbol))),*]),*],
-                vec![$(ast!($arena, $intern, $name $arg))*],
+                $arena.alloc(Ast::Block(vec![$(ast!($arena, $intern, $name $arg))*], Span::dummy())),
                 Span::dummy()))
     };
     ($arena: expr, $intern: expr, Lambda($c_name:ident, ($( ($( $symbol:tt ),*) ),*), $($name:tt $arg:tt),*)) => {
         (Ast::Closure(
                 Some($intern.intern(stringify!($c_name))),
                 vec![$(vec![$($intern.intern(stringify!($symbol))),*]),*],
-                vec![$(ast!($arena, $intern, $name $arg))*],
+                $arena.alloc(Ast::Block(vec![$(ast!($arena, $intern, $name $arg))*], Span::dummy())),
                 Span::dummy()))
     };
 

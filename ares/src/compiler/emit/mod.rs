@@ -156,12 +156,11 @@ pub fn emit<'bound, 'ast: 'bound>(ast: &'bound Bound<'bound, 'ast>,
 #[cfg(test)]
 mod test {
     use vm::{Instr, Value};
-    use compiler::parse::{Ast, Span};
     use compiler::CompileContext;
     use ares_syntax::{SymbolIntern};
     use typed_arena::Arena;
 
-    fn compile_this(ast: &Ast, interner: Option<SymbolIntern>) -> (Vec<Instr>, CompileContext) {
+    fn compile_this(program: &str) -> (Vec<Instr>, CompileContext) {
         use compiler::emit::emit;
         use compiler::emit::EmitBuffer;
         use compiler::binding::Bound;
@@ -169,8 +168,8 @@ mod test {
         let mut out = EmitBuffer::new();
         let mut compile_context = CompileContext::new();
         let mut bound_arena = Arena::new();
-        let mut interner = interner.unwrap_or_else(|| SymbolIntern::new());
-
+        let mut interner = SymbolIntern::new();
+        let ast = ::compiler::parse::test::ok_parse_1_full(program, &mut interner);
         let bound = Bound::bind_top(ast, &mut bound_arena, &mut interner).unwrap();
         emit(&bound, &mut compile_context, &mut out, None).unwrap();
         (out.into_instructions(), compile_context)
@@ -179,26 +178,22 @@ mod test {
     #[test]
     fn test_literal_emit() {
         {
-            let ast = Ast::IntLit(5, Span::dummy());
-            let (out, _) = compile_this(&ast, None);
+            let (out, _) = compile_this("5");
             assert_eq!(out, vec![Instr::IntLit(5)]);
         }
         {
-            let ast = Ast::IntLit(8589934592, Span::dummy());
-            let (out, cc) = compile_this(&ast, None);
+            let (out, cc) = compile_this("8589934592");
             assert_eq!(cc.get_constant(0), Value::Int(8589934592));
             assert_eq!(out, vec![Instr::LoadConstant(0)]);
 
         }
         {
-            let ast = Ast::FloatLit(3.14, Span::dummy());
-            let (out, cc) = compile_this(&ast, None);
+            let (out, cc) = compile_this("3.14");
             assert_eq!(cc.get_constant(0), Value::Float(3.14));
             assert_eq!(out, vec![Instr::LoadConstant(0)]);
         }
         {
-            let ast = Ast::StringLit("hello world".into(), Span::dummy());
-            let (out, cc) = compile_this(&ast, None);
+            let (out, cc) = compile_this("\"hello world\"");
             assert_eq!(cc.get_constant(0), "hello world".into());
             assert_eq!(out, vec![Instr::LoadConstant(0)]);
         }
@@ -206,39 +201,20 @@ mod test {
 
     #[test]
     fn test_add_emit() {
-        let a = Arena::new();
-        {
-            // Add one thing
-            let ast = Ast::Add(vec![a.alloc(Ast::IntLit(5, Span::dummy()))], Span::dummy());
-            let (out, _) = compile_this(&ast, None);
-            assert_eq!(out, vec![Instr::IntLit(5)]);
-        }
         {
             // Add two things
-            let ast = Ast::Add(vec![a.alloc(Ast::IntLit(5, Span::dummy())),
-                                    a.alloc(Ast::IntLit(10, Span::dummy()))],
-                               Span::dummy());
-            let (out, _) = compile_this(&ast, None);
+            let (out, _) = compile_this("5 + 10");
             assert_eq!(out,
                        vec![Instr::IntLit(5), Instr::IntLit(10), Instr::AddInt]);
         }
         {
-            // Add some addition
-            let ast = Ast::Add(vec![a.alloc(Ast::IntLit(5, Span::dummy())),
-                                    a.alloc(Ast::IntLit(10, Span::dummy())),
-                                    a.alloc(Ast::Add(vec![
-                                        a.alloc(Ast::IntLit(15, Span::dummy())),
-                                        a.alloc(Ast::IntLit(20, Span::dummy())),
-                                        ],
-                                                     Span::dummy()))],
-                               Span::dummy());
-            let (out, _) = compile_this(&ast, None);
+            let (out, _) = compile_this("(5 + 10) + (15 + 20)");
             assert_eq!(out,
                        vec![Instr::IntLit(5),
                             Instr::IntLit(10),
+                            Instr::AddInt,
                             Instr::IntLit(15),
                             Instr::IntLit(20),
-                            Instr::AddInt,
                             Instr::AddInt,
                             Instr::AddInt]);
         }
@@ -246,13 +222,7 @@ mod test {
 
     #[test]
     fn test_basic_if() {
-        let a = Arena::new();
-        let ast = Ast::If(a.alloc(Ast::BoolLit(true, Span::dummy())),
-                          a.alloc(Ast::IntLit(15, Span::dummy())),
-                          a.alloc(Ast::IntLit(20, Span::dummy())),
-                          Span::dummy());
-
-        let (out, _) = compile_this(&ast, None);
+        let (out, _) = compile_this("if true then 15 else 20");
 
         assert_eq!(out,
                    vec![Instr::BoolLit(true),
@@ -265,13 +235,7 @@ mod test {
 
     #[test]
     fn emit_no_arg_lambda() {
-        let a = Arena::new();
-        let ast = Ast::Lambda(vec![],
-                              a.alloc(Ast::Block(vec![a.alloc(Ast::IntLit(10, Span::dummy())),
-                                   a.alloc(Ast::IntLit(5, Span::dummy()))], Span::dummy())),
-                              Span::dummy());
-
-        let (out, _) = compile_this(&ast, None);
+        let (out, _) = compile_this("fn() { 10; 5 }");
 
         assert_eq!(out, vec![
                    Instr::CreateClosure(0),
@@ -283,17 +247,8 @@ mod test {
     }
 
     #[test]
-    fn emit_list() {
-        let a = Arena::new();
-        let ast = Ast::List(vec![
-                a.alloc(Ast::IntLit(1, Span::dummy())),
-                a.alloc(Ast::IntLit(2, Span::dummy())),
-                a.alloc(Ast::IntLit(3, Span::dummy())),
-            ],
-                            Span::dummy());
-
-        let (out, _) = compile_this(&ast, None);
-
+    fn emit_fn_call() {
+        let (out, _) = compile_this("1(2, 3)");
         assert_eq!(out,
                    vec![Instr::IntLit(2),
                         Instr::IntLit(3),
@@ -303,15 +258,7 @@ mod test {
 
     #[test]
     fn emit_one_arg_lambda() {
-        let a = Arena::new();
-        let mut interner = SymbolIntern::new();
-
-        let arg1 = interner.intern("test");
-        let ast = Ast::Lambda(vec![arg1],
-                              a.alloc(Ast::Block(vec![a.alloc(Ast::Symbol(arg1, Span::dummy()))], Span::dummy())),
-                              Span::dummy());
-
-        let (out, _) = compile_this(&ast, Some(interner));
+        let (out, _) = compile_this("fn(a) { a }");
 
         assert_eq!(out, vec![
                    Instr::CreateClosure(0),

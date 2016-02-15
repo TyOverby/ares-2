@@ -171,7 +171,7 @@ fn basic_context() {
     let mut state = ();
     let mut ctx = UnloadedContext::new();
     let mut lctx = ctx.load(&mut state);
-    assert_eq!(lctx.eval("(+ 1 2 3)"), Ok(6.into()));
+    assert_eq!(lctx.eval("1 + 2 + 3"), Ok(6.into()));
 }
 
 #[test]
@@ -201,13 +201,13 @@ fn context_with_user_fn() {
 
     {
         let mut lctx = ctx.load(&mut state);
-        let res = lctx.eval("(foo)");
+        let res = lctx.eval("foo()");
         assert_eq!(res.unwrap(), 1.into());
     }
     assert_eq!(state, 1);
     {
         let mut lctx = ctx.load(&mut state);
-        let res = lctx.eval("(foo)");
+        let res = lctx.eval("foo()");
         assert_eq!(res.unwrap(), 2.into());
     }
     assert_eq!(state, 2);
