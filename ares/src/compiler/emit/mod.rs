@@ -2,20 +2,32 @@ mod error;
 mod emit_buffer;
 
 use compiler::parse::Ast;
-use compiler::binding::{Bound, SymbolBindSource, LambdaBindings};
+use compiler::binding::{Bound, BoundRef, SymbolBindSource, LambdaBindings};
 use compiler::CompileContext;
 use vm::{Instr, ClosureClass};
 
 pub use self::error::EmitError;
 pub use self::emit_buffer::EmitBuffer;
 
+pub fn emit_all<'bound, 'ast: 'bound, I> (bound: I,
+                    compile_context: &mut CompileContext,
+                    out: &mut EmitBuffer,
+                    inside_lambda: Option<&LambdaBindings>)
+                    -> Result<(), EmitError>
+where I: IntoIterator<Item=BoundRef<'bound, 'ast>> {
+    for bound in bound {
+        try!(emit(&bound, compile_context, out, inside_lambda));
+    }
+    Ok(())
+}
+
 #[allow(unused_variables)]
-pub fn emit<'bound, 'ast: 'bound>(ast: &'bound Bound<'bound, 'ast>,
+pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                     compile_context: &mut CompileContext,
                     out: &mut EmitBuffer,
                     inside_lambda: Option<&LambdaBindings>)
                     -> Result<(), EmitError> {
-    match ast {
+    match bound {
         &Bound::Block(ref bound_bodies, _) => {
             for body in &bound_bodies[..bound_bodies.len() - 1] {
                 try!(emit(body, compile_context, out, inside_lambda));
@@ -85,7 +97,7 @@ pub fn emit<'bound, 'ast: 'bound>(ast: &'bound Bound<'bound, 'ast>,
 
             // The true branch needs to jump past the end
             // of the false branch.
-            let end = out.len() + (true_code.len() + 1) + false_code.len();
+            let end = out.len() + true_code.len() + false_code.len() + 1;
             true_code.push(Instr::Jump(end as u32));
 
             out.merge(true_code);
@@ -93,7 +105,32 @@ pub fn emit<'bound, 'ast: 'bound>(ast: &'bound Bound<'bound, 'ast>,
             out.fulfill(fulfill_false, Instr::Jump(len_with_true_code as u32));
             out.merge(false_code);
         }
-        &Bound::IfStatement(_, _, _, _) => unimplemented!(),
+        &Bound::IfStatement(ref cond, ref tru, ref fals, _) => {
+            let mut true_code = EmitBuffer::new();
+            let mut false_code = EmitBuffer::new();
+
+            try!(emit(&**cond, compile_context, out, inside_lambda));
+            out.push(Instr::Ifn);
+            let (false_pos, fulfill_false) = out.standin();
+            out.push_standin(false_pos);
+
+            try!(emit_all(tru.iter().map(|&a|a), compile_context, &mut true_code, inside_lambda));
+            let false_length = if let &Some(ref fals) = fals {
+                try!(emit_all(fals.iter().map(|&a|a), compile_context, &mut false_code, inside_lambda));
+                false_code.len()
+            } else { 0 };
+
+            if false_length != 0 {
+                let end = out.len() + true_code.len() + false_code.len() + 1;
+                true_code.push(Instr::Jump(end as u32));
+            }
+
+            out.merge(true_code);
+            let len_with_true_code = out.len();
+            out.fulfill(fulfill_false, Instr::Jump(len_with_true_code as u32));
+            out.merge(false_code);
+
+        },
         &Bound::Lambda { ref arg_symbols, ref body, ref bindings, ..} => {
             const INSTRS_BEFORE_LAMBDA_CODE: u32 = 2;
             let prior_code_len = out.len();
@@ -268,5 +305,34 @@ mod test {
                    Instr::Jump(4),
                    Instr::Dup(0),
                    Instr::Ret]);
+    }
+
+    #[test]
+    fn emit_if_statement_no_else() {
+        let (out, _) = compile_this("if true then { 1(); }");
+
+        assert_eq!(out, vec![
+                   Instr::BoolLit(true),
+                   Instr::Ifn,
+                   Instr::Jump(5),
+                   Instr::IntLit(1),
+                   Instr::Execute(0),
+        ]);
+    }
+
+    #[test]
+    fn emit_if_statement() {
+        let (out, _) = compile_this("if true then { 1(); } else { 2(); }");
+
+        assert_eq!(out, vec![
+                   Instr::BoolLit(true),
+                   Instr::Ifn,
+                   Instr::Jump(6),
+                   Instr::IntLit(1),
+                   Instr::Execute(0),
+                   Instr::Jump(8),
+                   Instr::IntLit(2),
+                   Instr::Execute(0),
+        ]);
     }
 }

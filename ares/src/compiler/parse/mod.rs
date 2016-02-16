@@ -1,6 +1,6 @@
 pub use ares_syntax::{Span, Ast, AstRef};
 use ares_syntax::SymbolIntern;
-use ares_syntax::parse_PublicBlockInner;
+use ares_syntax::parse_Program;
 use typed_arena::Arena;
 use lalrpop_util;
 
@@ -20,7 +20,7 @@ pub enum ParseError {
 
 pub fn parse<'a>(program: &str, interner: &mut SymbolIntern, arena: &'a Arena<Ast<'a>>)
 -> Result<Vec<Ast<'a>>, ParseError> {
-    match parse_PublicBlockInner(arena, interner, program) {
+    match parse_Program(arena, interner, program) {
         Ok(ast) => Ok(ast),
         Err(e) => {
             Err(match e {

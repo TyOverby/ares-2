@@ -4,7 +4,7 @@ mod intern;
 mod syntax;
 
 pub use intern::*;
-pub use syntax::{parse_Expr, parse_Statement, parse_PublicBlockInner};
+pub use syntax::{parse_Expr, parse_Statement, parse_Program};
 use typed_arena::Arena;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

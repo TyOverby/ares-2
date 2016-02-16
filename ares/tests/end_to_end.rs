@@ -11,6 +11,11 @@ pub fn literals() {
     run_test("literals");
 }
 
+#[test]
+pub fn hard_parse() {
+    run_test("hard_parse");
+}
+
 fn get_lines(contents: String) -> (String, Vec<String>) {
     let mut program = vec![];
     let mut expected = vec![];

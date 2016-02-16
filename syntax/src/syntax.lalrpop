@@ -152,8 +152,14 @@ BlockInner: Vec<Ast<'a>> = {
     }
 };
 
-pub PublicBlockInner: Vec<Ast<'a>> = {
-    BlockInner
+pub Program: Vec<Ast<'a>> = {
+    <s:Statement*> <e: IfExpression?> => {
+        let mut s = s;
+        if let Some(e) = e {
+            s.push(e);
+        }
+        s
+    }
 };
 
 #[inline]

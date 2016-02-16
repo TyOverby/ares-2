@@ -3,7 +3,7 @@ print("hi");
 print('foo);
 print(3.14);
 print(true);
-print(false)
+print(false);
 =========
 5
 hi
