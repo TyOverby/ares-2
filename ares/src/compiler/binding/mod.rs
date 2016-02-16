@@ -404,9 +404,28 @@ fn rearrange<T, E>(obj: Option<Result<T, E>>) -> Result<Option<T>, E> {
 #[cfg(test)]
 mod test {
     use super::{Bound, SymbolBindSource, LambdaBindings};
-    use compiler::parse::Ast;
+    use compiler::parse::{Ast, Span};
     use compiler::parse::test::ok_parse_1;
     use typed_arena::Arena;
+
+    #[test]
+    fn operators() {
+        let parse_arena = Arena::new();
+        let bind_arena = Arena::new();
+        let (ast, mut interner) = ok_parse_1("1 + 2");
+        let bound = Bound::bind_top(ast, &bind_arena, &mut interner);
+
+        let should = bind_arena.alloc(Bound::Add(bind_arena.alloc(Bound::Literal(parse_arena.alloc(Ast::IntLit(1, Span::dummy())))),
+                                                 bind_arena.alloc(Bound::Literal(parse_arena.alloc(Ast::IntLit(2, Span::dummy())))),
+                                                 parse_arena.alloc(Ast::dummy())));
+
+        let (ast, mut interner) = ok_parse_1("1 - 2");
+        let bound = Bound::bind_top(ast, &bind_arena, &mut interner);
+
+        let should = bind_arena.alloc(Bound::Sub(bind_arena.alloc(Bound::Literal(parse_arena.alloc(Ast::IntLit(1, Span::dummy())))),
+                                                 bind_arena.alloc(Bound::Literal(parse_arena.alloc(Ast::IntLit(2, Span::dummy())))),
+                                                 parse_arena.alloc(Ast::dummy())));
+    }
 
     #[test]
     fn bind_lambda_one_arg() {

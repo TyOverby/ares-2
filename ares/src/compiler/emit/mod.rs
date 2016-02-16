@@ -261,6 +261,14 @@ mod test {
     }
 
     #[test]
+    fn test_sub_emit() {
+        let (out, _) = compile_this("5 - 10");
+        assert_eq!(out,
+                   vec![Instr::IntLit(5), Instr::IntLit(10), Instr::SubInt]
+                   )
+    }
+
+    #[test]
     fn test_basic_if() {
         let (out, _) = compile_this("if true then 15 else 20");
 

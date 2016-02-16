@@ -115,10 +115,15 @@ LogicalOrExpression: Ast<'a> = {
     LogicalAndExpression,
 };
 
-IfExpression: Ast<'a> = {
-    "if" <a: LogicalOrExpression> "then" <t: Expr> "else" <f: IfExpression> =>
-        Ast::IfExpression(arena.alloc(a), arena.alloc(t), arena.alloc(f), Span(0, 0)),
+LogicalXorExpression: Ast<'a> = {
+    <l: LogicalXorExpression> "^^" <r: LogicalOrExpression> => unimplemented!(),
     LogicalOrExpression,
+};
+
+IfExpression: Ast<'a> = {
+    "if" <a: LogicalXorExpression> "then" <t: Expr> "else" <f: IfExpression> =>
+        Ast::IfExpression(arena.alloc(a), arena.alloc(t), arena.alloc(f), Span(0, 0)),
+    LogicalXorExpression,
 };
 
 AssignmentExpression: Ast<'a> = {
@@ -136,9 +141,9 @@ pub Expr: Ast<'a> = {
 };
 
 pub Statement: Ast<'a> = {
-    "if" <a: LogicalOrExpression> "then" "{" <trs: Statement*> "}" "else" "{" <fls: Statement*> "}" =>
+    "if" <a: LogicalXorExpression> "then" "{" <trs: Statement*> "}" "else" "{" <fls: Statement*> "}" =>
         Ast::IfStatement(arena.alloc(a), trs, Some(fls), Span(0, 0)),
-    "if" <a: LogicalOrExpression> "then" "{" <trs: Statement*> "}" =>
+    "if" <a: LogicalXorExpression> "then" "{" <trs: Statement*> "}" =>
         Ast::IfStatement(arena.alloc(a), trs, None, Span(0, 0)),
     <e: AssignmentExpressionStatement> ";" => e,
 };

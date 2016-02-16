@@ -16,6 +16,11 @@ pub fn hard_parse() {
     run_test("hard_parse");
 }
 
+#[test]
+pub fn math() {
+    run_test("math");
+}
+
 fn get_lines(contents: String) -> (String, Vec<String>) {
     let mut program = vec![];
     let mut expected = vec![];
