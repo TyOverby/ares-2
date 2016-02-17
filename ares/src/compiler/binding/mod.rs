@@ -391,6 +391,160 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             _ => false,
         }
     }
+
+    fn format(&self, level: u32, interner: &SymbolIntern, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+        use self::Bound::*;
+        fn gen_indent(level: u32) -> String {
+            let mut buf = String::new();
+            for _ in 0 .. (level * 4) {
+                buf.push(' ');
+            }
+            buf
+        }
+        fn label(name: &str, level: u32, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error>{
+            try!(f.write_str(&gen_indent(level)));
+            try!(f.write_str(name));
+            f.write_str(":\n")
+        }
+
+        match self {
+            &Literal(_l) => {
+                try!(label("LITERAL", level, f));
+                unimplemented!();
+            }
+            &Symbol { .. } => unimplemented!(),
+            &ListLit(ref list, _) => {
+                try!(label("LIST", level, f));
+                for child in list {
+                    try!(child.format(level + 1, interner, f));
+                }
+                Ok(())
+            },
+            &MapLit(ref pairs, _) => {
+                try!(label("MAP", level, f));
+                for &(ref k, ref v) in pairs {
+                    try!(label("MAP-PAIR", level + 1, f));
+                    try!(k.format(level + 2, interner, f));
+                    try!(v.format(level + 2, interner, f));
+                }
+                Ok(())
+            }
+            &Add(ref l, ref r, _) => {
+                try!(label("ADD", level, f));
+                try!(l.format(level + 1, interner, f));
+                try!(r.format(level + 1, interner, f));
+                Ok(())
+            },
+            &Sub(ref l, ref r, _) => {
+                try!(label("SUB", level, f));
+                try!(l.format(level + 1, interner, f));
+                try!(r.format(level + 1, interner, f));
+                Ok(())
+            },
+            &Mul(ref l, ref r, _) => {
+                try!(label("MUL", level, f));
+                try!(l.format(level + 1, interner, f));
+                try!(r.format(level + 1, interner, f));
+                Ok(())
+            },
+            &Div(ref l, ref r, _) => {
+                try!(label("DIV", level, f));
+                try!(l.format(level + 1, interner, f));
+                try!(r.format(level + 1, interner, f));
+                Ok(())
+            },
+            &FnCall(ref rec, ref args, _) => {
+                try!(label("FN-CALL", level, f));
+
+                try!(label("RECEIVER", level + 1, f));
+                try!(rec.format(level + 2, interner, f));
+
+                try!(label("ARGS", level + 1, f));
+                for arg in args {
+                    try!(arg.format(level + 2, interner, f));
+                }
+                Ok(())
+            }
+            &IfExpression(ref cond, ref tru, ref fals, _) => {
+                try!(label("IF-EXPRESSION", level, f));
+
+                try!(label("COND", level + 1, f));
+                try!(cond.format(level + 2, interner, f));
+
+                try!(label("TRUE", level + 1, f));
+                try!(tru.format(level+2, interner, f));
+
+                try!(label("FALSE", level + 1, f));
+                try!(fals.format(level+2, interner, f));
+                Ok(())
+            }
+            &IfStatement(ref cond, ref tru, ref fals, _) => {
+                try!(label("IF-STATEMENT", level, f));
+
+                try!(label("COND", level + 1, f));
+                try!(cond.format(level + 2, interner, f));
+
+                try!(label("TRUE", level + 1, f));
+                for statement in tru {
+                    try!(statement.format(level+2, interner, f));
+                }
+
+                if let Some(fals) = fals.as_ref() {
+                    try!(label("FALSE", level + 1, f));
+                    for statement in fals {
+                        try!(statement.format(level+2, interner, f));
+                    }
+                }
+                Ok(())
+            }
+            &Lambda {..} => {
+                unimplemented!();
+            }
+            &Block(ref bodies, _) => {
+                try!(label("BLOCK", level, f));
+                for body in bodies {
+                    try!(body.format(level + 1, interner, f));
+                }
+                Ok(())
+            }
+            &Define(ref name, ref source, ref value, _) => {
+                try!(label("DEFINE", level, f));
+
+                try!(label("NAME", level + 1, f));
+                try!(f.write_str(&gen_indent(level + 2)));
+                try!(f.write_str(&interner.lookup_or_anon(*name)));
+                try!(f.write_str("\n"));
+
+                try!(label("SOURCE", level + 1, f));
+                match *source {
+                    SymbolBindSource::Arg(a) => {
+                        try!(label("ARG", level + 2, f));
+                        try!(f.write_str(&gen_indent(level + 3)));
+                        try!(f.write_str(&a.to_string()));
+                    }
+                    SymbolBindSource::Upvar(a) => {
+                        try!(label("UPVAR", level + 2, f));
+                        try!(f.write_str(&gen_indent(level + 3)));
+                        try!(f.write_str(&a.to_string()));
+                    }
+                    SymbolBindSource::LocalDefine(a) => {
+                        try!(label("LOCAL-DEFINE", level + 2, f));
+                        try!(f.write_str(&gen_indent(level + 3)));
+                        try!(f.write_str(&a.to_string()));
+                    }
+                    SymbolBindSource::Global(a) => {
+                        try!(label("GLOBAL", level + 2, f));
+                        try!(f.write_str(&gen_indent(level + 3)));
+                        try!(f.write_str(&interner.lookup_or_anon(a)));
+                    }
+                }
+
+                try!(label("VALUE", level + 1, f));
+                try!(value.format(level + 1, interner, f));
+                Ok(())
+            }
+        }
+    }
 }
 
 fn rearrange<T, E>(obj: Option<Result<T, E>>) -> Result<Option<T>, E> {
@@ -407,6 +561,48 @@ mod test {
     use compiler::parse::{Ast, Span};
     use compiler::parse::test::ok_parse_1;
     use typed_arena::Arena;
+
+    fn str_eq(actual: &str, expected: &str) {
+        use itertools::{Itertools, EitherOrBoth};
+        fn isnt_whitespace(s: &&str) -> bool { !s.chars().all(char::is_whitespace) }
+        let mut padding = None;
+        for eob in actual.lines().filter(isnt_whitespace).zip_longest(
+                   expected.lines().filter(isnt_whitespace)) {
+            match eob {
+                EitherOrBoth::Both(l, r) => {
+                    let w_left = (l.len() - l.trim_left().len()) as i32;
+                    let w_right = (r.len() - r.trim_left().len()) as i32;
+                    let d = w_left - w_right;
+
+                    if padding.is_none() {
+                        padding = Some(d);
+                    } else {
+                        assert!(padding.unwrap() == d,
+                                "indentation isn't the same at {} {}",
+                                l, r);
+                    }
+                    assert_eq!(l.trim(), r.trim());
+                }
+                EitherOrBoth::Left(l) => {
+                    panic!("actual has more lines: {}", l);
+                }
+                EitherOrBoth::Right(l) => {
+                    panic!("expected has more lines: {}", l);
+                }
+            }
+        }
+    }
+
+    fn bound_form(program: &str, bound_representation: &str) {
+        let bind_arena = Arena::new();
+        let (ast, mut interner) = ok_parse_1(program);
+        let bound = Bound::bind_top(ast, &bind_arena, &mut interner).unwrap();
+
+        let mut buffer = Vec::with_capacity(bound_representation.len());
+        bound.format(0, &interner, &mut buffer);
+
+        str_eq(String::from_bytes(buffer).unwrap(), bound_representation)
+    }
 
     #[test]
     fn operators() {
@@ -426,6 +622,8 @@ mod test {
                                                  bind_arena.alloc(Bound::Literal(parse_arena.alloc(Ast::IntLit(2, Span::dummy())))),
                                                  parse_arena.alloc(Ast::dummy())));
     }
+
+    #[test]
 
     #[test]
     fn bind_lambda_one_arg() {

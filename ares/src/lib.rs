@@ -6,6 +6,7 @@ extern crate libc;
 extern crate typed_arena;
 #[macro_use(ast)]
 extern crate ares_syntax;
+extern crate itertools;
 extern crate lalrpop_util;
 
 macro_rules! matches {
