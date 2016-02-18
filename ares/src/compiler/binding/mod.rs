@@ -24,8 +24,8 @@ pub enum Bound<'bound, 'ast: 'bound> {
     Literal(AstRef<'ast>),
     Symbol {
         symbol: Symbol,
-        ast: AstRef<'ast>,
         source: SymbolBindSource,
+        ast: AstRef<'ast>,
     },
 
     ListLit(Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
@@ -61,7 +61,7 @@ pub enum Bound<'bound, 'ast: 'bound> {
     Define(Symbol, SymbolBindSource, BoundRef<'bound, 'ast>, AstRef<'ast>),
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Ord, PartialOrd)]
 pub enum SymbolBindSource {
     Arg(u32),
     Upvar(u32),
@@ -392,159 +392,6 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
         }
     }
 
-    fn format(&self, level: u32, interner: &SymbolIntern, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
-        use self::Bound::*;
-        fn gen_indent(level: u32) -> String {
-            let mut buf = String::new();
-            for _ in 0 .. (level * 4) {
-                buf.push(' ');
-            }
-            buf
-        }
-        fn label(name: &str, level: u32, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error>{
-            try!(f.write_str(&gen_indent(level)));
-            try!(f.write_str(name));
-            f.write_str(":\n")
-        }
-
-        match self {
-            &Literal(_l) => {
-                try!(label("LITERAL", level, f));
-                unimplemented!();
-            }
-            &Symbol { .. } => unimplemented!(),
-            &ListLit(ref list, _) => {
-                try!(label("LIST", level, f));
-                for child in list {
-                    try!(child.format(level + 1, interner, f));
-                }
-                Ok(())
-            },
-            &MapLit(ref pairs, _) => {
-                try!(label("MAP", level, f));
-                for &(ref k, ref v) in pairs {
-                    try!(label("MAP-PAIR", level + 1, f));
-                    try!(k.format(level + 2, interner, f));
-                    try!(v.format(level + 2, interner, f));
-                }
-                Ok(())
-            }
-            &Add(ref l, ref r, _) => {
-                try!(label("ADD", level, f));
-                try!(l.format(level + 1, interner, f));
-                try!(r.format(level + 1, interner, f));
-                Ok(())
-            },
-            &Sub(ref l, ref r, _) => {
-                try!(label("SUB", level, f));
-                try!(l.format(level + 1, interner, f));
-                try!(r.format(level + 1, interner, f));
-                Ok(())
-            },
-            &Mul(ref l, ref r, _) => {
-                try!(label("MUL", level, f));
-                try!(l.format(level + 1, interner, f));
-                try!(r.format(level + 1, interner, f));
-                Ok(())
-            },
-            &Div(ref l, ref r, _) => {
-                try!(label("DIV", level, f));
-                try!(l.format(level + 1, interner, f));
-                try!(r.format(level + 1, interner, f));
-                Ok(())
-            },
-            &FnCall(ref rec, ref args, _) => {
-                try!(label("FN-CALL", level, f));
-
-                try!(label("RECEIVER", level + 1, f));
-                try!(rec.format(level + 2, interner, f));
-
-                try!(label("ARGS", level + 1, f));
-                for arg in args {
-                    try!(arg.format(level + 2, interner, f));
-                }
-                Ok(())
-            }
-            &IfExpression(ref cond, ref tru, ref fals, _) => {
-                try!(label("IF-EXPRESSION", level, f));
-
-                try!(label("COND", level + 1, f));
-                try!(cond.format(level + 2, interner, f));
-
-                try!(label("TRUE", level + 1, f));
-                try!(tru.format(level+2, interner, f));
-
-                try!(label("FALSE", level + 1, f));
-                try!(fals.format(level+2, interner, f));
-                Ok(())
-            }
-            &IfStatement(ref cond, ref tru, ref fals, _) => {
-                try!(label("IF-STATEMENT", level, f));
-
-                try!(label("COND", level + 1, f));
-                try!(cond.format(level + 2, interner, f));
-
-                try!(label("TRUE", level + 1, f));
-                for statement in tru {
-                    try!(statement.format(level+2, interner, f));
-                }
-
-                if let Some(fals) = fals.as_ref() {
-                    try!(label("FALSE", level + 1, f));
-                    for statement in fals {
-                        try!(statement.format(level+2, interner, f));
-                    }
-                }
-                Ok(())
-            }
-            &Lambda {..} => {
-                unimplemented!();
-            }
-            &Block(ref bodies, _) => {
-                try!(label("BLOCK", level, f));
-                for body in bodies {
-                    try!(body.format(level + 1, interner, f));
-                }
-                Ok(())
-            }
-            &Define(ref name, ref source, ref value, _) => {
-                try!(label("DEFINE", level, f));
-
-                try!(label("NAME", level + 1, f));
-                try!(f.write_str(&gen_indent(level + 2)));
-                try!(f.write_str(&interner.lookup_or_anon(*name)));
-                try!(f.write_str("\n"));
-
-                try!(label("SOURCE", level + 1, f));
-                match *source {
-                    SymbolBindSource::Arg(a) => {
-                        try!(label("ARG", level + 2, f));
-                        try!(f.write_str(&gen_indent(level + 3)));
-                        try!(f.write_str(&a.to_string()));
-                    }
-                    SymbolBindSource::Upvar(a) => {
-                        try!(label("UPVAR", level + 2, f));
-                        try!(f.write_str(&gen_indent(level + 3)));
-                        try!(f.write_str(&a.to_string()));
-                    }
-                    SymbolBindSource::LocalDefine(a) => {
-                        try!(label("LOCAL-DEFINE", level + 2, f));
-                        try!(f.write_str(&gen_indent(level + 3)));
-                        try!(f.write_str(&a.to_string()));
-                    }
-                    SymbolBindSource::Global(a) => {
-                        try!(label("GLOBAL", level + 2, f));
-                        try!(f.write_str(&gen_indent(level + 3)));
-                        try!(f.write_str(&interner.lookup_or_anon(a)));
-                    }
-                }
-
-                try!(label("VALUE", level + 1, f));
-                try!(value.format(level + 1, interner, f));
-                Ok(())
-            }
-        }
-    }
 }
 
 fn rearrange<T, E>(obj: Option<Result<T, E>>) -> Result<Option<T>, E> {
@@ -557,10 +404,235 @@ fn rearrange<T, E>(obj: Option<Result<T, E>>) -> Result<Option<T>, E> {
 
 #[cfg(test)]
 mod test {
-    use super::{Bound, SymbolBindSource, LambdaBindings};
-    use compiler::parse::{Ast, Span};
+    use super::{Bound, SymbolBindSource};
+    use compiler::parse::Ast;
+    use ares_syntax::SymbolIntern;
     use compiler::parse::test::ok_parse_1;
     use typed_arena::Arena;
+    use itertools::Itertools;
+
+    fn format<'a, F>(bound: &'a Bound<'a, 'a>, level: u32, interner: &SymbolIntern, f: &mut F) -> Result<(), ::std::fmt::Error>
+    where F: ::std::fmt::Write {
+        use super::Bound::*;
+        fn gen_indent(level: u32) -> String {
+            let mut buf = String::new();
+            for _ in 0 .. (level * 4) {
+                buf.push(' ');
+            }
+            buf
+        }
+        fn label<F: ::std::fmt::Write>(name: &str, level: u32, f: &mut F) -> Result<(), ::std::fmt::Error>{
+            try!(f.write_str(&gen_indent(level)));
+            try!(f.write_str(name));
+            f.write_str(":\n")
+        }
+        fn print_source<F: ::std::fmt::Write>(
+            source: &SymbolBindSource,
+            level: u32,
+            interner: &SymbolIntern,
+            f: &mut F) -> Result<(), ::std::fmt::Error> {
+
+            match *source {
+                SymbolBindSource::Arg(a) => {
+                    try!(label("ARG", level, f));
+                    try!(f.write_str(&gen_indent(level + 1)));
+                    try!(f.write_str(&a.to_string()));
+                }
+                SymbolBindSource::Upvar(a) => {
+                    try!(label("UPVAR", level, f));
+                    try!(f.write_str(&gen_indent(level + 1)));
+                    try!(f.write_str(&a.to_string()));
+                }
+                SymbolBindSource::LocalDefine(a) => {
+                    try!(label("LOCAL-DEFINE", level, f));
+                    try!(f.write_str(&gen_indent(level + 1)));
+                    try!(f.write_str(&a.to_string()));
+                }
+                SymbolBindSource::Global(a) => {
+                    try!(label("GLOBAL", level, f));
+                    try!(f.write_str(&gen_indent(level)));
+                    try!(f.write_str(&interner.lookup_or_anon(a)));
+                }
+            }
+            f.write_str("\n")
+        }
+
+        match bound {
+            &Literal(l) => {
+                try!(label("LITERAL", level, f));
+                try!(f.write_str(&gen_indent(level + 1)));
+                match l {
+                    &Ast::BoolLit(b, _)  => f.write_str(&format!("{}\n", b)),
+                    &Ast::StringLit(ref s, _)  => f.write_str(&format!("\"{}\"\n", s)),
+                    &Ast::FloatLit(fl, _)  => f.write_str(&format!("{}\n", fl)),
+                    &Ast::SymbolLit(s, _)  => f.write_str(&format!("'{}\n", interner.lookup_or_anon(s))),
+                    &Ast::IntLit(i, _)  => f.write_str(&format!("{}\n", i)),
+                    _ => panic!("non-literal found in Bound::Literal")
+                }
+            }
+            &Symbol { symbol, ref source, .. } => {
+                try!(label("SYMBOL", level, f));
+
+                try!(label("NAME", level + 1, f));
+                try!(f.write_str(&format!("{}{}\n", &gen_indent(level + 2), interner.lookup_or_anon(symbol))));
+
+                try!(label("SOURCE", level + 1, f));
+                try!(print_source(source, level + 2, interner, f));
+
+                Ok(())
+            }
+            &ListLit(ref list, _) => {
+                try!(label("LIST", level, f));
+                for child in list {
+                    try!(format(child, level + 1, interner, f));
+                }
+                Ok(())
+            },
+            &MapLit(ref pairs, _) => {
+                try!(label("MAP", level, f));
+                for &(ref k, ref v) in pairs {
+                    try!(label("MAP-PAIR", level + 1, f));
+                    try!(format(k, level + 2, interner, f));
+                    try!(format(v, level + 2, interner, f));
+                }
+                Ok(())
+            }
+            &Add(ref l, ref r, _) => {
+                try!(label("ADD", level, f));
+                try!(format(l, level + 1, interner, f));
+                try!(format(r, level + 1, interner, f));
+                Ok(())
+            },
+            &Sub(ref l, ref r, _) => {
+                try!(label("SUB", level, f));
+                try!(format(l, level + 1, interner, f));
+                try!(format(r, level + 1, interner, f));
+                Ok(())
+            },
+            &Mul(ref l, ref r, _) => {
+                try!(label("MUL", level, f));
+                try!(format(l, level + 1, interner, f));
+                try!(format(r, level + 1, interner, f));
+                Ok(())
+            },
+            &Div(ref l, ref r, _) => {
+                try!(label("DIV", level, f));
+                try!(format(l, level + 1, interner, f));
+                try!(format(r, level + 1, interner, f));
+                Ok(())
+            },
+            &FnCall(ref rec, ref args, _) => {
+                try!(label("FN-CALL", level, f));
+
+                try!(label("RECEIVER", level + 1, f));
+                try!(format(rec, level + 2, interner, f));
+
+                try!(label("ARGS", level + 1, f));
+                for arg in args {
+                    try!(format(arg, level + 2, interner, f));
+                }
+                Ok(())
+            }
+            &IfExpression(ref cond, ref tru, ref fals, _) => {
+                try!(label("IF-EXPRESSION", level, f));
+
+                try!(label("COND", level + 1, f));
+                try!(format(cond, level + 2, interner, f));
+
+                try!(label("TRUE", level + 1, f));
+                try!(format(tru, level+2, interner, f));
+
+                try!(label("FALSE", level + 1, f));
+                try!(format(fals, level+2, interner, f));
+                Ok(())
+            }
+            &IfStatement(ref cond, ref tru, ref fals, _) => {
+                try!(label("IF-STATEMENT", level, f));
+
+                try!(label("COND", level + 1, f));
+                try!(format(cond, level + 2, interner, f));
+
+                try!(label("TRUE", level + 1, f));
+                for statement in tru {
+                    try!(format(statement, level+2, interner, f));
+                }
+
+                if let Some(fals) = fals.as_ref() {
+                    try!(label("FALSE", level + 1, f));
+                    for statement in fals {
+                        try!(format(statement, level+2, interner, f));
+                    }
+                }
+                Ok(())
+            }
+            &Lambda{ ref arg_symbols, ref body, ref bindings, ..} => {
+                let (_, _, _) = (arg_symbols, body, bindings);
+                try!(label("LAMBDA", level, f));
+
+                try!(label("NUM-ARGS", level+1, f));
+                try!(f.write_str(&format!("{}{}\n", &gen_indent(level + 2), bindings.num_args)));
+
+                try!(label("NUM-UPVARS", level+1, f));
+                try!(f.write_str(&format!("{}{}\n", &gen_indent(level + 2), bindings.num_upvars)));
+
+                try!(label("NUM-DECLARATIONS", level+1, f));
+                try!(f.write_str(&format!("{}{}\n", &gen_indent(level + 2), bindings.num_declarations)));
+
+                try!(label("ARGS", level+1, f));
+                for &arg in arg_symbols {
+                    try!(f.write_str(&format!(
+                                "{}{}\n",
+                                &gen_indent(level + 2),
+                                interner.lookup_or_anon(arg))));
+                }
+
+                try!(label("BODY", level+1, f));
+                try!(format(body, level + 2, interner, f));
+
+                try!(label("BINDINGS", level + 1, f));
+
+                let bindings = bindings.bindings.iter().map(|(a, b)| (b, a)).sorted();
+
+                for (source, symbol) in bindings {
+                    try!(label("BINDING", level + 2, f));
+
+                    try!(label("SYMBOL", level + 3, f));
+                    try!(f.write_str(&format!(
+                                "{}{}\n",
+                                &gen_indent(level + 4),
+                                interner.lookup_or_anon(*symbol))));
+
+                    try!(label("SOURCE", level + 3, f));
+                    try!(print_source(source, level + 4, interner, f));
+                }
+
+                Ok(())
+            }
+            &Block(ref bodies, _) => {
+                try!(label("BLOCK", level, f));
+                for body in bodies {
+                    try!(format(body, level + 1, interner, f));
+                }
+                Ok(())
+            }
+            &Define(ref name, ref source, ref value, _) => {
+                try!(label("DEFINE", level, f));
+
+                try!(label("NAME", level + 1, f));
+                try!(f.write_str(&gen_indent(level + 2)));
+                try!(f.write_str(&interner.lookup_or_anon(*name)));
+                try!(f.write_str("\n"));
+
+                try!(label("SOURCE", level + 1, f));
+                try!(print_source(source, level + 2, interner, f));
+
+                try!(label("VALUE", level + 1, f));
+                try!(format(value, level + 1, interner, f));
+                Ok(())
+            }
+        }
+        
+    }
 
     fn str_eq(actual: &str, expected: &str) {
         use itertools::{Itertools, EitherOrBoth};
@@ -581,13 +653,20 @@ mod test {
                                 "indentation isn't the same at {} {}",
                                 l, r);
                     }
+                    if l.trim() != r.trim() {
+                        println!("actual:\n{}\n=====\nexpected:\n{}", actual, expected);
+                    }
                     assert_eq!(l.trim(), r.trim());
                 }
                 EitherOrBoth::Left(l) => {
-                    panic!("actual has more lines: {}", l);
+                    println!("actual has more lines: {}", l);
+                    println!("actual:\n{}\n=====\nexpected:\n{}", actual, expected);
+                    panic!();
                 }
                 EitherOrBoth::Right(l) => {
-                    panic!("expected has more lines: {}", l);
+                    println!("expected has more lines: {}", l);
+                    println!("actual:\n{}\n=====\nexpected:\n{}", actual, expected);
+                    panic!();
                 }
             }
         }
@@ -598,132 +677,145 @@ mod test {
         let (ast, mut interner) = ok_parse_1(program);
         let bound = Bound::bind_top(ast, &bind_arena, &mut interner).unwrap();
 
-        let mut buffer = Vec::with_capacity(bound_representation.len());
-        bound.format(0, &interner, &mut buffer);
+        let mut buffer = String::with_capacity(bound_representation.len());
+        format(bound, 0, &interner, &mut buffer).unwrap();
 
-        str_eq(String::from_bytes(buffer).unwrap(), bound_representation)
+        str_eq(&buffer, bound_representation)
+    }
+
+    #[test]
+    fn literals() {
+        bound_form("1",
+        r#"
+            LITERAL:
+                1
+        "#);
+
+        bound_form("1.2",
+        r#"
+            LITERAL:
+                1.2
+        "#);
+
+        bound_form("\"hi\"",
+        r#"
+            LITERAL:
+                "hi"
+        "#);
+
+        bound_form("true",
+        r#"
+            LITERAL:
+                true
+        "#);
+
+        bound_form("false",
+        r#"
+            LITERAL:
+                false
+        "#);
+
+        bound_form("'a",
+        r#"
+            LITERAL:
+                'a
+        "#);
     }
 
     #[test]
     fn operators() {
-        let parse_arena = Arena::new();
-        let bind_arena = Arena::new();
-        let (ast, mut interner) = ok_parse_1("1 + 2");
-        let bound = Bound::bind_top(ast, &bind_arena, &mut interner);
+        bound_form("1 + 2",
+        r#"
+            ADD:
+                LITERAL:
+                    1
+                LITERAL:
+                    2
+        "#);
 
-        let should = bind_arena.alloc(Bound::Add(bind_arena.alloc(Bound::Literal(parse_arena.alloc(Ast::IntLit(1, Span::dummy())))),
-                                                 bind_arena.alloc(Bound::Literal(parse_arena.alloc(Ast::IntLit(2, Span::dummy())))),
-                                                 parse_arena.alloc(Ast::dummy())));
-
-        let (ast, mut interner) = ok_parse_1("1 - 2");
-        let bound = Bound::bind_top(ast, &bind_arena, &mut interner);
-
-        let should = bind_arena.alloc(Bound::Sub(bind_arena.alloc(Bound::Literal(parse_arena.alloc(Ast::IntLit(1, Span::dummy())))),
-                                                 bind_arena.alloc(Bound::Literal(parse_arena.alloc(Ast::IntLit(2, Span::dummy())))),
-                                                 parse_arena.alloc(Ast::dummy())));
+        bound_form("1 - 2",
+        r#"
+            SUB:
+                LITERAL:
+                    1
+                LITERAL:
+                    2
+        "#);
     }
 
     #[test]
-
-    #[test]
     fn bind_lambda_one_arg() {
-        let parse_arena = Arena::new();
-        let bind_arena = Arena::new();
-        let (ast, mut interner) = ok_parse_1("fn(a) { a }");
-        let bound = Bound::bind_top(ast, &bind_arena, &mut interner);
-
-        let should = bind_arena.alloc(Bound::Lambda {
-            arg_symbols: vec![interner.intern("a")],
-            body: bind_arena.alloc(Bound::Block(vec![bind_arena.alloc(Bound::Symbol {
-                                   symbol: interner.intern("a"),
-                                   ast: parse_arena.alloc(Ast::dummy()),
-                                   source: SymbolBindSource::Arg(0),
-                               })], parse_arena.alloc(Ast::dummy()))),
-            ast: parse_arena.alloc(Ast::dummy()),
-            bindings: LambdaBindings {
-                bindings: vec![(interner.intern("a"), SymbolBindSource::Arg(0))]
-                              .into_iter()
-                              .collect(),
-                num_args: 1,
-                num_upvars: 0,
-                num_declarations: 0,
-            },
-        });
-        assert!(should.equals_sans_ast(bound.unwrap()));
+        bound_form("fn(a) { a }",
+        r#"
+            LAMBDA:
+                NUM-ARGS:
+                    1
+                NUM-UPVARS:
+                    0
+                NUM-DECLARATIONS:
+                    0
+                ARGS:
+                    a
+                BODY:
+                    BLOCK:
+                        SYMBOL:
+                            NAME:
+                                a
+                            SOURCE:
+                                ARG:
+                                    0
+                BINDINGS:
+                    BINDING:
+                        SYMBOL:
+                            a
+                        SOURCE:
+                            ARG:
+                                0
+        "#);
     }
 
     #[test]
     fn bind_lambda_two_args() {
-        let parse_arena = Arena::new();
-        let bind_arena = Arena::new();
-        let (ast, mut interner) = ok_parse_1("fn(a, b) { a + b }");
-        let bound = Bound::bind_top(ast, &bind_arena, &mut interner);
-
-        let should = bind_arena.alloc(Bound::Lambda {
-            arg_symbols: vec![interner.intern("a"), interner.intern("b")],
-            body: bind_arena.alloc(Bound::Block(vec![bind_arena.alloc(Bound::Add(
-                                  bind_arena.alloc(Bound::Symbol {
-                                      symbol: interner.intern("a"),
-                                      ast: parse_arena.alloc(Ast::dummy()),
-                                      source: SymbolBindSource::Arg(0)
-                                  }),
-                                  bind_arena.alloc(Bound::Symbol {
-                                      symbol: interner.intern("b"),
-                                      ast: parse_arena.alloc(Ast::dummy()),
-                                      source: SymbolBindSource::Arg(1)
-                                  }),
-                                                           parse_arena.alloc(Ast::dummy())))], parse_arena.alloc(Ast::dummy()))),
-            ast: parse_arena.alloc(Ast::dummy()),
-            bindings: LambdaBindings {
-                bindings: vec![(interner.intern("a"), SymbolBindSource::Arg(0)),
-                               (interner.intern("b"), SymbolBindSource::Arg(1))]
-                              .into_iter()
-                              .collect(),
-                num_args: 2,
-                num_upvars: 0,
-                num_declarations: 0,
-            },
-        });
-        assert!(should.equals_sans_ast(bound.unwrap()));
+        bound_form("fn(a, b) { a + b }",
+        r#"
+            LAMBDA:
+                NUM-ARGS:
+                    2
+                NUM-UPVARS:
+                    0
+                NUM-DECLARATIONS:
+                    0
+                ARGS:
+                    a
+                    b
+                BODY:
+                    BLOCK:
+                        ADD:
+                            SYMBOL:
+                                NAME:
+                                    a
+                                SOURCE:
+                                    ARG:
+                                        0
+                            SYMBOL:
+                                NAME:
+                                    b
+                                SOURCE:
+                                    ARG:
+                                        1
+                BINDINGS:
+                    BINDING:
+                        SYMBOL:
+                            a
+                        SOURCE:
+                            ARG:
+                                0
+                    BINDING:
+                        SYMBOL:
+                            b
+                        SOURCE:
+                            ARG:
+                                1
+        "#);
     }
-
-    /*
-    #[test]
-    fn bind_lambda_with_define() {
-        let parse_arena = Arena::new();
-        let bind_arena = Arena::new();
-        let (ast, mut interner) = ok_parse_1("(lambda () (define x 5) x)", &parse_arena);
-        let bound = Bound::bind_top(ast, &bind_arena, &mut interner);
-        let x = interner.intern("x");
-
-        let should = bind_arena.alloc(Bound::Lambda {
-            arg_symbols: vec![],
-            body: bind_arena.alloc(Bound::Block(vec![
-                    bind_arena.alloc(
-                        Bound::Define(x, SymbolBindSource::LocalDefine(0), bind_arena.alloc(
-                                Bound::Literal(
-                                    parse_arena.alloc(Ast::IntLit(5, Span::dummy())))
-                                ), parse_arena.alloc(Ast::dummy()))),
-                    bind_arena.alloc(
-                        Bound::Symbol {
-                            symbol: x,
-                            ast: parse_arena.alloc(Ast::dummy()),
-                            source: SymbolBindSource::LocalDefine(0)
-                        })
-                ], parse_arena.alloc(Ast::dummy()))),
-            ast: parse_arena.alloc(Ast::dummy()),
-            bindings: LambdaBindings {
-                bindings: vec![(x, SymbolBindSource::LocalDefine(0))].into_iter().collect(),
-                num_args: 0,
-                num_upvars: 0,
-                num_declarations: 1,
-            },
-        });
-
-        println!("parsed {:#?}", bound);
-        println!("manual {:#?}", should);
-
-        assert!(should.equals_sans_ast(bound.unwrap()));
-    }
-    */
 }
