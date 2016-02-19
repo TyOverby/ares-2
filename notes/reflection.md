@@ -4,6 +4,7 @@ Reflection is a method for abstraction developers to access raw properties on
 objects as well as re-defining core behaviors such as method calls,
 field access, and operators like Indexing ("obj[1]") and Calling ("obj()").
 
+A prime example would be changine the behavior of a setter.
 
 ## Custom Setters
 
@@ -31,7 +32,7 @@ This can be used (abused?) to build a nice data-binding abstraction.
 
 ```ares
 import get_slot, set_slot, custom_setter from std.reflection;
-import on_next_tick from std.async;
+import schedule from std.async;
 import remove_where from std.list;
 import fail from std.failure;
 
@@ -46,7 +47,7 @@ fn make_observable(object) {
         obj!set_slot(field_name, value);
         for [name, callback, _] in listeners {
             if name == field_name {
-                on_next_tick {
+                schedule {
                     callback(value);
                 }
             }
@@ -79,7 +80,7 @@ let obj = object {
 };
 
 // Make the object observable
-obj!make_observable();
+make_observable(obj);
 
 // Listen to changes on field "a"
 obj!listen('a) {
