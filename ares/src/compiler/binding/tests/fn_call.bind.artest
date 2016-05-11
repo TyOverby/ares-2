@@ -11,7 +11,7 @@ FN-CALL:
                 0
             ARGS:
             BODY:
-                BLOCK:
+                BLOCK-EXPRESSION:
                     LITERAL:
                         1
             BINDINGS:

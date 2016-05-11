@@ -202,8 +202,15 @@ where F: ::std::fmt::Write {
 
             Ok(())
         }
-        &Block(ref bodies, _) => {
-            try!(label("BLOCK", level, f));
+        &BlockExpression(ref bodies, _) => {
+            try!(label("BLOCK-EXPRESSION", level, f));
+            for body in bodies {
+                try!(format(body, level + 1, interner, f));
+            }
+            Ok(())
+        }
+        &BlockStatement(ref bodies, _) => {
+            try!(label("BLOCK-STATEMENT", level, f));
             for body in bodies {
                 try!(format(body, level + 1, interner, f));
             }

@@ -18,8 +18,8 @@ Comma<T>: Vec<T> = {
 };
 
 #[inline]
-Block: Ast<'a> = {
-    "{" <e: BlockInner> "}" => Ast::Block(e, Span(0, 0)),
+BlockExpression: Ast<'a> = {
+    "{" <e: BlockInner> "}" => Ast::BlockExpression(e, Span(0, 0)),
 };
 
 PrimaryExpression: Ast<'a> = {
@@ -30,7 +30,7 @@ PrimaryExpression: Ast<'a> = {
     SymbolLit,
     Identifier  => Ast::Identifier(<>, Span(0, 0)),
     "(" <e: Expr> ")" => e,
-    Block,
+    BlockExpression,
     Closure,
 };
 
@@ -145,8 +145,15 @@ pub Statement: Ast<'a> = {
         Ast::IfStatement(arena.alloc(a), trs, Some(fls), Span(0, 0)),
     "if" <a: LogicalXorExpression> "then" "{" <trs: Statement*> "}" =>
         Ast::IfStatement(arena.alloc(a), trs, None, Span(0, 0)),
+    <e: BlockStatement> => e,
     <e: AssignmentExpressionStatement> ";" => e,
 };
+
+
+pub BlockStatement: Ast<'a> = {
+    "{" <s:Statement*> "}" => Ast::BlockStatement(s, Span(0, 0)),
+};
+
 
 #[inline]
 BlockInner: Vec<Ast<'a>> = {
@@ -167,9 +174,14 @@ pub Program: Vec<Ast<'a>> = {
     }
 };
 
+MethodBodyBlock: Ast<'a> = {
+    <BlockExpression>,
+    <BlockStatement>,
+};
+
 #[inline]
 Closure: Ast<'a> = {
-     "fn" <name: Identifier?> <p_list: ParamList+> <body: Block> =>
+     "fn" <name: Identifier?> <p_list: ParamList+> <body: MethodBodyBlock> =>
         Ast::Closure(name, p_list, arena.alloc(body), Span(0, 0)),
 };
 

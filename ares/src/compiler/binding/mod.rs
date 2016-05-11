@@ -55,7 +55,8 @@ pub enum Bound<'bound, 'ast: 'bound> {
         ast: AstRef<'ast>,
         bindings: LambdaBindings,
     },
-    Block(Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
+    BlockExpression(Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
+    BlockStatement(Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
     Define(Symbol, SymbolBindSource, BoundRef<'bound, 'ast>, AstRef<'ast>),
 }
 
@@ -316,10 +317,15 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                     bindings: new_binder.bindings,
                 }
             }
-            &Ast::Block(ref bodies, _) => {
+            &Ast::BlockExpression(ref bodies, _) => {
                 let mut new_binder = BlockBinder::new(binder);
                 let bound_bodies = try!(Bound::bind_all(bodies, arena, &mut new_binder, interner));
-                Bound::Block(bound_bodies, ast)
+                Bound::BlockExpression(bound_bodies, ast)
+            }
+            &Ast::BlockStatement(ref bodies, _) => {
+                let mut new_binder = BlockBinder::new(binder);
+                let bound_bodies = try!(Bound::bind_all(bodies, arena, &mut new_binder, interner));
+                Bound::BlockStatement(bound_bodies, ast)
             }
             &Ast::Define(symbol, value, _) => {
                 if binder.already_binds(symbol) {

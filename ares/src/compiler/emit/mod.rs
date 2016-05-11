@@ -30,13 +30,19 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                     inside_lambda: Option<&LambdaBindings>)
                     -> Result<(), EmitError> {
     match bound {
-        &Bound::Block(ref bound_bodies, _) => {
+        &Bound::BlockExpression(ref bound_bodies, _) => {
             for body in &bound_bodies[..bound_bodies.len() - 1] {
                 try!(emit(body, compile_context, out, inside_lambda));
                 out.push(Instr::Pop);
             }
             if let Some(last_body) = bound_bodies.last() {
                 try!(emit(last_body, compile_context, out, inside_lambda));
+            }
+        }
+        &Bound::BlockStatement(ref bound_bodies, _) => {
+            for body in &bound_bodies[..] {
+                try!(emit(body, compile_context, out, inside_lambda));
+                out.push(Instr::Pop);
             }
         }
         &Bound::Add(ref l, ref r, _) => {

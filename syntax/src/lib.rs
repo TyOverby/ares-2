@@ -37,7 +37,8 @@ pub enum Ast<'ast> {
     IfStatement(AstRef<'ast>, Vec<Ast<'ast>>, Option<Vec<Ast<'ast>>>, Span),
     Closure(Option<Symbol>, Vec<Vec<Symbol>>, AstRef<'ast>, Span),
     Define(Symbol, AstRef<'ast>, Span),
-    Block(Vec<Ast<'ast>>, Span),
+    BlockExpression(Vec<Ast<'ast>>, Span),
+    BlockStatement(Vec<Ast<'ast>>, Span),
 }
 
 impl <'ast> Ast<'ast> {
@@ -64,7 +65,8 @@ impl <'ast> Ast<'ast> {
             IfStatement(c, t, f, _) => IfStatement(c, t, f, Span::dummy()),
             Closure(n, a, b, _) => Closure(n, a, b, Span::dummy()),
             Define(n, v, _) => Define(n, v, Span::dummy()),
-            Block(b, _) => Block(b, Span::dummy()),
+            BlockExpression(b, _) => BlockExpression(b, Span::dummy()),
+            BlockStatement(b, _) => BlockStatement(b, Span::dummy()),
         }
     }
 

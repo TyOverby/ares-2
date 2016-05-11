@@ -1,6 +1,6 @@
 { 1 + 2 }
 ================
-BLOCK:
+BLOCK-EXPRESSION:
     ADD:
         LITERAL:
             1
@@ -11,7 +11,7 @@ BLOCK:
 { 1 + 2 } + 3
 ================
 ADD:
-    BLOCK:
+    BLOCK-EXPRESSION:
         ADD:
             LITERAL:
                 1
@@ -24,7 +24,7 @@ ADD:
 { 1 + 2; 3 } + 4
 ===============
 ADD:
-    BLOCK:
+    BLOCK-EXPRESSION:
         ADD:
             LITERAL:
                 1
@@ -34,3 +34,12 @@ ADD:
             3
     LITERAL:
         4
+
+===============
+{ 1; 2; }
+===============
+BLOCK-STATEMENT:
+    LITERAL:
+        1
+    LITERAL:
+        2

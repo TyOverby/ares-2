@@ -1,0 +1,95 @@
+fn(a) { a }
+===========
+LAMBDA:
+    NUM-ARGS:
+        1
+    NUM-UPVARS:
+        0
+    NUM-DECLARATIONS:
+        0
+    ARGS:
+        a
+    BODY:
+        BLOCK-EXPRESSION:
+            SYMBOL:
+                NAME:
+                    a
+                SOURCE:
+                    ARG:
+                        0
+    BINDINGS:
+        BINDING:
+            SYMBOL:
+                a
+            SOURCE:
+                ARG:
+                    0
+===========
+fn(a) { a; }
+===========
+LAMBDA:
+    NUM-ARGS:
+        1
+    NUM-UPVARS:
+        0
+    NUM-DECLARATIONS:
+        0
+    ARGS:
+        a
+    BODY:
+        BLOCK-STATEMENT:
+            SYMBOL:
+                NAME:
+                    a
+                SOURCE:
+                    ARG:
+                        0
+    BINDINGS:
+        BINDING:
+            SYMBOL:
+                a
+            SOURCE:
+                ARG:
+                    0
+
+===================
+fn(a, b) { a + b }
+===================
+LAMBDA:
+    NUM-ARGS:
+        2
+    NUM-UPVARS:
+        0
+    NUM-DECLARATIONS:
+        0
+    ARGS:
+        a
+        b
+    BODY:
+        BLOCK-EXPRESSION:
+            ADD:
+                SYMBOL:
+                    NAME:
+                        a
+                    SOURCE:
+                        ARG:
+                            0
+                SYMBOL:
+                    NAME:
+                        b
+                    SOURCE:
+                        ARG:
+                            1
+    BINDINGS:
+        BINDING:
+            SYMBOL:
+                a
+            SOURCE:
+                ARG:
+                    0
+        BINDING:
+            SYMBOL:
+                b
+            SOURCE:
+                ARG:
+                    1
