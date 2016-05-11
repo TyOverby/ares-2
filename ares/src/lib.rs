@@ -8,6 +8,8 @@ extern crate typed_arena;
 extern crate ares_syntax;
 extern crate itertools;
 extern crate lalrpop_util;
+#[cfg(test)]
+extern crate latin;
 
 macro_rules! matches {
     ($e: expr, $p: pat) => {

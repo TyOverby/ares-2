@@ -13,10 +13,7 @@ use ares_syntax::{Symbol, SymbolIntern};
 //
 // Binders are for things that introduce bindings
 //
-// Bounds are for every node that needs binding
-
-// Each bound node has a reference to the AST that it was from,
-//
+// Bound nodes are for every node that needs binding
 
 pub type BoundRef<'bound, 'ast> = &'bound Bound<'bound, 'ast>;
 

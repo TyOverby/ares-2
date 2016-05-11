@@ -277,138 +277,42 @@ fn bound_form(program: &str, bound_representation: &str) {
     str_eq(&buffer, bound_representation)
 }
 
-#[test]
-fn literals() {
-    bound_form("1",
-    r#"
-        LITERAL:
-            1
-    "#);
-
-    bound_form("1.2",
-    r#"
-        LITERAL:
-            1.2
-    "#);
-
-    bound_form("\"hi\"",
-    r#"
-        LITERAL:
-            "hi"
-    "#);
-
-    bound_form("true",
-    r#"
-        LITERAL:
-            true
-    "#);
-
-    bound_form("false",
-    r#"
-        LITERAL:
-            false
-    "#);
-
-    bound_form("'a",
-    r#"
-        LITERAL:
-            'a
-    "#);
+fn run_test(file: &str) {
+    let mut program = String::new();
+    let mut bound_rep = String::new();
+    let mut started_bound = false;
+    for line in ::latin::file::read_lines(file).unwrap() {
+        let line = line.unwrap();
+        if line.chars().all(|c| c == '=') && line.len() > 3 {
+            if started_bound {
+                bound_form(&program, &bound_rep);
+                program.clear();
+                bound_rep.clear();
+                started_bound = false;
+            } else {
+                started_bound = true;
+            }
+        } else if !started_bound {
+            program.push_str(&line);
+            program.push('\n');
+        } else {
+            bound_rep.push_str(&line);
+            bound_rep.push('\n');
+        }
+    }
+    bound_form(&program, &bound_rep);
 }
 
 #[test]
-fn operators() {
-    bound_form("1 + 2",
-    r#"
-        ADD:
-            LITERAL:
-                1
-            LITERAL:
-                2
-    "#);
+fn binder_tests() {
+    use std::path::{Path, PathBuf};
+    let path_to_me = Path::new(file!());
+    let mut path_to_test_dir = PathBuf::new();
+    path_to_test_dir.push(path_to_me.parent().unwrap());
+    path_to_test_dir.push("tests");
 
-    bound_form("1 - 2",
-    r#"
-        SUB:
-            LITERAL:
-                1
-            LITERAL:
-                2
-    "#);
-}
-
-#[test]
-fn bind_lambda_one_arg() {
-    bound_form("fn(a) { a }",
-    r#"
-        LAMBDA:
-            NUM-ARGS:
-                1
-            NUM-UPVARS:
-                0
-            NUM-DECLARATIONS:
-                0
-            ARGS:
-                a
-            BODY:
-                BLOCK:
-                    SYMBOL:
-                        NAME:
-                            a
-                        SOURCE:
-                            ARG:
-                                0
-            BINDINGS:
-                BINDING:
-                    SYMBOL:
-                        a
-                    SOURCE:
-                        ARG:
-                            0
-    "#);
-}
-
-#[test]
-fn bind_lambda_two_args() {
-    bound_form("fn(a, b) { a + b }",
-    r#"
-        LAMBDA:
-            NUM-ARGS:
-                2
-            NUM-UPVARS:
-                0
-            NUM-DECLARATIONS:
-                0
-            ARGS:
-                a
-                b
-            BODY:
-                BLOCK:
-                    ADD:
-                        SYMBOL:
-                            NAME:
-                                a
-                            SOURCE:
-                                ARG:
-                                    0
-                        SYMBOL:
-                            NAME:
-                                b
-                            SOURCE:
-                                ARG:
-                                    1
-            BINDINGS:
-                BINDING:
-                    SYMBOL:
-                        a
-                    SOURCE:
-                        ARG:
-                            0
-                BINDING:
-                    SYMBOL:
-                        b
-                    SOURCE:
-                        ARG:
-                            1
-    "#);
+    for test in ::latin::directory::children(path_to_test_dir).unwrap() {
+        println!("running {:?}", test);
+        run_test(&format!("{}", test.display()));
+    }
 }
