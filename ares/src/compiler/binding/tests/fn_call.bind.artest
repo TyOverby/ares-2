@@ -1,0 +1,18 @@
+(fn(){ 1 })()
+============
+FN-CALL:
+    RECEIVER:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+            BODY:
+                BLOCK:
+                    LITERAL:
+                        1
+            BINDINGS:
+    ARGS:

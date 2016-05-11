@@ -2,12 +2,13 @@
 
 #[macro_use]
 extern crate gc;
-extern crate libc;
-extern crate typed_arena;
 #[macro_use(ast)]
 extern crate ares_syntax;
+extern crate libc;
+extern crate typed_arena;
 extern crate itertools;
 extern crate lalrpop_util;
+
 #[cfg(test)]
 extern crate latin;
 
