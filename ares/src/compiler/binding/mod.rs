@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 mod error;
 #[cfg(test)]
-mod test;
+pub(crate) mod test;
 pub use self::error::BindingError;
 
 use compiler::parse::{Ast, AstRef};

@@ -273,7 +273,7 @@ fn str_eq(actual: &str, expected: &str) {
     }
 }
 
-fn bound_form(program: &str, bound_representation: &str) {
+pub fn assert_bound_form(program: &str, bound_representation: &str) {
     let bind_arena = Arena::new();
     let (ast, mut interner) = ok_parse_1(program);
     let bound = Bound::bind_top(ast, &bind_arena, &mut interner).unwrap();
@@ -292,7 +292,7 @@ fn run_test(file: &str) {
         let line = line.unwrap();
         if line.chars().all(|c| c == '=') && line.len() > 3 {
             if started_bound {
-                bound_form(&program, &bound_rep);
+                assert_bound_form(&program, &bound_rep);
                 program.clear();
                 bound_rep.clear();
                 started_bound = false;
@@ -307,7 +307,7 @@ fn run_test(file: &str) {
             bound_rep.push('\n');
         }
     }
-    bound_form(&program, &bound_rep);
+    assert_bound_form(&program, &bound_rep);
 }
 
 #[test]

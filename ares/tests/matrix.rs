@@ -33,6 +33,7 @@ impl Phase {
         }
 
     }
+
     fn append_line(&mut self, line: String) {
         let s = self.get_lines();
         if s.len() != 0 {
@@ -99,13 +100,11 @@ where I: Iterator<Item=String>, F: Fn(String, String, Vec<Phase>) -> Checks {
 
 #[test]
 fn main() {
-    let path_to_me = Path::new(file!());
-    let mut path_to_test_dir = path_to_me.parent().unwrap();
-
     let mut tests = vec![];
 
-    for test in ::latin::directory::children(path_to_test_dir).unwrap() {
-        if test.ends_with(".artest") {
+    for test in ::latin::directory::children("./tests").unwrap() {
+        if test.extension().and_then(|ext| ext.to_str()).map(|ext| ext.ends_with("artest")).unwrap_or(false) {
+            println!("running {}", test.display());
             let lines = ::latin::file::read_lines(test).unwrap().map(|l| l.unwrap());
             tests.append(&mut run_test(lines, run_these));
         }

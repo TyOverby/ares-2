@@ -18,6 +18,24 @@ fn compile_this(program: &str) -> (Vec<Instr>, CompileContext) {
     (out.into_instructions(), compile_context)
 }
 
+pub fn assert_instrs(program: &str, output: &str) {
+    let (instrs, _) = compile_this(program);
+    let instrs_lines: Vec<String> = instrs.iter().map(|a| format!("{:?}", a)).collect();
+    let expected_lines: Vec<String> = output.lines().map(String::from).collect();
+    if instrs_lines.len() != expected_lines.len() {
+        println!("{} instructions were expected, but only {} were actually produced", expected_lines.len(), instrs_lines.len());
+        println!("EXPECTED: \n{}", expected_lines.join("\n"));
+        println!("ACTUAL: \n{}", instrs_lines.join("\n"));
+        panic!();
+    }
+
+    for (i, (expected, actual)) in expected_lines.into_iter().zip(instrs_lines.into_iter()).enumerate() {
+        if expected != actual {
+            panic!("at {}, {} was expected, but {} was produced", i, expected, actual);
+        }
+    }
+}
+
 #[test]
 fn test_literal_emit() {
     {
