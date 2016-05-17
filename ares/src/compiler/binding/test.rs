@@ -1,7 +1,7 @@
 use super::{Bound, SymbolBindSource};
 use compiler::parse::Ast;
 use ares_syntax::SymbolIntern;
-use compiler::parse::test::ok_parse_1;
+use ::matrix_driver::ok_parse_1_full;
 use typed_arena::Arena;
 use itertools::Itertools;
 
@@ -44,7 +44,7 @@ where F: ::std::fmt::Write {
             }
             SymbolBindSource::Global(a) => {
                 try!(label("GLOBAL", level, f));
-                try!(f.write_str(&gen_indent(level)));
+                try!(f.write_str(&gen_indent(level + 1)));
                 try!(f.write_str(&interner.lookup_or_anon(a)));
             }
         }
@@ -273,53 +273,14 @@ fn str_eq(actual: &str, expected: &str) {
     }
 }
 
-fn bound_form(program: &str, bound_representation: &str) {
+pub fn assert_bound_form(program: &str, bound_representation: &str) {
     let bind_arena = Arena::new();
-    let (ast, mut interner) = ok_parse_1(program);
+    let mut interner = SymbolIntern::new();
+    let ast = ok_parse_1_full(program, &mut interner);
     let bound = Bound::bind_top(ast, &bind_arena, &mut interner).unwrap();
 
     let mut buffer = String::with_capacity(bound_representation.len());
     format(bound, 0, &interner, &mut buffer).unwrap();
 
     str_eq(&buffer, bound_representation)
-}
-
-fn run_test(file: &str) {
-    let mut program = String::new();
-    let mut bound_rep = String::new();
-    let mut started_bound = false;
-    for line in ::latin::file::read_lines(file).unwrap() {
-        let line = line.unwrap();
-        if line.chars().all(|c| c == '=') && line.len() > 3 {
-            if started_bound {
-                bound_form(&program, &bound_rep);
-                program.clear();
-                bound_rep.clear();
-                started_bound = false;
-            } else {
-                started_bound = true;
-            }
-        } else if !started_bound {
-            program.push_str(&line);
-            program.push('\n');
-        } else {
-            bound_rep.push_str(&line);
-            bound_rep.push('\n');
-        }
-    }
-    bound_form(&program, &bound_rep);
-}
-
-#[test]
-fn binder_tests() {
-    use std::path::{Path, PathBuf};
-    let path_to_me = Path::new(file!());
-    let mut path_to_test_dir = PathBuf::new();
-    path_to_test_dir.push(path_to_me.parent().unwrap());
-    path_to_test_dir.push("tests");
-
-    for test in ::latin::directory::children(path_to_test_dir).unwrap() {
-        println!("running {:?}", test);
-        run_test(&format!("{}", test.display()));
-    }
 }

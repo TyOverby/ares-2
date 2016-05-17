@@ -1,19 +1,59 @@
 #test addition
-1 + 3 
+1 + 3
+#bind
+ADD:
+    LITERAL:
+        1
+    LITERAL:
+        3
+#emit
+IntLit(1)
+IntLit(3)
+AddInt
 #result 
 4
 
 #test subtraction
 3 - 5
+#bind
+SUB:
+    LITERAL:
+        3
+    LITERAL:
+        5
+#emit
+IntLit(3)
+IntLit(5)
+SubInt
 #result
 -2
 
 #test multiplication
 3 * 5
+#bind
+MUL:
+    LITERAL:
+        3
+    LITERAL:
+        5
+#emit
+IntLit(3)
+IntLit(5)
+MulInt
 #result
 15
 
 #test division
 4 / 2
+#bind
+DIV:
+    LITERAL:
+        4
+    LITERAL:
+        2
+#emit
+IntLit(4)
+IntLit(2)
+DivInt
 #result
 2

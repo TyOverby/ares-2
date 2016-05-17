@@ -1,3 +1,5 @@
+#![feature(pub_restricted)]
+
 #![allow(dead_code)]
 
 #[macro_use]
@@ -21,4 +23,7 @@ macro_rules! matches {
 pub mod compiler;
 pub mod vm;
 pub mod host;
+pub mod matrix_driver;
 mod util;
+
+pub use matrix_driver::assert_compilation_steps;

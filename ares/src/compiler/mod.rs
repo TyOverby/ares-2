@@ -1,8 +1,8 @@
-mod parse;
-mod emit;
-mod error;
-mod compile_context;
-mod binding;
+pub(crate) mod parse;
+pub(crate) mod emit;
+pub(crate) mod error;
+pub(crate) mod compile_context;
+pub(crate) mod binding;
 
 use typed_arena;
 pub use compiler::error::CompileError;

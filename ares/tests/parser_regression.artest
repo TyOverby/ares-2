@@ -1,4 +1,72 @@
-#test
+#test if statement
 if true then {
     print("hi");
 }
+#bind
+IF-STATEMENT:
+    COND:
+        LITERAL:
+            true
+    TRUE:
+        FN-CALL:
+            RECEIVER:
+                SYMBOL:
+                    NAME:
+                        print
+                    SOURCE:
+                        GLOBAL:
+                            print
+            ARGS:
+                LITERAL:
+                    "hi"
+#output
+hi
+
+#test if statement both branches take true
+if true then {
+    print("a")
+} else {
+    print("b")
+}
+#bind
+IF-EXPRESSION:
+    COND:
+        LITERAL:
+            true
+    TRUE:
+        BLOCK-EXPRESSION:
+            FN-CALL:
+                RECEIVER:
+                    SYMBOL:
+                        NAME:
+                            print
+                        SOURCE:
+                            GLOBAL:
+                                print
+                ARGS:
+                    LITERAL:
+                        "a"
+    FALSE:
+        BLOCK-EXPRESSION:
+            FN-CALL:
+                RECEIVER:
+                    SYMBOL:
+                        NAME:
+                            print
+                        SOURCE:
+                            GLOBAL:
+                                print
+                ARGS:
+                    LITERAL:
+                        "b"
+#output
+a
+
+#test if statement both branches take false
+if false then {
+    print("a")
+} else {
+    print("b")
+}
+#output
+b

@@ -1,7 +1,7 @@
 mod error;
 mod emit_buffer;
 #[cfg(test)]
-mod test;
+pub(crate) mod test;
 
 use compiler::parse::Ast;
 use compiler::binding::{Bound, BoundRef, SymbolBindSource, LambdaBindings};

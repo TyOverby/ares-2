@@ -6,7 +6,7 @@
 #test string literal
 "hi"
 #result
-"hi"
+hi
 
 #test symbol
 'foo

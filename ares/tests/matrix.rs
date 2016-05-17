@@ -1,4 +1,5 @@
 extern crate latin;
+extern crate ares;
 
 use std::path::{Path, PathBuf};
 
@@ -10,10 +11,10 @@ const RESULT_SIGNIFIER: &'static str = "#result";
 
 struct Checks {
     name: String,
-    binding: Option<Result<(), String>>,
-    emit: Option<Result<(), String>>,
-    output: Option<Result<(), String>>,
-    result: Option<Result<(), String>>,
+    binding: bool,
+    emit: bool,
+    output: bool,
+    result: bool,
 }
 
 enum Phase {
@@ -33,6 +34,7 @@ impl Phase {
         }
 
     }
+
     fn append_line(&mut self, line: String) {
         let s = self.get_lines();
         if s.len() != 0 {
@@ -66,7 +68,17 @@ fn run_these(name: String, program: String, phases: Vec<Phase>) -> Checks {
             result = Some(r)
         }
     }}
-    unimplemented!();
+
+    let (b, e, o, r) = (binding.is_some(), emitting.is_some(), output.is_some(), result.is_some());
+
+    ares::assert_compilation_steps(&program, binding, emitting, output, result);
+    Checks {
+        name: name.to_string(),
+        binding: b,
+        emit: e,
+        output: o,
+        result: r,
+    }
 }
 
 fn run_test<F, I: Iterator<Item=String>>(lines: I, corrector: F) -> Vec<Checks>
@@ -122,17 +134,42 @@ where I: Iterator<Item=String>, F: Fn(String, String, Vec<Phase>) -> Checks {
 
 #[test]
 fn main() {
-    let path_to_me = Path::new(file!());
-    let mut path_to_test_dir = path_to_me.parent().unwrap();
+    use std::io::Write;
+    fn check(b: bool) -> &'static str {
+        if b { ":check" }
+        else { "      " }
+    }
 
     let mut tests = vec![];
 
-    for test in ::latin::directory::children(path_to_test_dir).unwrap() {
+    for test in ::latin::directory::children("./tests/").unwrap() {
         if ::latin::file::has_extension(&test, "artest") {
             let lines = ::latin::file::read_lines(test).unwrap().map(|l| l.unwrap());
             tests.append(&mut run_test(lines, run_these));
         }
     }
+
+    let longest_name = tests.iter().map(|test| test.name.len()).max().unwrap_or(0);
+
+    let mut buffer: Vec<u8> = Vec::new();
+
+    writeln!(&mut buffer, "| {2:<0$} | {3:<1$} | {4:<1$} | {5:<1$} | {6:<1$} |",
+             longest_name, check(false).len(),
+             "name", "binding", "emit", "output", "result");
+
+    for _ in 0 .. buffer.len() - 1 {
+        write!(&mut buffer, "-");
+    }
+    writeln!(&mut buffer, "");
+
+    for test in tests {
+        writeln!(&mut buffer, "| {0:<1$} | {2} | {3} | {4} | {5} |", test.name, longest_name,
+               check(test.binding),
+               check(test.emit),
+               check(test.output),
+               check(test.result));
+    }
+    ::latin::file::write("./tests/readme.md", &buffer);
 }
 
 #[test]
@@ -187,10 +224,10 @@ resultings foo
 
         Checks {
             name: name,
-            binding: None,
-            emit: None,
-            output: None,
-            result: None,
+            binding: true,
+            emit: true,
+            output: true,
+            result: true,
         }
     });
 }
