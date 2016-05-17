@@ -1,13 +1,29 @@
-print(5);
-print("hi");
-print('foo);
-print(3.14);
-print(true);
-print(false);
-=========
+#test integer
 5
-hi
+#result
+5
+
+#test string literal
+"hi"
+#result
+"hi"
+
+#test symbol
 'foo
+#result
+'foo
+
+#test float
 3.14
+#result
+3.14
+
+#test bool true
 true
+#result
+true
+
+#test bool false
+false
+#result
 false

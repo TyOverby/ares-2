@@ -43,6 +43,29 @@ impl Phase {
 }
 
 fn run_these(name: String, program: String, phases: Vec<Phase>) -> Checks {
+    let mut binding = None;
+    let mut emitting = None;
+    let mut output = None;
+    let mut result = None;
+
+    for phase in phases { match phase {
+        Phase::Binding(b) => {
+            assert!(binding.is_none(), "two binding blocks for test {}", name);
+            binding = Some(b);
+        }
+        Phase::Emit(e) => {
+            assert!(emitting.is_none(), "two emit blocks for test {}", name);
+            emitting = Some(e);
+        }
+        Phase::Output(o) => {
+            assert!(output.is_none(), "two output blocks for test {}", name);
+            output = Some(o);
+        }
+        Phase::Result(r) => {
+            assert!(output.is_none(), "two result blocks for test {}", name);
+            result = Some(r)
+        }
+    }}
     unimplemented!();
 }
 
@@ -83,7 +106,7 @@ where I: Iterator<Item=String>, F: Fn(String, String, Vec<Phase>) -> Checks {
             match (current_program.as_mut(), current_phase.as_mut()) {
                 (_, Some(phase)) => phase.append_line(line),
                 (Some(program), _) => program.push_str(&line),
-                (None, None) => panic!("not inside a valid program of phase.")
+                (None, None) => panic!("not inside a valid program")
             }
         }
     }
@@ -105,7 +128,7 @@ fn main() {
     let mut tests = vec![];
 
     for test in ::latin::directory::children(path_to_test_dir).unwrap() {
-        if test.ends_with(".artest") {
+        if ::latin::file::has_extension(&test, "artest") {
             let lines = ::latin::file::read_lines(test).unwrap().map(|l| l.unwrap());
             tests.append(&mut run_test(lines, run_these));
         }
@@ -113,18 +136,18 @@ fn main() {
 }
 
 #[test]
-fn framework_works() {
+fn matrix_framework_works() {
     let file =
 r#"#test foo
 a + b
 #bind
-bindings
+bindings foo
 #emit
-emitings
+emitings foo
 #output
-outputings
+outputings foo
 #result
-resultings
+resultings foo
 "#;
 
     let phases = run_test(file.lines().map(String::from), |name, program, phases| {
@@ -139,19 +162,19 @@ resultings
         for phase in phases {
             match phase {
                 Phase::Binding(s) => {
-                    assert_eq!(s, "bindings");
+                    assert_eq!(s, "bindings foo");
                     found_binding = true;
                 }
                 Phase::Emit(s)  => {
-                    assert_eq!(s, "emitings");
+                    assert_eq!(s, "emitings foo");
                     found_emitting = true;
                 }
                 Phase::Output(s) => {
-                    assert_eq!(s, "outputings");
+                    assert_eq!(s, "outputings foo");
                     found_outputting = true;
                 }
                 Phase::Result(s) =>  {
-                    assert_eq!(s, "resultings");
+                    assert_eq!(s, "resultings foo");
                     found_result = true;
                 }
             }

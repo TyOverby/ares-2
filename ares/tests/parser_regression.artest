@@ -1,5 +1,4 @@
+#test
 if true then {
     print("hi");
 }
-====================
-hi
