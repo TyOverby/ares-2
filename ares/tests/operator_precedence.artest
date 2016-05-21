@@ -1,41 +1,42 @@
+#test addition
 1 + 2
-================
+#bind
 ADD:
     LITERAL:
         1
     LITERAL:
         2
 
-================
+#test subtraction
 1 - 2
-================
+#bind
 SUB:
     LITERAL:
         1
     LITERAL:
         2
 
-================
+#test multiplication
 1 * 2
-================
+#bind
 MUL:
     LITERAL:
         1
     LITERAL:
         2
 
-================
+#test division
 1 / 2
-================
+#bind
 DIV:
     LITERAL:
         1
     LITERAL:
         2
 
-================
+#test addition and multiplication
 1 + 5 * 4
-================
+#bind
 ADD:
     LITERAL:
         1
@@ -45,9 +46,9 @@ ADD:
         LITERAL:
             4
 
-================
+#test addition and multiplication (with parens)
 (1 + 5) * 4
-================
+#bind
 MUL:
     ADD:
         LITERAL:
@@ -57,9 +58,9 @@ MUL:
     LITERAL:
         4
 
-================
+#test subtraction and division
 1 - 5 / 4
-================
+#bind
 SUB:
     LITERAL:
         1
@@ -69,9 +70,9 @@ SUB:
         LITERAL:
             4
 
-================
+#test subtraction and division (with parens)
 (1 - 5) / 4
-================
+#bind
 DIV:
     SUB:
         LITERAL:

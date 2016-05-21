@@ -5,16 +5,29 @@
 | block expression with statement in expression | :check | :check | :check | :check |
 | block expression with statement in expression | :check | :check | :check | :check |
 | block statement                               | :check | :check | :check | :check |
-| integer                                       |        |        |        | :check |
+| anonymous function call                       | :check |        | :check | :check |
+| user-fn function call                         | :check |        | :check | :check |
+| one-arg lambda                                | :check |        |        |        |
+| one-arg statement lambda                      | :check |        |        |        |
+| 2-arg expression lambda                       | :check |        |        |        |
+| int literal                                   |        |        |        | :check |
 | string literal                                |        |        |        | :check |
-| symbol                                        |        |        |        | :check |
-| float                                         |        |        |        | :check |
-| bool true                                     |        |        |        | :check |
-| bool false                                    |        |        |        | :check |
+| symbol literal                                |        |        |        | :check |
+| float literal                                 |        |        |        | :check |
+| bool literal: true                            |        |        |        | :check |
+| bool literal: false                           |        |        |        | :check |
 | addition                                      | :check | :check |        | :check |
 | subtraction                                   | :check | :check |        | :check |
 | multiplication                                | :check | :check |        | :check |
 | division                                      | :check | :check |        | :check |
+| addition                                      | :check |        |        |        |
+| subtraction                                   | :check |        |        |        |
+| multiplication                                | :check |        |        |        |
+| division                                      | :check |        |        |        |
+| addition and multiplication                   | :check |        |        |        |
+| addition and multiplication (with parens)     | :check |        |        |        |
+| subtraction and division                      | :check |        |        |        |
+| subtraction and division (with parens)        | :check |        |        |        |
 | if statement                                  | :check |        | :check |        |
 | if statement both branches take true          | :check |        | :check |        |
 | if statement both branches take false         |        |        | :check |        |

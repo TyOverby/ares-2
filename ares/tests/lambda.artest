@@ -1,5 +1,6 @@
+#test one-arg lambda
 fn(a) { a }
-===========
+#bind
 LAMBDA:
     NUM-ARGS:
         1
@@ -24,9 +25,9 @@ LAMBDA:
             SOURCE:
                 ARG:
                     0
-============
+#test one-arg statement lambda
 fn(a) { a; }
-============
+#bind
 LAMBDA:
     NUM-ARGS:
         1
@@ -52,9 +53,9 @@ LAMBDA:
                 ARG:
                     0
 
-===================
+#test 2-arg expression lambda
 fn(a, b) { a + b }
-===================
+#bind
 LAMBDA:
     NUM-ARGS:
         2

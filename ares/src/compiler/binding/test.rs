@@ -238,22 +238,10 @@ where F: ::std::fmt::Write {
 fn str_eq(actual: &str, expected: &str) {
     use itertools::{Itertools, EitherOrBoth};
     fn isnt_whitespace(s: &&str) -> bool { !s.chars().all(char::is_whitespace) }
-    let mut padding = None;
     for eob in actual.lines().filter(isnt_whitespace).zip_longest(
                expected.lines().filter(isnt_whitespace)) {
         match eob {
             EitherOrBoth::Both(l, r) => {
-                let w_left = (l.len() - l.trim_left().len()) as i32;
-                let w_right = (r.len() - r.trim_left().len()) as i32;
-                let d = w_left - w_right;
-
-                if padding.is_none() {
-                    padding = Some(d);
-                } else {
-                    assert!(padding.unwrap() == d,
-                            "indentation isn't the same at {} {}",
-                            l, r);
-                }
                 if l.trim() != r.trim() {
                     println!("actual:\n{}\n=====\nexpected:\n{}", actual, expected);
                 }
