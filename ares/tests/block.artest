@@ -7,6 +7,10 @@ BLOCK-EXPRESSION:
             1
         LITERAL:
             2
+#emit
+IntLit(1)
+IntLit(2)
+AddInt
 #result
 3
 
@@ -22,6 +26,12 @@ ADD:
                 2
     LITERAL:
         3
+#emit
+IntLit(1)
+IntLit(2)
+AddInt
+IntLit(3)
+AddInt
 #result
 6
 
@@ -36,6 +46,12 @@ BLOCK-EXPRESSION:
             2
     LITERAL:
         3
+#emit
+IntLit(1)
+IntLit(2)
+AddInt
+Pop
+IntLit(3)
 #result
 3
 
@@ -53,6 +69,14 @@ ADD:
             3
     LITERAL:
         4
+#emit
+IntLit(1)
+IntLit(2)
+AddInt
+Pop
+IntLit(3)
+IntLit(4)
+AddInt
 #result
 7
 
@@ -64,5 +88,11 @@ BLOCK-STATEMENT:
         1
     LITERAL:
         2
+#emit
+IntLit(1)
+Pop
+IntLit(2)
+Pop
+NilLit
 #result
 nil
