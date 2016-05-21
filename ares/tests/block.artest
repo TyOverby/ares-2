@@ -1,0 +1,68 @@
+#test basic block expression
+{ 1 + 2 }
+#bind
+BLOCK-EXPRESSION:
+    ADD:
+        LITERAL:
+            1
+        LITERAL:
+            2
+#result
+3
+
+#test block expression in expression
+{ 1 + 2 } + 3
+#bind
+ADD:
+    BLOCK-EXPRESSION:
+        ADD:
+            LITERAL:
+                1
+            LITERAL:
+                2
+    LITERAL:
+        3
+#result
+6
+
+#test block expression with statement in expression
+{ 1 + 2; 3 }
+#bind
+BLOCK-EXPRESSION:
+    ADD:
+        LITERAL:
+            1
+        LITERAL:
+            2
+    LITERAL:
+        3
+#result
+3
+
+#test block expression with statement in expression
+{ 1 + 2; 3 } + 4
+#bind
+ADD:
+    BLOCK-EXPRESSION:
+        ADD:
+            LITERAL:
+                1
+            LITERAL:
+                2
+        LITERAL:
+            3
+    LITERAL:
+        4
+#result
+7
+
+#test block statement
+{ 1; 2; }
+#bind
+BLOCK-STATEMENT:
+    LITERAL:
+        1
+    LITERAL:
+        2
+#result
+nil

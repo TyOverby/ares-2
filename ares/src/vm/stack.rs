@@ -172,7 +172,7 @@ impl Stack {
     #[inline(always)]
     pub fn binop_int<F: FnOnce(i64, i64) -> i64>(&mut self, f: F) -> Result<(), InterpError> {
         let a = try!(try!(self.pop()).expect_int());
-        let b = try!(try!(self.peek()).expect_int_ref_mut());
+        let b = try!(try!(self.peek()).expect_int_mut());
         *b = f(*b, a);
         Ok(())
     }

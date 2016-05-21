@@ -76,6 +76,7 @@ pub enum Instr {
     /// Swap the top two values on the stack
     Swap,
 
+    NilLit,
     BoolLit(bool),
     SymbolLit(Symbol),
     IntLit(i32),
@@ -193,19 +194,19 @@ impl <S: State> Vm<S> {
                     (&Instr::LoadConstant(_), &Instr::Pop) => {}
 
                     (&Instr::IntLit(added_with), &Instr::AddInt) => {
-                        let cur = try!(try!(stack.peek()).expect_int_ref_mut());
+                        let cur = try!(try!(stack.peek()).expect_int_mut());
                         *cur = *cur + added_with as i64;
                     }
                     (&Instr::IntLit(subtract_by), &Instr::SubInt) => {
-                        let cur = try!(try!(stack.peek()).expect_int_ref_mut());
+                        let cur = try!(try!(stack.peek()).expect_int_mut());
                         *cur = *cur - subtract_by as i64;
                     }
                     (&Instr::IntLit(multiply_by), &Instr::MulInt) => {
-                        let cur = try!(try!(stack.peek()).expect_int_ref_mut());
+                        let cur = try!(try!(stack.peek()).expect_int_mut());
                         *cur = *cur * multiply_by as i64;
                     }
                     (&Instr::IntLit(divide_by), &Instr::DivInt) => {
-                        let cur = try!(try!(stack.peek()).expect_int_ref_mut());
+                        let cur = try!(try!(stack.peek()).expect_int_mut());
                         *cur = *cur / divide_by as i64;
                     }
                     (&Instr::IntLit(value), &Instr::Eq) => {
@@ -310,6 +311,9 @@ impl <S: State> Vm<S> {
                     let len = stack.len();
                     try!(stack.swap(len - 1, len - 2));
                 }
+                &Instr::NilLit => {
+                    try!(stack.push(Value::Nil));
+                }
                 &Instr::BoolLit(b) => {
                     try!(stack.push(Value::Bool(b)));
                 }
@@ -341,12 +345,12 @@ impl <S: State> Vm<S> {
                 }
                 &Instr::And => {
                     let a = try!(try!(stack.pop()).expect_bool());
-                    let b = try!(try!(stack.peek()).expect_bool_ref_mut());
+                    let b = try!(try!(stack.peek()).expect_bool_mut());
                     *b = a && *b;
                 }
                 &Instr::Or => {
                     let a = try!(try!(stack.pop()).expect_bool());
-                    let b = try!(try!(stack.peek()).expect_bool_ref_mut());
+                    let b = try!(try!(stack.peek()).expect_bool_mut());
                     *b = a || *b;
                 }
                 &Instr::Eq => {

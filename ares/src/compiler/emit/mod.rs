@@ -44,6 +44,7 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                 try!(emit(body, compile_context, out, inside_lambda));
                 out.push(Instr::Pop);
             }
+            out.push(Instr::NilLit)
         }
         &Bound::Add(ref l, ref r, _) => {
             try!(emit(l, compile_context, out, inside_lambda));
