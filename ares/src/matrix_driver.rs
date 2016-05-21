@@ -1,12 +1,9 @@
 use super::compiler;
-use super::compiler::emit::*;
-use vm::{Instr, Value};
+use vm::Instr;
 use compiler::CompileContext;
 use ares_syntax::{SymbolIntern};
 use typed_arena::Arena;
 pub use ares_syntax::{Span, Ast, AstRef};
-use ares_syntax::parse_Program;
-use lalrpop_util;
 
 pub fn ok_parse_1_full(program: &str, interner: &mut SymbolIntern) -> AstRef<'static> {
     use std::mem::{transmute, forget};
