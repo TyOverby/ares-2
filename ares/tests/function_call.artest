@@ -52,3 +52,105 @@ hello
 world
 #result
 nil
+
+#test user call from function
+(fn() { print("hello world"); 5 })()
+#bind
+FN-CALL:
+    RECEIVER:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+            BODY:
+                BLOCK-EXPRESSION:
+                    FN-CALL:
+                        RECEIVER:
+                            SYMBOL:
+                                NAME:
+                                    print
+                                SOURCE:
+                                    GLOBAL:
+                                        print
+                        ARGS:
+                            LITERAL:
+                                "hello world"
+                    LITERAL:
+                        5
+            BINDINGS:
+    ARGS:
+#output
+hello world
+#result
+5
+
+#test curried function
+(fn outer() {
+    print("hello");
+    fn inner() {
+        print("world");
+        10
+    }
+})()()
+#bind
+FN-CALL:
+    RECEIVER:
+        FN-CALL:
+            RECEIVER:
+                LAMBDA:
+                    NUM-ARGS:
+                        0
+                    NUM-UPVARS:
+                        0
+                    NUM-DECLARATIONS:
+                        0
+                    ARGS:
+                    BODY:
+                        BLOCK-EXPRESSION:
+                            FN-CALL:
+                                RECEIVER:
+                                    SYMBOL:
+                                        NAME:
+                                            print
+                                        SOURCE:
+                                            GLOBAL:
+                                                print
+                                ARGS:
+                                    LITERAL:
+                                        "hello"
+                            LAMBDA:
+                                NUM-ARGS:
+                                    0
+                                NUM-UPVARS:
+                                    0
+                                NUM-DECLARATIONS:
+                                    0
+                                ARGS:
+                                BODY:
+                                    BLOCK-EXPRESSION:
+                                        FN-CALL:
+                                            RECEIVER:
+                                                SYMBOL:
+                                                    NAME:
+                                                        print
+                                                    SOURCE:
+                                                        GLOBAL:
+                                                            print
+                                            ARGS:
+                                                LITERAL:
+                                                    "world"
+                                        LITERAL:
+                                            10
+                                BINDINGS:
+                    BINDINGS:
+            ARGS:
+    ARGS:
+#output
+hello
+world
+#result
+10

@@ -7,6 +7,8 @@
 | block statement                               | :check | :check | :check | :check |
 | anonymous function call                       | :check |        | :check | :check |
 | user-fn function call                         | :check |        | :check | :check |
+| user call from function                       | :check |        | :check | :check |
+| curried function                              | :check |        | :check | :check |
 | one-arg lambda                                | :check |        |        |        |
 | one-arg statement lambda                      | :check |        |        |        |
 | 2-arg expression lambda                       | :check |        |        |        |

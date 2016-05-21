@@ -147,7 +147,11 @@ impl<'a> Binder for LambdaBinder<'a> {
     }
 
     fn lookup(&self, symbol: Symbol) -> Option<SymbolBindSource> {
-        self.bindings.bindings.get(&symbol).cloned()
+        if let Some(local_binding) = self.bindings.bindings.get(&symbol).cloned() {
+            Some(local_binding)
+        } else {
+            self.parent.lookup(symbol)
+        }
     }
 }
 
@@ -220,10 +224,10 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             }
         }
 
-        if !out_err.is_empty() {
-            Err(BindingError::Multiple(out_err))
-        } else {
-            Ok(out_ok)
+        match out_err.len() {
+            0 => Ok(out_ok),
+            1 => Err(out_err.pop().unwrap()),
+            _ => Err(BindingError::Multiple(out_err))
         }
     }
 
