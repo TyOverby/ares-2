@@ -1,10 +1,10 @@
 | name                                          | binding | emit   | output | result |
 --------------------------------------------------------------------------------------
-| basic block expression                        | :check | :check |        | :check |
-| block expression in expression                | :check | :check |        | :check |
-| block expression with statement in expression | :check | :check |        | :check |
-| block expression with statement in expression | :check | :check |        | :check |
-| block statement                               | :check | :check |        | :check |
+| basic block expression                        | :check | :check | :check | :check |
+| block expression in expression                | :check | :check | :check | :check |
+| block expression with statement in expression | :check | :check | :check | :check |
+| block expression with statement in expression | :check | :check | :check | :check |
+| block statement                               | :check | :check | :check | :check |
 | integer                                       |        |        |        | :check |
 | string literal                                |        |        |        | :check |
 | symbol                                        |        |        |        | :check |

@@ -64,7 +64,7 @@ fn run_these(name: String, program: String, phases: Vec<Phase>) -> Checks {
             output = Some(o);
         }
         Phase::Result(r) => {
-            assert!(output.is_none(), "two result blocks for test {}", name);
+            assert!(result.is_none(), "two result blocks for test {}", name);
             result = Some(r)
         }
     }}

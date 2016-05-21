@@ -1,4 +1,4 @@
-#test integer
+#test int literal
 5
 #result
 5
@@ -8,22 +8,22 @@
 #result
 hi
 
-#test symbol
+#test symbol literal
 'foo
 #result
 'foo
 
-#test float
+#test float literal
 3.14
 #result
 3.14
 
-#test bool true
+#test bool literal: true
 true
 #result
 true
 
-#test bool false
+#test bool literal: false
 false
 #result
 false
