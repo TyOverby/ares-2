@@ -471,11 +471,6 @@ impl <S: State> Vm<S> {
             i = i.wrapping_add(1);
         }
 
-        assert!(stack_frame + 1 == stack.len() as u32,
-                "'execute' left the stack at the wrong size: actual: {} vs expected: {}",
-                stack.len(),
-                stack_frame + 1);
-
         Ok(())
     }
 

@@ -22,14 +22,14 @@
 | subtraction                                   | :check | :check |        | :check |
 | multiplication                                | :check | :check |        | :check |
 | division                                      | :check | :check |        | :check |
-| addition                                      | :check |        |        |        |
-| subtraction                                   | :check |        |        |        |
-| multiplication                                | :check |        |        |        |
-| division                                      | :check |        |        |        |
-| addition and multiplication                   | :check |        |        |        |
-| addition and multiplication (with parens)     | :check |        |        |        |
-| subtraction and division                      | :check |        |        |        |
-| subtraction and division (with parens)        | :check |        |        |        |
-| if statement                                  | :check |        | :check |        |
-| if statement both branches take true          | :check |        | :check |        |
-| if statement both branches take false         |        |        | :check |        |
+| addition                                      | :check |        | :check | :check |
+| subtraction                                   | :check |        | :check | :check |
+| multiplication                                | :check |        | :check | :check |
+| division                                      | :check |        | :check | :check |
+| addition and multiplication                   | :check |        | :check | :check |
+| addition and multiplication (with parens)     | :check |        | :check | :check |
+| subtraction and division                      | :check |        | :check | :check |
+| subtraction and division (with parens)        | :check |        | :check | :check |
+| if statement                                  | :check |        | :check | :check |
+| if expression both branches take true         | :check |        | :check |        |
+| if statement both branches take false         |        |        | :check | :check |

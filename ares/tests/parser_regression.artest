@@ -8,21 +8,23 @@ IF-STATEMENT:
         LITERAL:
             true
     TRUE:
-        FN-CALL:
-            RECEIVER:
-                SYMBOL:
-                    NAME:
-                        print
-                    SOURCE:
-                        GLOBAL:
+        BLOCK-STATEMENT:
+            FN-CALL:
+                RECEIVER:
+                    SYMBOL:
+                        NAME:
                             print
-            ARGS:
-                LITERAL:
-                    "hi"
+                        SOURCE:
+                            GLOBAL:
+                                print
+                ARGS:
+                    LITERAL:
+                        "hi"
+#result
 #output
 hi
 
-#test if statement both branches take true
+#test if expression both branches take true
 if true then {
     print("a")
 } else {
@@ -64,9 +66,10 @@ a
 
 #test if statement both branches take false
 if false then {
-    print("a")
+    print("a");
 } else {
-    print("b")
+    print("b");
 }
+#result
 #output
 b

@@ -147,15 +147,11 @@ where F: ::std::fmt::Write {
             try!(format(cond, level + 2, interner, f));
 
             try!(label("TRUE", level + 1, f));
-            for statement in tru {
-                try!(format(statement, level+2, interner, f));
-            }
+            try!(format(tru, level+2, interner, f));
 
             if let Some(fals) = fals.as_ref() {
                 try!(label("FALSE", level + 1, f));
-                for statement in fals {
-                    try!(format(statement, level+2, interner, f));
-                }
+                try!(format(fals, level+2, interner, f));
             }
             Ok(())
         }

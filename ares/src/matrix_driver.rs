@@ -83,8 +83,12 @@ pub fn assert_compilation_steps(program: &str, bound: Option<String>, instr: Opt
             assert_eq!(expected_output.lines().map(String::from).collect::<Vec<_>>(), actual_output)
         }
         if let Some(expected_result) = result {
-            let as_string = ctx.format_value(&actual_result);
-            assert_eq!(expected_result, as_string);
+            if let Some(actual_result) = actual_result {
+                let as_string = ctx.format_value(&actual_result);
+                assert!(expected_result == as_string, "The program \n{}\n had a result of {:?} but you thought it was {:?}", program, actual_result, expected_result);
+            } else {
+                assert!(expected_result.is_empty(), "The program \n{}\n had no return value, but you provieded {}", program, expected_result);
+            }
         }
     }
 }

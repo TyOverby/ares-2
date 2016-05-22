@@ -49,6 +49,7 @@ fn run_these(name: String, program: String, phases: Vec<Phase>) -> Checks {
     let mut emitting = None;
     let mut output = None;
     let mut result = None;
+    println!("- running {}", name);
 
     for phase in phases { match phase {
         Phase::Binding(b) => {
@@ -144,7 +145,8 @@ fn main() {
 
     for test in ::latin::directory::children("./tests/").unwrap() {
         if ::latin::file::has_extension(&test, "artest") {
-            let lines = ::latin::file::read_lines(test).unwrap().map(|l| l.unwrap());
+            let lines = ::latin::file::read_lines(&test).unwrap().map(|l| l.unwrap());
+            println!("+ {:?}", test.display());
             tests.append(&mut run_test(lines, run_these));
         }
     }

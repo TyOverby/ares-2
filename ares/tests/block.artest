@@ -97,7 +97,5 @@ IntLit(1)
 Pop
 IntLit(2)
 Pop
-NilLit
 #output
 #result
-nil

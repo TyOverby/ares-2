@@ -45,8 +45,8 @@ pub enum Bound<'bound, 'ast: 'bound> {
        BoundRef<'bound, 'ast>,
        AstRef<'ast>),
     IfStatement(BoundRef<'bound, 'ast>,
-       Vec<BoundRef<'bound, 'ast>>,
-       Option<Vec<BoundRef<'bound, 'ast>>>,
+       BoundRef<'bound, 'ast>,
+       Option<BoundRef<'bound, 'ast>>,
        AstRef<'ast>),
     Lambda {
         arg_symbols: Vec<Symbol>,
@@ -304,8 +304,8 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             }
             &Ast::IfStatement(ref a, ref b, ref c, _) => {
                 Bound::IfStatement(try!(Bound::bind(a, arena, binder, interner)) as &_,
-                          try!(Bound::bind_all(b.iter(), arena, binder, interner)),
-                          try!(rearrange(c.as_ref().map(|c| Bound::bind_all(c.iter(), arena, binder, interner)))),
+                          try!(Bound::bind(b, arena, binder, interner)),
+                          try!(rearrange(c.map(|c| Bound::bind(c, arena, binder, interner)))),
                           ast)
             }
             &Ast::Closure(ref _name, ref args, ref body_block, _) => {

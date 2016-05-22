@@ -143,9 +143,10 @@ fn emit_if_statement_no_else() {
     assert_eq!(out, vec![
                Instr::BoolLit(true),
                Instr::Ifn,
-               Instr::Jump(5),
+               Instr::Jump(6),
                Instr::IntLit(1),
                Instr::Execute(0),
+               Instr::Pop,
     ]);
 }
 
@@ -156,11 +157,13 @@ fn emit_if_statement() {
     assert_eq!(out, vec![
                Instr::BoolLit(true),
                Instr::Ifn,
-               Instr::Jump(6),
+               Instr::Jump(7),
                Instr::IntLit(1),
                Instr::Execute(0),
-               Instr::Jump(8),
+               Instr::Pop,
+               Instr::Jump(10),
                Instr::IntLit(2),
                Instr::Execute(0),
+               Instr::Pop,
     ]);
 }

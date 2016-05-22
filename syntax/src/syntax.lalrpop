@@ -141,10 +141,10 @@ pub Expr: Ast<'a> = {
 };
 
 pub Statement: Ast<'a> = {
-    "if" <a: LogicalXorExpression> "then" "{" <trs: Statement*> "}" "else" "{" <fls: Statement*> "}" =>
-        Ast::IfStatement(arena.alloc(a), trs, Some(fls), Span(0, 0)),
-    "if" <a: LogicalXorExpression> "then" "{" <trs: Statement*> "}" =>
-        Ast::IfStatement(arena.alloc(a), trs, None, Span(0, 0)),
+    "if" <a: LogicalXorExpression> "then" <trs:BlockStatement> "else" <fls:BlockStatement> =>
+        Ast::IfStatement(arena.alloc(a), arena.alloc(trs), Some(arena.alloc(fls)), Span(0, 0)),
+    "if" <a: LogicalXorExpression> "then" <trs:BlockStatement> =>
+        Ast::IfStatement(arena.alloc(a), arena.alloc(trs), None, Span(0, 0)),
     <e: BlockStatement> => e,
     <e: AssignmentExpressionStatement> ";" => e,
 };

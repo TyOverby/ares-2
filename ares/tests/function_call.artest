@@ -51,7 +51,6 @@ BLOCK-STATEMENT:
 hello
 world
 #result
-nil
 
 #test user call from function
 (fn() { print("hello world"); 5 })()

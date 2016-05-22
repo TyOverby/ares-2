@@ -34,7 +34,7 @@ pub enum Ast<'ast> {
     Div(AstRef<'ast>, AstRef<'ast>, Span),
     FnCall(AstRef<'ast>, Vec<Ast<'ast>>, Span),
     IfExpression(AstRef<'ast>, AstRef<'ast>, AstRef<'ast>, Span),
-    IfStatement(AstRef<'ast>, Vec<Ast<'ast>>, Option<Vec<Ast<'ast>>>, Span),
+    IfStatement(AstRef<'ast>, AstRef<'ast>, Option<AstRef<'ast>>, Span),
     Closure(Option<Symbol>, Vec<Vec<Symbol>>, AstRef<'ast>, Span),
     Define(Symbol, AstRef<'ast>, Span),
     BlockExpression(Vec<Ast<'ast>>, Span),

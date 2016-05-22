@@ -112,18 +112,25 @@ impl <'a, S: State> LoadedContext<'a, S> {
         }
     }
 
-    pub fn eval(&mut self, program: &str) -> AresResult<Value> {
+    pub fn eval(&mut self, program: &str) -> AresResult<Option<Value>> {
         let instrs = {
             let &mut Vm{ ref mut compile_context, ref mut interner, .. }
                 = &mut self.context.vm;
             try!(::compiler::compile(program, compile_context, interner))
         };
 
-        let stack_size = self.context.vm.stack.len();
+        let previous_stack_size = self.context.vm.stack.len();
         try!(self.context.vm.load_and_execute(&instrs[..], 0, self.state));
-        let result = try!(self.context.vm.stack.pop());
-        assert!(stack_size == self.context.vm.stack.len());
-        Ok(result)
+        let new_stack_size = self.context.vm.stack.len();
+        assert!(new_stack_size == previous_stack_size ||
+                new_stack_size == previous_stack_size + 1);
+
+        if new_stack_size == previous_stack_size + 1 {
+            let result = try!(self.context.vm.stack.pop());
+            Ok(Some(result))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -171,7 +178,7 @@ fn basic_context() {
     let mut state = ();
     let mut ctx = UnloadedContext::new();
     let mut lctx = ctx.load(&mut state);
-    assert_eq!(lctx.eval("1 + 2 + 3"), Ok(6.into()));
+    assert_eq!(lctx.eval("1 + 2 + 3"), Ok(Some(6.into())));
 }
 
 #[test]
@@ -202,13 +209,13 @@ fn context_with_user_fn() {
     {
         let mut lctx = ctx.load(&mut state);
         let res = lctx.eval("foo()");
-        assert_eq!(res.unwrap(), 1.into());
+        assert_eq!(res.unwrap(), Some(1.into()));
     }
     assert_eq!(state, 1);
     {
         let mut lctx = ctx.load(&mut state);
         let res = lctx.eval("foo()");
-        assert_eq!(res.unwrap(), 2.into());
+        assert_eq!(res.unwrap(), Some(2.into()));
     }
     assert_eq!(state, 2);
 }
