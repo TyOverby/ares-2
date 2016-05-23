@@ -26,9 +26,11 @@ hi
 
 #test if expression both branches take true
 if true then {
-    print("a")
+    print("a");
+    5
 } else {
-    print("b")
+    print("b");
+    6
 }
 #bind
 IF-EXPRESSION:
@@ -48,6 +50,8 @@ IF-EXPRESSION:
                 ARGS:
                     LITERAL:
                         "a"
+            LITERAL:
+                5
     FALSE:
         BLOCK-EXPRESSION:
             FN-CALL:
@@ -61,6 +65,10 @@ IF-EXPRESSION:
                 ARGS:
                     LITERAL:
                         "b"
+            LITERAL:
+                6
+#result
+5
 #output
 a
 

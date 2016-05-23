@@ -56,7 +56,7 @@ pub enum Bound<'bound, 'ast: 'bound> {
     },
     BlockExpression(Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
     BlockStatement(Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
-    Define(Symbol, SymbolBindSource, BoundRef<'bound, 'ast>, AstRef<'ast>),
+    Assign(Symbol, SymbolBindSource, BoundRef<'bound, 'ast>, AstRef<'ast>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Ord, PartialOrd)]
@@ -330,13 +330,13 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 let bound_bodies = try!(Bound::bind_all(bodies, arena, &mut new_binder, interner));
                 Bound::BlockStatement(bound_bodies, ast)
             }
-            &Ast::Define(symbol, value, _) => {
+            &Ast::Assign(symbol, value, _) => {
                 if binder.already_binds(symbol) {
                     return Err(BindingError::AlreadyDefined(symbol));
                 }
                 let source = binder.add_declaration(symbol, interner);
                 let bound_value = try!(Bound::bind(value, arena, binder, interner));
-                Bound::Define(symbol, source, bound_value, ast)
+                Bound::Assign(symbol, source, bound_value, ast)
             }
         }))
     }

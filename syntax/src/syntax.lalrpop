@@ -127,7 +127,7 @@ IfExpression: Ast<'a> = {
 };
 
 AssignmentExpression: Ast<'a> = {
-    <r: Identifier> "=" <l: IfExpression> => Ast::Define(r, arena.alloc(l), Span(0, 0)),
+    <r: Identifier> "=" <l: IfExpression> => Ast::Assign(r, arena.alloc(l), Span(0, 0)),
     IfExpression,
 };
 

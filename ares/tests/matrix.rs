@@ -1,7 +1,6 @@
 extern crate latin;
 extern crate ares;
 
-use std::path::{Path, PathBuf};
 
 const TEST_SIGNIFIER: &'static str = "#test";
 const BIND_SIGNIFIER: &'static str = "#bind";
@@ -127,7 +126,6 @@ where I: Iterator<Item=String>, F: Fn(String, String, Vec<Phase>) -> Checks {
     if let (Some(name), Some(prog), Some(phase)) = (current_name.take(), current_program.take(), current_phase.take()) {
         phases.push(phase);
         out.push(corrector(name, prog, phases));
-        phases = vec![];
     }
 
     out
@@ -171,7 +169,7 @@ fn main() {
                check(test.output),
                check(test.result));
     }
-    ::latin::file::write("./tests/readme.md", &buffer);
+    ::latin::file::write("./tests/readme.md", &buffer).unwrap();
 }
 
 #[test]
@@ -189,7 +187,7 @@ outputings foo
 resultings foo
 "#;
 
-    let phases = run_test(file.lines().map(String::from), |name, program, phases| {
+    let _ = run_test(file.lines().map(String::from), |name, program, phases| {
         assert_eq!(name, "foo");
         assert_eq!(program, "a + b");
 

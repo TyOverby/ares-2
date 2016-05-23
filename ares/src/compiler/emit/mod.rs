@@ -202,7 +202,7 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             }
             Ok(true)
         }
-        &Bound::Define(_, source, value, _) => {
+        &Bound::Assign(_, source, value, _) => {
             if let SymbolBindSource::Global(_) = source {
                 unimplemented!();
             } else {

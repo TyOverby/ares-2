@@ -212,8 +212,8 @@ where F: ::std::fmt::Write {
             }
             Ok(())
         }
-        &Define(ref name, ref source, ref value, _) => {
-            try!(label("DEFINE", level, f));
+        &Assign(ref name, ref source, ref value, _) => {
+            try!(label("ASSIGN", level, f));
 
             try!(label("NAME", level + 1, f));
             try!(f.write_str(&gen_indent(level + 2)));
