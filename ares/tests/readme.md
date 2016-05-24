@@ -33,5 +33,6 @@
 | addition and multiplication (with parens)     | :check |        | :check | :check |
 | subtraction and division                      | :check |        | :check | :check |
 | subtraction and division (with parens)        | :check |        | :check | :check |
-| use local and argument                        |        |        |        | :check |
-| two locals                                    |        |        |        | :check |
+| use local and argument                        | :check |        |        | :check |
+| two locals                                    | :check |        |        | :check |
+| two locals with expr inbetween                |        |        |        | :check |

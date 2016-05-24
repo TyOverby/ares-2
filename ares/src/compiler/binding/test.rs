@@ -239,7 +239,7 @@ where F: ::std::fmt::Write {
             try!(print_source(source, level + 2, interner, f));
 
             try!(label("VALUE", level + 1, f));
-            try!(format(value, level + 1, interner, f));
+            try!(format(value, level + 2, interner, f));
             Ok(())
         }
     }
@@ -253,10 +253,13 @@ fn str_eq(actual: &str, expected: &str) {
                expected.lines().filter(isnt_whitespace)) {
         match eob {
             EitherOrBoth::Both(l, r) => {
-                if l.trim() != r.trim() {
+                let l = l.trim_right();
+                let r = r.trim_right();
+
+                if l != r{
                     println!("actual:\n{}\n=====\nexpected:\n{}", actual, expected);
                 }
-                assert_eq!(l.trim(), r.trim());
+                assert_eq!(l, r);
             }
             EitherOrBoth::Left(l) => {
                 println!("actual has more lines: {}", l);

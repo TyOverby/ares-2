@@ -1,9 +1,187 @@
 #test use local and argument
 (fn (a) {var b = 10; a + b})(5)
+#bind
+FN-CALL:
+    RECEIVER:
+        LAMBDA:
+            NUM-ARGS:
+                1
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                1
+            ARGS:
+                a
+            BODY:
+                BLOCK-EXPRESSION:
+                    DEFINE:
+                        NAME:
+                            b
+                        SOURCE:
+                            LOCAL-DEFINE:
+                                0
+                        VALUE:
+                            LITERAL:
+                                10
+                    ADD:
+                        SYMBOL:
+                            NAME:
+                                a
+                            SOURCE:
+                                ARG:
+                                    0
+                        SYMBOL:
+                            NAME:
+                                b
+                            SOURCE:
+                                LOCAL-DEFINE:
+                                    0
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        a
+                    SOURCE:
+                        ARG:
+                            0
+                BINDING:
+                    SYMBOL:
+                        s10
+                    SOURCE:
+                        LOCAL-DEFINE:
+                            0
+    ARGS:
+        LITERAL:
+            5
 #result
 15
 
 #test two locals
 (fn () {var a = 1; var b = 15; a + b})()
+#bind
+FN-CALL:
+    RECEIVER:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                2
+            ARGS:
+            BODY:
+                BLOCK-EXPRESSION:
+                    DEFINE:
+                        NAME:
+                            a
+                        SOURCE:
+                            LOCAL-DEFINE:
+                                0
+                        VALUE:
+                            LITERAL:
+                                1
+                    DEFINE:
+                        NAME:
+                            b
+                        SOURCE:
+                            LOCAL-DEFINE:
+                                1
+                        VALUE:
+                            LITERAL:
+                                15
+                    ADD:
+                        SYMBOL:
+                            NAME:
+                                a
+                            SOURCE:
+                                LOCAL-DEFINE:
+                                    0
+                        SYMBOL:
+                            NAME:
+                                b
+                            SOURCE:
+                                LOCAL-DEFINE:
+                                    1
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        s10
+                    SOURCE:
+                        LOCAL-DEFINE:
+                            0
+                BINDING:
+                    SYMBOL:
+                        s11
+                    SOURCE:
+                        LOCAL-DEFINE:
+                            1
+    ARGS:
 #result
 16
+
+#test two locals with expr inbetween
+(fn() {var a = 5; 5+5; var b = 20; a + b})()
+#bind
+FN-CALL:
+    RECEIVER:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                2
+            ARGS:
+            BODY:
+                BLOCK-EXPRESSION:
+                    DEFINE:
+                        NAME:
+                            a
+                        SOURCE:
+                            LOCAL-DEFINE:
+                                0
+                        VALUE:
+                            LITERAL:
+                                5
+                    ADD:
+                        LITERAL:
+                            5
+                        LITERAL:
+                            5
+                    DEFINE:
+                        NAME:
+                            b
+                        SOURCE:
+                            LOCAL-DEFINE:
+                                1
+                        VALUE:
+                            LITERAL:
+                                20
+                    ADD:
+                        SYMBOL:
+                            NAME:
+                                a
+                            SOURCE:
+                                LOCAL-DEFINE:
+                                    0
+                        SYMBOL:
+                            NAME:
+                                b
+                            SOURCE:
+                                LOCAL-DEFINE:
+                                    1
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        s10
+                    SOURCE:
+                        LOCAL-DEFINE:
+                            0
+                BINDING:
+                    SYMBOL:
+                        s11
+                    SOURCE:
+                        LOCAL-DEFINE:
+                            1
+    ARGS:
+#result
+25
