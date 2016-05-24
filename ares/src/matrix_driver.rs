@@ -50,7 +50,7 @@ pub fn assert_instrs(program: &str, output: &str) {
     }
 }
 
-pub fn assert_compilation_steps(program: &str, bound: Option<String>, instr: Option<String>, output: Option<String>, result: Option<String>) {
+pub fn assert_compilation_steps(program: &str, bound: Option<String>, instr: Option<String>, output: Option<String>, result: Option<String>) -> bool {
     use host::*;
     use vm::*;
 
@@ -90,5 +90,7 @@ pub fn assert_compilation_steps(program: &str, bound: Option<String>, instr: Opt
                 assert!(expected_result.is_empty(), "The program \n{}\n had no return value, but you provieded {}", program, expected_result);
             }
         }
+        return actual_output.len() == 0;
     }
+    return false;
 }
