@@ -156,11 +156,7 @@ fn main() {
              longest_name, check(false).len(),
              "name", "binding", "emit", "output", "result");
 
-    for _ in 0 .. buffer.len() - 1 {
-        write!(&mut buffer, "-");
-    }
-    writeln!(&mut buffer, "");
-
+    writeln!(&mut buffer, "|-|-|-|-|-|");
     for test in tests {
         writeln!(&mut buffer, "| {0:<1$} | {2} | {3} | {4} | {5} |", test.name, longest_name,
                check(test.binding),

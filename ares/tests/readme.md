@@ -1,5 +1,5 @@
 | name                                          | binding | emit   | output | result |
---------------------------------------------------------------------------------------
+|-|-|-|-|-|
 | basic block expression                        | :check | :check | :check | :check |
 | block expression in expression                | :check | :check | :check | :check |
 | block expression with statement in expression | :check | :check | :check | :check |
@@ -35,4 +35,4 @@
 | subtraction and division (with parens)        | :check |        | :check | :check |
 | use local and argument                        | :check |        |        | :check |
 | two locals                                    | :check |        |        | :check |
-| two locals with expr inbetween                |        |        |        | :check |
+| two locals with expr inbetween                | :check |        |        | :check |
