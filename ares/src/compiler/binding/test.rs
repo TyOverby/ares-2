@@ -227,6 +227,21 @@ where F: ::std::fmt::Write {
             try!(format(value, level + 1, interner, f));
             Ok(())
         }
+        &Define(ref name, ref source, ref value, _) => {
+            try!(label("DEFINE", level, f));
+
+            try!(label("NAME", level + 1, f));
+            try!(f.write_str(&gen_indent(level + 2)));
+            try!(f.write_str(&interner.lookup_or_anon(*name)));
+            try!(f.write_str("\n"));
+
+            try!(label("SOURCE", level + 1, f));
+            try!(print_source(source, level + 2, interner, f));
+
+            try!(label("VALUE", level + 1, f));
+            try!(format(value, level + 1, interner, f));
+            Ok(())
+        }
     }
     
 }

@@ -33,3 +33,5 @@
 | addition and multiplication (with parens)     | :check |        | :check | :check |
 | subtraction and division                      | :check |        | :check | :check |
 | subtraction and division (with parens)        | :check |        | :check | :check |
+| use local and argument                        |        |        |        | :check |
+| two locals                                    |        |        |        | :check |

@@ -1,7 +1,6 @@
 extern crate latin;
 extern crate ares;
 
-
 const TEST_SIGNIFIER: &'static str = "#test";
 const BIND_SIGNIFIER: &'static str = "#bind";
 const EMIT_SIGNIFIER: &'static str = "#emit";

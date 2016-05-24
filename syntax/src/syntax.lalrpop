@@ -131,9 +131,9 @@ AssignmentExpression: Ast<'a> = {
     IfExpression,
 };
 
-AssignmentExpressionStatement: Ast<'a> = {
-    <r: PostfixExpression> "=" <l: AssignmentExpression> => unimplemented!(),
-    LogicalOrExpression,
+#[inline]
+DefineStatement: Ast<'a> = {
+    "var" <r: Identifier> "=" <l: IfExpression> ";" => Ast::Define(r, arena.alloc(l), Span(0, 0)),
 };
 
 pub Expr: Ast<'a> = {
@@ -146,7 +146,8 @@ pub Statement: Ast<'a> = {
     "if" <a: LogicalXorExpression> "then" <trs:BlockStatement> =>
         Ast::IfStatement(arena.alloc(a), arena.alloc(trs), None, Span(0, 0)),
     <e: BlockStatement> => e,
-    <e: AssignmentExpressionStatement> ";" => e,
+    <e: DefineStatement> => e,
+    <e: AssignmentExpression> ";" => e,
 };
 
 

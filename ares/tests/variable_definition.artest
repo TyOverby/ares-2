@@ -1,0 +1,9 @@
+#test use local and argument
+(fn (a) {var b = 10; a + b})(5)
+#result
+15
+
+#test two locals
+(fn () {var a = 1; var b = 15; a + b})()
+#result
+16
