@@ -11,7 +11,6 @@ BLOCK-EXPRESSION:
 IntLit(1)
 IntLit(2)
 AddInt
-#output
 #result
 3
 
@@ -33,7 +32,6 @@ IntLit(2)
 AddInt
 IntLit(3)
 AddInt
-#output
 #result
 6
 
@@ -54,7 +52,6 @@ IntLit(2)
 AddInt
 Pop
 IntLit(3)
-#output
 #result
 3
 
@@ -80,7 +77,6 @@ Pop
 IntLit(3)
 IntLit(4)
 AddInt
-#output
 #result
 7
 
@@ -97,5 +93,4 @@ IntLit(1)
 Pop
 IntLit(2)
 Pop
-#output
 #result
