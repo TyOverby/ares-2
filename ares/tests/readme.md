@@ -1,38 +1,38 @@
-| name                                          | binding | emit   | output | result |
-|-|-|-|-|-|
-| basic block expression                        | :check | :check | :check | :check |
-| block expression in expression                | :check | :check | :check | :check |
-| block expression with statement in expression | :check | :check | :check | :check |
-| block expression with statement in expression | :check | :check | :check | :check |
-| block statement                               | :check | :check | :check | :check |
-| anonymous function call                       | :check |        | :check | :check |
-| user-fn function call                         | :check |        | :check | :check |
-| user call from function                       | :check |        | :check | :check |
-| curried function                              | :check |        | :check | :check |
-| if statement                                  | :check |        | :check | :check |
-| if expression both branches take true         | :check |        | :check | :check |
-| if statement both branches take false         |        |        | :check | :check |
-| one-arg lambda                                | :check |        |        |        |
-| one-arg statement lambda                      | :check |        |        |        |
-| 2-arg expression lambda                       | :check |        |        |        |
-| int literal                                   |        |        |        | :check |
-| string literal                                |        |        |        | :check |
-| symbol literal                                |        |        |        | :check |
-| float literal                                 |        |        |        | :check |
-| bool literal: true                            |        |        |        | :check |
-| bool literal: false                           |        |        |        | :check |
-| addition                                      | :check | :check |        | :check |
-| subtraction                                   | :check | :check |        | :check |
-| multiplication                                | :check | :check |        | :check |
-| division                                      | :check | :check |        | :check |
-| addition                                      | :check |        | :check | :check |
-| subtraction                                   | :check |        | :check | :check |
-| multiplication                                | :check |        | :check | :check |
-| division                                      | :check |        | :check | :check |
-| addition and multiplication                   | :check |        | :check | :check |
-| addition and multiplication (with parens)     | :check |        | :check | :check |
-| subtraction and division                      | :check |        | :check | :check |
-| subtraction and division (with parens)        | :check |        | :check | :check |
-| use local and argument                        | :check |        |        | :check |
-| two locals                                    | :check |        |        | :check |
-| two locals with expr inbetween                | :check |        |        | :check |
+| name                                          | binding            | emit               | output             | result             |
+|---|---|---|---|---|
+| basic block expression                        | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| block expression in expression                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| block expression with statement in expression | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| block expression with statement in expression | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| block statement                               | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| anonymous function call                       | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| user-fn function call                         | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| user call from function                       | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| curried function                              | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| if statement                                  | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| if expression both branches take true         | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| if statement both branches take false         |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| one-arg lambda                                | :heavy_check_mark: |                    |                    |                    |
+| one-arg statement lambda                      | :heavy_check_mark: |                    |                    |                    |
+| 2-arg expression lambda                       | :heavy_check_mark: |                    |                    |                    |
+| int literal                                   |                    |                    |                    | :heavy_check_mark: |
+| string literal                                |                    |                    |                    | :heavy_check_mark: |
+| symbol literal                                |                    |                    |                    | :heavy_check_mark: |
+| float literal                                 |                    |                    |                    | :heavy_check_mark: |
+| bool literal: true                            |                    |                    |                    | :heavy_check_mark: |
+| bool literal: false                           |                    |                    |                    | :heavy_check_mark: |
+| addition                                      | :heavy_check_mark: | :heavy_check_mark: |                    | :heavy_check_mark: |
+| subtraction                                   | :heavy_check_mark: | :heavy_check_mark: |                    | :heavy_check_mark: |
+| multiplication                                | :heavy_check_mark: | :heavy_check_mark: |                    | :heavy_check_mark: |
+| division                                      | :heavy_check_mark: | :heavy_check_mark: |                    | :heavy_check_mark: |
+| addition                                      | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| subtraction                                   | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| multiplication                                | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| division                                      | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| addition and multiplication                   | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| addition and multiplication (with parens)     | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| subtraction and division                      | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| subtraction and division (with parens)        | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| use local and argument                        | :heavy_check_mark: |                    |                    | :heavy_check_mark: |
+| two locals                                    | :heavy_check_mark: |                    |                    | :heavy_check_mark: |
+| two locals with expr inbetween                | :heavy_check_mark: |                    |                    | :heavy_check_mark: |

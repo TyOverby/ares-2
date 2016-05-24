@@ -134,8 +134,8 @@ where I: Iterator<Item=String>, F: Fn(String, String, Vec<Phase>) -> Checks {
 fn main() {
     use std::io::Write;
     fn check(b: bool) -> &'static str {
-        if b { ":check" }
-        else { "      " }
+        if b { ":heavy_check_mark:" }
+        else { "                  " }
     }
 
     let mut tests = vec![];
@@ -156,7 +156,7 @@ fn main() {
              longest_name, check(false).len(),
              "name", "binding", "emit", "output", "result");
 
-    writeln!(&mut buffer, "|-|-|-|-|-|");
+    writeln!(&mut buffer, "|---|---|---|---|---|");
     for test in tests {
         writeln!(&mut buffer, "| {0:<1$} | {2} | {3} | {4} | {5} |", test.name, longest_name,
                check(test.binding),
