@@ -25,6 +25,12 @@ LAMBDA:
             SOURCE:
                 ARG:
                     0
+#emit
+CreateClosure(0)
+Jump(4)
+Dup(0)
+Ret
+
 #test one-arg statement lambda
 fn(a) { a; }
 #bind
@@ -52,6 +58,12 @@ LAMBDA:
             SOURCE:
                 ARG:
                     0
+#emit
+CreateClosure(0)
+Jump(5)
+Dup(0)
+Pop
+Ret
 
 #test 2-arg expression lambda
 fn(a, b) { a + b }
@@ -94,3 +106,10 @@ LAMBDA:
             SOURCE:
                 ARG:
                     1
+#emit
+CreateClosure(0)
+Jump(6)
+Dup(0)
+Dup(1)
+AddInt
+Ret

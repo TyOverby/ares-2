@@ -6,7 +6,6 @@ ADD:
         1
     LITERAL:
         2
-#output
 #result
 3
 
@@ -18,7 +17,6 @@ SUB:
         1
     LITERAL:
         2
-#output
 #result
 -1
 
@@ -30,7 +28,6 @@ MUL:
         1
     LITERAL:
         2
-#output
 #result
 2
 
@@ -42,7 +39,6 @@ DIV:
         6
     LITERAL:
         2
-#output
 #result
 3
 
@@ -57,7 +53,6 @@ ADD:
             5
         LITERAL:
             4
-#output
 #result
 21
 
@@ -72,7 +67,6 @@ MUL:
             5
     LITERAL:
         4
-#output
 #result
 24
 
@@ -87,7 +81,6 @@ SUB:
             6
         LITERAL:
             2
-#output
 #result
 -2
 
@@ -102,6 +95,5 @@ DIV:
             1
     LITERAL:
         2
-#output
 #result
 3
