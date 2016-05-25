@@ -1,0 +1,66 @@
+#test local assignment
+(fn() {var x = 5; x = 10; print(x); x})()
+#bind
+FN-CALL:
+    RECEIVER:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                1
+            ARGS:
+            BODY:
+                BLOCK-EXPRESSION:
+                    DEFINE:
+                        NAME:
+                            x
+                        SOURCE:
+                            LOCAL-DEFINE:
+                                0
+                        VALUE:
+                            LITERAL:
+                                5
+                    ASSIGN:
+                        NAME:
+                            x
+                        SOURCE:
+                            LOCAL-DEFINE:
+                                0
+                        VALUE:
+                        LITERAL:
+                            10
+                    FN-CALL:
+                        RECEIVER:
+                            SYMBOL:
+                                NAME:
+                                    print
+                                SOURCE:
+                                    GLOBAL:
+                                        print
+                        ARGS:
+                            SYMBOL:
+                                NAME:
+                                    x
+                                SOURCE:
+                                    LOCAL-DEFINE:
+                                        0
+                    SYMBOL:
+                        NAME:
+                            x
+                        SOURCE:
+                            LOCAL-DEFINE:
+                                0
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        s10
+                    SOURCE:
+                        LOCAL-DEFINE:
+                            0
+    ARGS:
+#output
+10
+#result
+10

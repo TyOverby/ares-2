@@ -332,7 +332,16 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 Bound::BlockStatement(bound_bodies, ast)
             }
             &Ast::Assign(symbol, value, _) => {
-                unimplemented!();
+                match binder.lookup(symbol) {
+                    Some(source@SymbolBindSource::LocalDefine(_)) |
+                    Some(source@SymbolBindSource::Arg(_)) => {
+                        let value = try!(Bound::bind(value, arena, binder, interner));
+                        Bound::Assign(symbol, source, value, ast)
+                    }
+                    Some(SymbolBindSource::Upvar(_)) => unimplemented!(),
+                    Some(SymbolBindSource::Global(_)) => unimplemented!(),
+                    None => return Err(BindingError::CouldNotBind(symbol, ast.span()))
+                }
             }
             &Ast::Define(symbol, value, _) => {
                 if binder.already_binds(symbol) {

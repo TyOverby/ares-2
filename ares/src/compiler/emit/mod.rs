@@ -203,7 +203,16 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             Ok(true)
         }
         &Bound::Assign(_, source, value, _) => {
-            unimplemented!();
+            match source {
+                SymbolBindSource::Arg(_) | SymbolBindSource::LocalDefine(_) => {
+                    let binder = inside_lambda.unwrap();
+                    try!(emit(value, compile_context, out, inside_lambda));
+                    out.push(Instr::DupTop);
+                    out.push(Instr::Assign(binder.compute_stack_offset(source)));
+                }
+                _ => unimplemented!(),
+            }
+            Ok(false)
         }
         &Bound::Define(_, source, value, _) => {
             if let SymbolBindSource::Global(_) = source {
@@ -211,7 +220,6 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             } else {
                 let binder = inside_lambda.unwrap();
                 try!(emit(value, compile_context, out, inside_lambda));
-                out.push(Instr::DupTop);
                 out.push(Instr::Assign(binder.compute_stack_offset(source)));
             }
             Ok(false)

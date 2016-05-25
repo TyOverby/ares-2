@@ -46,6 +46,32 @@ impl <'ast> Ast<'ast> {
     pub fn dummy() -> Ast<'static> {
         Ast::BoolLit(true, Span::dummy())
     }
+
+    pub fn span(&self) -> Span {
+        match *self {
+            Ast::BoolLit(_, s) |
+            Ast::StringLit(_, s) |
+            Ast::IntLit(_, s) |
+            Ast::FloatLit(_, s) |
+            Ast::SymbolLit(_, s) |
+            Ast::Identifier(_, s) |
+            Ast::ListLit(_,  s) |
+            Ast::MapLit(_, s) |
+            Ast::Add(_, _, s) |
+            Ast::Sub(_, _, s) |
+            Ast::Mul(_, _, s) |
+            Ast::Div(_, _, s) |
+            Ast::FnCall(_, _, s) |
+            Ast::IfExpression(_, _, _, s) |
+            Ast::IfStatement(_, _, _, s) |
+            Ast::Closure(_, _, _, s) |
+            Ast::Assign(_, _, s) |
+            Ast::Define(_, _, s) |
+            Ast::BlockExpression(_, s) |
+            Ast::BlockStatement(_, s)  => s
+        }
+    }
+
     fn with_default_span(self, arena: &Arena<Ast<'ast>>) -> Ast<'ast> {
         use self::Ast::*;
         match self {
