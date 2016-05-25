@@ -1,6 +1,7 @@
 | name                                          | binding            | emit               | output             | result             |
 |---|---|---|---|---|
 | local assignment                              | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| assignment to argument                        | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | basic block expression                        | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | block expression in expression                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | block expression with statement in expression | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |

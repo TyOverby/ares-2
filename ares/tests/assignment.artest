@@ -64,3 +64,47 @@ FN-CALL:
 10
 #result
 10
+
+#test assignment to argument
+(fn(a){ a = 10; a })(5)
+#bind
+FN-CALL:
+    RECEIVER:
+        LAMBDA:
+            NUM-ARGS:
+                1
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+                a
+            BODY:
+                BLOCK-EXPRESSION:
+                    ASSIGN:
+                        NAME:
+                            a
+                        SOURCE:
+                            ARG:
+                                0
+                        VALUE:
+                        LITERAL:
+                            10
+                    SYMBOL:
+                        NAME:
+                            a
+                        SOURCE:
+                            ARG:
+                                0
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        a
+                    SOURCE:
+                        ARG:
+                            0
+    ARGS:
+        LITERAL:
+            5
+#result
+10
