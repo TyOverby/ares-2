@@ -138,9 +138,6 @@ pub enum Instr {
     /// Read a bool off the stack, if false, continue executing,
     /// else skip the next instruction.
     Ifn,
-
-    /// Returns a symbol that has been closed over
-    FetchUpvar(Symbol),
 }
 
 impl <S: State> Vm<S> {
@@ -376,9 +373,8 @@ impl <S: State> Vm<S> {
                             let code_pos = closure.class.code_offset;
                             let expected_arg_count = closure.class.arg_count;
                             let local_defines_count = closure.class.local_defines_count;
-                            if closure.class.has_rest_params {
-                                unimplemented!();
-                            }
+
+                            if closure.class.has_rest_params { unimplemented!(); }
 
                             if arg_count != expected_arg_count {
                                 return Err(InterpError::BadArity {
@@ -411,16 +407,6 @@ impl <S: State> Vm<S> {
                     try!(stack.push(instance.into()));
                 }
                 &Instr::ExecuteN => {
-                    // let lambda = try!(stack.pop().expect_lambda());
-                    // let arg_count = try!(stack.pop().expect_int());
-                    // let offset = lambda.code_offset;
-                    // return_stack.push(Return {
-                    // code_pos: i,
-                    // stack_frame: stack_frame
-                    // });
-                    // i = offset.wrapping_sub(1);
-                    // stack_frame = stack.len() as u32 - arg_count as u32;
-                    //
                     unimplemented!();
                 }
                 &Instr::Call(position) => {
@@ -439,11 +425,7 @@ impl <S: State> Vm<S> {
                         Some(ri) => ri,
                         None => return Ok(()),
                     };
-                    let Return { 
-                        code_pos,
-                        stack_frame: sf,
-                        namespace
-                    } = return_info;
+                    let Return { code_pos, stack_frame: sf, namespace } = return_info;
 
                     i = code_pos as u32;
                     let return_value = try!(stack.pop());
@@ -464,10 +446,8 @@ impl <S: State> Vm<S> {
                         i += 1
                     }
                 }
-                &Instr::FetchUpvar(_symbol) => {
-                    unimplemented!();
-                }
             }
+
             i = i.wrapping_add(1);
         }
 
