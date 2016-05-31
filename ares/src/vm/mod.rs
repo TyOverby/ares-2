@@ -76,10 +76,19 @@ pub enum Instr {
     /// Swap the top two values on the stack
     Swap,
 
+    /// Push nil on to the stack.
     NilLit,
+    /// Push a boolean literal on to the stack.
     BoolLit(bool),
+    /// Push a symbol on to the stack.
     SymbolLit(Symbol),
+    /// Push an integer literal on to the stack.
+    ///
+    /// Note that not all possible int literals
+    /// are able to be represented as an i32.
+    /// The rest must be loaded from LoadConstant.
     IntLit(i32),
+    /// Loads a constant from the pool of constants.
     LoadConstant(u32),
 
     /// Searches for the current symbol in the global
@@ -114,8 +123,11 @@ pub enum Instr {
     /// the stack, adding them, and pushing the result
     /// back on the stack.
     AddInt,
+    /// See AddInt, but with subtraction
     SubInt,
+    /// See AddInt, but with division
     DivInt,
+    /// See AddInt, but with multiplication
     MulInt,
 
     And,
@@ -126,9 +138,10 @@ pub enum Instr {
     /// Execute a lambda on the top of the stack with
     /// a specified number of arguments
     Execute(u32),
+
     /// Execute a lambda on the top of the stack with
-    /// an amount of arguments equal to the *next*
-    /// thing on the stack.
+    /// an amount of arguments equal to the *top* value
+    /// on the stack.
     ExecuteN,
 
     /// Read a bool off the stack, if true, continue executing,
