@@ -78,9 +78,10 @@ a map have an unbound parameter, and there is no implicit "this".
 ```lua
 obj = {}
 obj.f = function (self, a) print(self, a) end
+
 obj.f(1) // prints "1, nil"
 obj.f(obj, 1) // prints "<Table>, 1"
-obj:f(1) // prints "<Table>, a"
+obj:f(1) // prints "<Table>, 1"
 ```
 
 The shorthand "a:b()" is simply syntactic sugar for "a.b(a)" and doesn't do binding
@@ -94,7 +95,32 @@ Ruby is pretty much exactly like python.
 
 Ok, now that we have some prior art to look at, where does ares stand?
 
-// TODO: write this section
+In ares, objects may contain functions that behave as methods when accessed via dot
+syntax.
+
+```ares
+var obj = {
+    x: 5,
+    f: fn(this) {
+        print(this.x);
+    }
+};
+
+obj.f();
+(obj['f])(obj); // Same as above
+
+(obj.f)()
+(obj.f!bind(obj))() // same as above
+```
+
+where bind is defined as
+```ares
+fn bind(f, arg) {
+    fn(rest...) {
+        f.call(arg, rest...)
+    }
+}
+```
 
 #### Binding operator
 

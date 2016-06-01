@@ -79,9 +79,9 @@ of asynchrony is "delimited" with "reset".
 I could imagine an echo server being written that looks like this:
 
 ```ares
-reset {
+async {
     for connection in listen(8000) {
-        reset {
+        async {
             for message in connection {
                 connection.send(message)
             }
