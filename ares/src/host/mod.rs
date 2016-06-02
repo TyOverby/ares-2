@@ -1,4 +1,4 @@
-use vm::{Vm, Value, Globals};
+use vm::{Vm, Value, Modules};
 use ares_syntax::{Symbol, SymbolIntern};
 use std::marker::PhantomData;
 
@@ -9,17 +9,17 @@ pub use self::error::*;
 pub use self::state::State;
 
 pub struct UnloadedContext<S: State> {
-    vm: Vm<S>,
+    pub(crate) vm: Vm<S>,
 }
 
 pub struct LoadedContext<'a, S: State + 'a> {
-    context: &'a mut UnloadedContext<S>,
-    state: &'a mut S
+    pub(crate) context: &'a mut UnloadedContext<S>,
+    pub(crate) state: &'a mut S
 }
 
 pub struct EphemeralContext<'a, S: ?Sized + State + 'a> {
-    globals: &'a mut Globals,
-    interner: &'a mut SymbolIntern,
+    pub(crate) globals: &'a mut Modules,
+    pub(crate) interner: &'a mut SymbolIntern,
     _phantom: PhantomData<S>
 }
 
@@ -28,14 +28,77 @@ pub trait GlobalPath {
 }
 
 pub trait Context<S: State> {
-    fn set_global<P: GlobalPath>(&mut self, path: P, value: Value) -> Option<Value>;
-    fn get_global<P: GlobalPath>(&mut self, path: P) -> Option<&Value>;
-    fn get_global_mut<P: GlobalPath>(&mut self, path: P) -> Option<&mut Value>;
-    fn format_value(&self, value: &Value) -> String;
+    fn modules(&self) -> &Modules;
+    fn modules_mut(&mut self) -> &mut Modules;
+    fn interner(&self) -> &SymbolIntern;
+    fn interner_mut(&mut self) -> &mut SymbolIntern;
+
+    fn has_global<P: GlobalPath>(&mut self, path: P) -> bool {
+        let default_namespace = self.interner_mut().precomputed.default_namespace;
+        let (namespace, name) = path.into(default_namespace, self.interner_mut());
+        self.modules().is_defined(namespace, name)
+    }
+
+    fn set_global<P: GlobalPath>(&mut self, path: P, value: Value) -> Option<Value> {
+        let default_namespace = self.interner_mut().precomputed.default_namespace;
+        let (namespace, name) = path.into(default_namespace, self.interner_mut());
+        self.modules_mut().set(namespace, name, value)
+    }
+
+    fn get_global<P: GlobalPath>(&mut self, path: P) -> Option<&Value> {
+        let default_namespace = self.interner_mut().precomputed.default_namespace;
+        let (namespace, name) = path.into(default_namespace, self.interner_mut());
+        self.modules_mut().get(namespace, name)
+    }
+
+    fn get_global_mut<P: GlobalPath>(&mut self, path: P) -> Option<&mut Value> {
+        let default_namespace = self.interner_mut().precomputed.default_namespace;
+        let (namespace, name) = path.into(default_namespace, self.interner_mut());
+        self.modules_mut().get_mut(namespace, name)
+    }
+
+    fn format_value(&self, value: &Value) -> String {
+        ::vm::to_string_helper(&value, self.interner())
+    }
+
+    fn format_error(&self, error: AresError) -> String {
+        use ::vm::InterpError;
+        use ::compiler::CompileError;
+        use compiler::binding::BindingError;
+
+        match error {
+            AresError::CompileError(CompileError::ParseError(pe)) => format!("{:?}", pe),
+            AresError::CompileError(CompileError::BindingError(BindingError::CouldNotBind(s, sp))) =>
+                format!("CouldNotBind({}) at {:?}", self.interner().lookup_or_anon(s), sp),
+            AresError::CompileError(CompileError::BindingError(BindingError::Multiple(es))) => {
+                let mut s = String::new();
+                for e in es {
+                    s.push_str(&self.format_error(AresError::CompileError(CompileError::BindingError(e))));
+                    s.push('\n')
+                }
+                s
+            }
+            AresError::CompileError(CompileError::BindingError(BindingError::AlreadyDefined(s))) =>
+                format!("AlreadyDefined({})", self.interner().lookup_or_anon(s)),
+            AresError::CompileError(CompileError::EmitError(_)) => unreachable!(),
+
+            AresError::InterpError(InterpError::InternalInterpError(s)) =>
+                format!("InternalInterpError({})", s),
+            AresError::InterpError(InterpError::MismatchedType{value, expected}) =>
+                format!("MismatchedType{{value: {}, expected: {:?}}}", self.format_value(&value), expected),
+            AresError::InterpError(InterpError::VariableNotFound(s)) => format!("VariableNotFound({})", s),
+            AresError::InterpError(InterpError::StackOverflow) => "StackOverflow".to_string(),
+            AresError::InterpError(InterpError::StackUnderflow) => "StackUnderflow".to_string(),
+            AresError::InterpError(InterpError::StackOutOfBounds) => "StackOutOfBounds".to_string(),
+            AresError::InterpError(InterpError::BadArity{got, expected}) =>
+                format!("BadArity{{got: {}, expected: {}}}", got, expected),
+            AresError::InterpError(InterpError::UserFnWithWrongStateType) => "UserFnWithWrongStateType".to_string()
+        }
+    }
 }
 
 impl <'a, S: State> EphemeralContext<'a, S> {
-    pub fn new(globals: &'a mut Globals, interner: &'a mut SymbolIntern) -> EphemeralContext<'a, S> {
+    pub fn new(globals: &'a mut Modules, interner: &'a mut SymbolIntern) -> EphemeralContext<'a, S> {
         EphemeralContext {
             globals: globals,
             interner: interner,
@@ -57,50 +120,32 @@ impl <S: State> UnloadedContext<S> {
 }
 
 impl <S: State> Context<S> for UnloadedContext<S> {
-    fn set_global<P: GlobalPath>(&mut self, path: P, value: Value) -> Option<Value> {
-        let default_namespace = self.vm.interner.precomputed.default_namespace;
-        let (namespace, name) = path.into(default_namespace, &mut self.vm.interner);
-        self.vm.globals.set(namespace, name, value)
+    fn modules(&self) -> &Modules {
+        &self.vm.globals
     }
-
-    fn get_global<P: GlobalPath>(&mut self, path: P) -> Option<&Value> {
-        let default_namespace = self.vm.interner.precomputed.default_namespace;
-        let (namespace, name) = path.into(default_namespace, &mut self.vm.interner);
-        self.vm.globals.get(namespace, name)
+    fn modules_mut(&mut self) -> &mut Modules {
+        &mut self.vm.globals
     }
-
-    fn get_global_mut<P: GlobalPath>(&mut self, path: P) -> Option<&mut Value> {
-        let default_namespace = self.vm.interner.precomputed.default_namespace;
-        let (namespace, name) = path.into(default_namespace, &mut self.vm.interner);
-        self.vm.globals.get_mut(namespace, name)
+    fn interner(&self) -> &SymbolIntern {
+        &self.vm.interner
     }
-
-    fn format_value(&self, value: &Value) -> String {
-        ::vm::to_string_helper(&value, &self.vm.interner)
+    fn interner_mut(&mut self) -> &mut SymbolIntern {
+        &mut self.vm.interner
     }
 }
 
 impl <'a, S: State> Context<S> for EphemeralContext<'a, S> {
-    fn set_global<P: GlobalPath>(&mut self, path: P, value: Value) -> Option<Value> {
-        let default_namespace = self.interner.precomputed.default_namespace;
-        let (namespace, name) = path.into(default_namespace, self.interner);
-        self.globals.set(namespace, name, value)
+    fn modules(&self) -> &Modules {
+        &self.globals
     }
-
-    fn get_global<P: GlobalPath>(&mut self, path: P) -> Option<&Value> {
-        let default_namespace = self.interner.precomputed.default_namespace;
-        let (namespace, name) = path.into(default_namespace, self.interner);
-        self.globals.get(namespace, name)
+    fn modules_mut(&mut self) -> &mut Modules {
+        &mut self.globals
     }
-
-    fn get_global_mut<P: GlobalPath>(&mut self, path: P) -> Option<&mut Value> {
-        let default_namespace = self.interner.precomputed.default_namespace;
-        let (namespace, name) = path.into(default_namespace, self.interner);
-        self.globals.get_mut(namespace, name)
+    fn interner(&self) -> &SymbolIntern {
+        &self.interner
     }
-
-    fn format_value(&self, value: &Value) -> String {
-        ::vm::to_string_helper(&value, &self.interner)
+    fn interner_mut(&mut self) -> &mut SymbolIntern {
+        &mut self.interner
     }
 }
 
@@ -114,9 +159,9 @@ impl <'a, S: State> LoadedContext<'a, S> {
 
     pub fn eval(&mut self, program: &str) -> AresResult<Option<Value>> {
         let instrs = {
-            let &mut Vm{ ref mut compile_context, ref mut interner, .. }
+            let &mut Vm{ ref mut compile_context, ref mut interner, ref globals, .. }
                 = &mut self.context.vm;
-            try!(::compiler::compile(program, compile_context, interner))
+            try!(::compiler::compile(program, compile_context, Some(globals), interner))
         };
 
         let previous_stack_size = self.context.vm.stack.len();
@@ -135,17 +180,17 @@ impl <'a, S: State> LoadedContext<'a, S> {
 }
 
 impl <'a, S: State> Context<S> for LoadedContext<'a, S> {
-    fn set_global<P: GlobalPath>(&mut self, path: P, value: Value) -> Option<Value> {
-        self.context.set_global(path, value)
+    fn modules(&self) -> &Modules {
+        &self.context.vm.globals
     }
-    fn get_global<P: GlobalPath>(&mut self, path: P) -> Option<&Value> {
-        self.context.get_global(path)
+    fn modules_mut(&mut self) -> &mut Modules {
+        &mut self.context.vm.globals
     }
-    fn get_global_mut<P: GlobalPath>(&mut self, path: P) -> Option<&mut Value> {
-        self.context.get_global_mut(path)
+    fn interner(&self) -> &SymbolIntern {
+        &self.context.vm.interner
     }
-    fn format_value(&self, value: &Value) -> String {
-        self.context.format_value(value)
+    fn interner_mut(&mut self) -> &mut SymbolIntern {
+        &mut self.context.vm.interner
     }
 }
 

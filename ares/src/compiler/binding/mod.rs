@@ -1,11 +1,12 @@
 use typed_arena::Arena;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 mod error;
 pub(crate) mod test;
 pub use self::error::BindingError;
 
 use compiler::parse::{Ast, AstRef};
+use vm::Modules;
 use ares_syntax::{Symbol, SymbolIntern};
 
 // 2 concepts, Binders and Bound nodes
@@ -68,7 +69,11 @@ pub enum SymbolBindSource {
     Global(Symbol),
 }
 
-struct BuckStopsHereBinder;
+struct BuckStopsHereBinder<'a> {
+    globals: HashSet<Symbol>,
+    modules: Option<&'a Modules>,
+    my_module: Symbol
+}
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct LambdaBindings {
@@ -93,6 +98,7 @@ trait Binder {
     fn add_declaration(&mut self, symbol: Symbol, interner: &mut SymbolIntern) -> SymbolBindSource;
     fn already_binds(&self, symbol: Symbol) -> bool;
     fn lookup(&self, symbol: Symbol) -> Option<SymbolBindSource>;
+    fn module(&self) -> Symbol;
 }
 
 impl LambdaBindings {
@@ -110,7 +116,7 @@ impl LambdaBindings {
             SymbolBindSource::Arg(a) => a,
             SymbolBindSource::Upvar(_) => unimplemented!(),
             SymbolBindSource::LocalDefine(a) => self.num_args + self.num_upvars + a,
-            SymbolBindSource::Global(_) => unimplemented!(),
+            SymbolBindSource::Global(_) => panic!("no stack offset for global"),
         }
     }
 }
@@ -154,6 +160,10 @@ impl<'a> Binder for LambdaBinder<'a> {
             self.parent.lookup(symbol)
         }
     }
+
+    fn module(&self) -> Symbol {
+        self.parent.module()
+    }
 }
 
 impl <'a> BlockBinder<'a> {
@@ -182,44 +192,70 @@ impl <'a> Binder for BlockBinder<'a> {
             None => self.parent.lookup(symbol)
         }
     }
+
+    fn module(&self) -> Symbol {
+        self.parent.module()
+    }
 }
 
-impl Binder for BuckStopsHereBinder {
+impl <'a> Binder for BuckStopsHereBinder<'a> {
     fn add_declaration(&mut self,
                        symbol: Symbol,
                        _interner: &mut SymbolIntern)
                        -> SymbolBindSource {
+        self.globals.insert(symbol);
         SymbolBindSource::Global(symbol)
     }
 
-    fn already_binds(&self, _symbol: Symbol) -> bool {
-        false
+    fn already_binds(&self, symbol: Symbol) -> bool {
+        self.globals.contains(&symbol)
     }
 
     fn lookup(&self, symbol: Symbol) -> Option<SymbolBindSource> {
-        Some(SymbolBindSource::Global(symbol))
+        if let Some(modules) = self.modules {
+            if modules.is_defined(self.my_module, symbol) {
+                return Some(SymbolBindSource::Global(symbol))
+            }
+        }
+
+        if self.already_binds(symbol) {
+            Some(SymbolBindSource::Global(symbol))
+        } else {
+            None
+        }
+    }
+
+    fn module(&self) -> Symbol {
+        self.my_module
     }
 }
 
 impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
     pub fn bind_top(ast: AstRef<'ast>,
                     arena: &'bound Arena<Bound<'bound, 'ast>>,
+                    modules: Option<&Modules>,
                     interner: &mut SymbolIntern)
                     -> Result<BoundRef<'bound, 'ast>, BindingError> {
-        let mut buck = BuckStopsHereBinder;
-        Bound::bind(ast, arena, &mut buck, interner)
+        let mut buck = BuckStopsHereBinder {
+            globals: HashSet::new(),
+            modules: modules,
+            // TODO: Pass this in to binding for different namespaces
+            my_module: interner.precomputed.default_namespace, 
+        };
+        Bound::bind(ast, arena, &mut buck, modules, interner)
     }
 
     fn bind_all<I>(asts: I, 
             arena: &'bound Arena<Bound<'bound, 'ast>>,
             binder: &mut Binder,
+            modules: Option<&Modules>,
             interner: &mut SymbolIntern)
             -> Result<Vec<BoundRef<'bound, 'ast>>, BindingError>
     where I: IntoIterator<Item=AstRef<'ast>> {
         let mut out_ok = vec![];
         let mut out_err = vec![];
         for ast in asts {
-            match Bound::bind(ast, arena, binder, interner) {
+            match Bound::bind(ast, arena, binder, modules, interner) {
                 Ok(o) => out_ok.push(o),
                 Err(e) => out_err.push(e),
             }
@@ -235,6 +271,7 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
     fn bind(ast: AstRef<'ast>,
             arena: &'bound Arena<Bound<'bound, 'ast>>,
             binder: &mut Binder,
+            modules: Option<&Modules>,
             interner: &mut SymbolIntern)
             -> Result<BoundRef<'bound, 'ast>, BindingError> {
         Ok(arena.alloc(match ast {
@@ -246,7 +283,7 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             &Ast::ListLit(ref elements, _) => {
                 Bound::ListLit(try!(elements.iter()
                                             .map(|element| {
-                                                Bound::bind(element, arena, binder, interner)
+                                                Bound::bind(element, arena, binder, modules, interner)
                                             })
                                             .collect::<Result<Vec<_>, _>>()),
                                ast)
@@ -254,8 +291,8 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             &Ast::MapLit(ref elements, _) => {
                 let mut bound = Vec::with_capacity(elements.len());
                 for &(ref k, ref v) in elements {
-                    let k = try!(Bound::bind(k, arena, binder, interner));
-                    let v = try!(Bound::bind(v, arena, binder, interner));
+                    let k = try!(Bound::bind(k, arena, binder, modules, interner));
+                    let v = try!(Bound::bind(v, arena, binder, modules, interner));
                     bound.push((k, v));
                 }
                 Bound::MapLit(bound, ast)
@@ -263,7 +300,7 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             &Ast::Identifier(symbol, span) => {
                 let source = match binder.lookup(symbol) {
                     Some(source) => source,
-                    None => return Err(BindingError::CouldNotBind(symbol, span)),
+                    None => panic!("fuck") // return Err(BindingError::CouldNotBind(symbol, span)),
                 };
 
                 Bound::Symbol {
@@ -273,47 +310,47 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 }
             }
             &Ast::Add(ref left, ref right, _) => {
-                Bound::Add(try!(Bound::bind(left, arena, binder, interner)),
-                           try!(Bound::bind(right, arena, binder, interner)),
+                Bound::Add(try!(Bound::bind(left, arena, binder, modules, interner)),
+                           try!(Bound::bind(right, arena, binder, modules, interner)),
                            ast)
             }
             &Ast::Sub(ref left, ref right, _) => {
-                Bound::Sub(try!(Bound::bind(left, arena, binder, interner)),
-                           try!(Bound::bind(right, arena, binder, interner)),
+                Bound::Sub(try!(Bound::bind(left, arena, binder, modules, interner)),
+                           try!(Bound::bind(right, arena, binder, modules, interner)),
                            ast)
             }
             &Ast::Mul(ref left, ref right, _) => {
-                Bound::Mul(try!(Bound::bind(left, arena, binder, interner)),
-                           try!(Bound::bind(right, arena, binder, interner)),
+                Bound::Mul(try!(Bound::bind(left, arena, binder, modules, interner)),
+                           try!(Bound::bind(right, arena, binder, modules, interner)),
                            ast)
             }
             &Ast::Div(ref left, ref right, _) => {
-                Bound::Div(try!(Bound::bind(left, arena, binder, interner)),
-                           try!(Bound::bind(right, arena, binder, interner)),
+                Bound::Div(try!(Bound::bind(left, arena, binder, modules, interner)),
+                           try!(Bound::bind(right, arena, binder, modules, interner)),
                            ast)
             }
             &Ast::FnCall(ref receiver, ref arguments, _) => {
-                let bound_receiver = try!(Bound::bind(receiver, arena, binder, interner));
-                let bound_arguments = try!(Bound::bind_all(arguments, arena, binder, interner));
+                let bound_receiver = try!(Bound::bind(receiver, arena, binder, modules, interner));
+                let bound_arguments = try!(Bound::bind_all(arguments, arena, binder, modules, interner));
                 Bound::FnCall(bound_receiver, bound_arguments, ast)
             }
             &Ast::IfExpression(ref a, ref b, ref c, _) => {
-                Bound::IfExpression(try!(Bound::bind(a, arena, binder, interner)) as &_,
-                          try!(Bound::bind(b, arena, binder, interner)) as &_,
-                          try!(Bound::bind(c, arena, binder, interner)) as &_,
+                Bound::IfExpression(try!(Bound::bind(a, arena, binder, modules, interner)) as &_,
+                          try!(Bound::bind(b, arena, binder, modules, interner)) as &_,
+                          try!(Bound::bind(c, arena, binder, modules, interner)) as &_,
                           ast)
             }
             &Ast::IfStatement(ref a, ref b, ref c, _) => {
-                Bound::IfStatement(try!(Bound::bind(a, arena, binder, interner)) as &_,
-                          try!(Bound::bind(b, arena, binder, interner)),
-                          try!(rearrange(c.map(|c| Bound::bind(c, arena, binder, interner)))),
+                Bound::IfStatement(try!(Bound::bind(a, arena, binder, modules, interner)) as &_,
+                          try!(Bound::bind(b, arena, binder, modules, interner)),
+                          try!(rearrange(c.map(|c| Bound::bind(c, arena, binder, modules, interner)))),
                           ast)
             }
             &Ast::Closure(ref _name, ref args, ref body_block, _) => {
                 // TODO: Bind name to "this function"
                 assert!(args.len() == 1);
                 let mut new_binder = LambdaBinder::new(binder, &args[0]);
-                let bound_body = try!(Bound::bind(body_block, arena, &mut new_binder, interner));
+                let bound_body = try!(Bound::bind(body_block, arena, &mut new_binder, modules, interner));
                 Bound::Lambda {
                     arg_symbols: args[0].clone(),
                     body: bound_body,
@@ -323,23 +360,26 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             }
             &Ast::BlockExpression(ref bodies, _) => {
                 let mut new_binder = BlockBinder::new(binder);
-                let bound_bodies = try!(Bound::bind_all(bodies, arena, &mut new_binder, interner));
+                let bound_bodies = try!(Bound::bind_all(bodies, arena, &mut new_binder, modules, interner));
                 Bound::BlockExpression(bound_bodies, ast)
             }
             &Ast::BlockStatement(ref bodies, _) => {
                 let mut new_binder = BlockBinder::new(binder);
-                let bound_bodies = try!(Bound::bind_all(bodies, arena, &mut new_binder, interner));
+                let bound_bodies = try!(Bound::bind_all(bodies, arena, &mut new_binder, modules, interner));
                 Bound::BlockStatement(bound_bodies, ast)
             }
             &Ast::Assign(symbol, value, _) => {
                 match binder.lookup(symbol) {
                     Some(source@SymbolBindSource::LocalDefine(_)) |
                     Some(source@SymbolBindSource::Arg(_)) => {
-                        let value = try!(Bound::bind(value, arena, binder, interner));
+                        let value = try!(Bound::bind(value, arena, binder, modules, interner));
                         Bound::Assign(symbol, source, value, ast)
                     }
                     Some(SymbolBindSource::Upvar(_)) => unimplemented!(),
-                    Some(SymbolBindSource::Global(_)) => unimplemented!(),
+                    Some(source@SymbolBindSource::Global(_)) => {
+                        let value = try!(Bound::bind(value, arena, binder, modules, interner));
+                        Bound::Assign(symbol, source, value, ast)
+                    }
                     None => return Err(BindingError::CouldNotBind(symbol, ast.span()))
                 }
             }
@@ -348,7 +388,7 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                     return Err(BindingError::AlreadyDefined(symbol));
                 }
                 let source = binder.add_declaration(symbol, interner);
-                let bound_value = try!(Bound::bind(value, arena, binder, interner));
+                let bound_value = try!(Bound::bind(value, arena, binder, modules, interner));
                 Bound::Define(symbol, source, bound_value, ast)
             }
         }))

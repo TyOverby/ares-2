@@ -1,5 +1,5 @@
 use super::compiler;
-use vm::Instr;
+use vm::{Instr, Modules};
 use compiler::CompileContext;
 use ares_syntax::{SymbolIntern};
 use typed_arena::Arena;
@@ -17,7 +17,7 @@ pub fn ok_parse_1_full(program: &str, interner: &mut SymbolIntern) -> AstRef<'st
     result
 }
 
-pub fn compile_this(program: &str) -> (Vec<Instr>, CompileContext) {
+pub fn compile_this(program: &str, globals: Option<&Modules>) -> (Vec<Instr>, CompileContext) {
     use compiler::emit::emit;
     use compiler::emit::EmitBuffer;
     use compiler::binding::Bound;
@@ -27,13 +27,13 @@ pub fn compile_this(program: &str) -> (Vec<Instr>, CompileContext) {
     let mut bound_arena = Arena::new();
     let mut interner = SymbolIntern::new();
     let ast = ok_parse_1_full(program, &mut interner);
-    let bound = Bound::bind_top(ast, &mut bound_arena, &mut interner).unwrap();
+    let bound = Bound::bind_top(ast, &mut bound_arena, globals, &mut interner).unwrap();
     emit(&bound, &mut compile_context, &mut out, None).unwrap();
     (out.into_instructions(), compile_context)
 }
 
-pub fn assert_instrs(program: &str, output: &str) {
-    let (instrs, _) = compile_this(program);
+fn assert_instrs(program: &str, output: &str, globals: Option<&Modules>) {
+    let (instrs, _) = compile_this(program, globals);
     let instrs_lines: Vec<String> = instrs.iter().map(|a| format!("{:?}", a)).collect();
     let expected_lines: Vec<String> = output.lines().map(String::from).collect();
     if instrs_lines.len() != expected_lines.len() {
@@ -54,24 +54,26 @@ pub fn assert_compilation_steps(program: &str, bound: Option<String>, instr: Opt
     use host::*;
     use vm::*;
 
+    let mut ctx: UnloadedContext<Vec<String>> = UnloadedContext::new();
+
+    ctx.set_global("print", user_function(None, |args, state: &mut Vec<String>, ctx| {
+        assert!(args.len() == 1);
+        let formatted: String = ctx.format_value(&args[0]);
+        state.push(formatted);
+        0.into()
+    }));
+
     // Binding
     if let Some(bound) = bound {
-        compiler::binding::test::assert_bound_form(program, &bound);
+        let &mut UnloadedContext{vm: Vm {ref mut interner, ref mut globals, ..}} = &mut ctx;
+        compiler::binding::test::assert_bound_form(program, &bound, Some(globals), interner);
     }
 
     if let Some(instr) = instr {
-        assert_instrs(program, &instr);
+        assert_instrs(program, &instr, Some(ctx.modules()));
     }
 
     if output.is_some() || result.is_some() {
-        let mut ctx: UnloadedContext<Vec<String>> = UnloadedContext::new();
-
-        ctx.set_global("print", user_function(None, |args, state: &mut Vec<String>, ctx| {
-            assert!(args.len() == 1);
-            let formatted: String = ctx.format_value(&args[0]);
-            state.push(formatted);
-            0.into()
-        }));
 
         let mut actual_output = vec![];
         let actual_result = {

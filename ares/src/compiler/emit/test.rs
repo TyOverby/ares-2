@@ -13,12 +13,12 @@ fn compile_this(program: &str) -> (Vec<Instr>, CompileContext) {
     let mut bound_arena = Arena::new();
     let mut interner = SymbolIntern::new();
     let ast = ::compiler::parse::test::ok_parse_1_full(program, &mut interner);
-    let bound = Bound::bind_top(ast, &mut bound_arena, &mut interner).unwrap();
+    let bound = Bound::bind_top(ast, &mut bound_arena, None, &mut interner).unwrap();
     emit(&bound, &mut compile_context, &mut out, None).unwrap();
     (out.into_instructions(), compile_context)
 }
 
-pub fn assert_instrs(program: &str, output: &str) {
+fn assert_instrs(program: &str, output: &str) {
     let (instrs, _) = compile_this(program);
     let instrs_lines: Vec<String> = instrs.iter().map(|a| format!("{:?}", a)).collect();
     let expected_lines: Vec<String> = output.lines().map(String::from).collect();

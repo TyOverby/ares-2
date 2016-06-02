@@ -1,0 +1,12 @@
+#test global_variable
+var x = 5;
+#bind
+DEFINE:
+    NAME:
+        x
+    SOURCE:
+        GLOBAL:
+            x
+    VALUE:
+        LITERAL:
+            5

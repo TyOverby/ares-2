@@ -1,4 +1,2 @@
 #[derive(Debug, Eq, PartialEq)]
-pub enum EmitError {
-    CallWithEmptyList,
-}
+pub enum EmitError { }

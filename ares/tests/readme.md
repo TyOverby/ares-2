@@ -11,6 +11,7 @@
 | user-fn function call                         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | user call from function                       | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | curried function                              | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| global_variable                               | :heavy_check_mark: |                    |                    |                    |
 | if statement                                  | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | if expression both branches take true         | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | if statement both branches take false         |                    |                    | :heavy_check_mark: | :heavy_check_mark: |

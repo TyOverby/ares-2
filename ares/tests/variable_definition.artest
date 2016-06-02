@@ -45,7 +45,7 @@ FN-CALL:
                             0
                 BINDING:
                     SYMBOL:
-                        s10
+                        #ignore
                     SOURCE:
                         LOCAL-DEFINE:
                             0
@@ -104,13 +104,13 @@ FN-CALL:
             BINDINGS:
                 BINDING:
                     SYMBOL:
-                        s10
+                        #ignore
                     SOURCE:
                         LOCAL-DEFINE:
                             0
                 BINDING:
                     SYMBOL:
-                        s11
+                        #ignore
                     SOURCE:
                         LOCAL-DEFINE:
                             1
@@ -172,13 +172,13 @@ FN-CALL:
             BINDINGS:
                 BINDING:
                     SYMBOL:
-                        s10
+                        #ignore
                     SOURCE:
                         LOCAL-DEFINE:
                             0
                 BINDING:
                     SYMBOL:
-                        s11
+                        #ignore
                     SOURCE:
                         LOCAL-DEFINE:
                             1

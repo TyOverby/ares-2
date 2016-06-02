@@ -8,15 +8,19 @@ struct GlobalName {
 }
 
 #[derive(Debug)]
-pub struct Globals {
+pub struct Modules {
     globals: Vec<(GlobalName, Value)>
 }
 
-impl Globals {
-    pub fn new() -> Globals {
-        Globals {
+impl Modules {
+    pub fn new() -> Modules {
+        Modules {
             globals: vec![]
         }
+    }
+
+    pub fn is_defined(&self, namespace: Symbol, name: Symbol) -> bool {
+        self.get(namespace, name).is_some()
     }
 
     pub fn get(&self, namespace: Symbol, name: Symbol) -> Option<&Value> {

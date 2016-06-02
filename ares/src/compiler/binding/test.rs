@@ -4,6 +4,7 @@ use ares_syntax::SymbolIntern;
 use ::matrix_driver::ok_parse_1_full;
 use typed_arena::Arena;
 use itertools::Itertools;
+use vm::Modules;
 
 fn format<'a, F>(bound: &'a Bound<'a, 'a>, level: u32, interner: &SymbolIntern, f: &mut F) -> Result<(), ::std::fmt::Error>
 where F: ::std::fmt::Write {
@@ -15,11 +16,13 @@ where F: ::std::fmt::Write {
         }
         buf
     }
+
     fn label<F: ::std::fmt::Write>(name: &str, level: u32, f: &mut F) -> Result<(), ::std::fmt::Error>{
         try!(f.write_str(&gen_indent(level)));
         try!(f.write_str(name));
         f.write_str(":\n")
     }
+
     fn print_source<F: ::std::fmt::Write>(
         source: &SymbolBindSource,
         level: u32,
@@ -255,6 +258,9 @@ fn str_eq(actual: &str, expected: &str) {
             EitherOrBoth::Both(l, r) => {
                 let l = l.trim_right();
                 let r = r.trim_right();
+                if r.trim_left() == "#ignore" {
+                    continue;
+                }
 
                 if l != r{
                     println!("actual:\n{}\n=====\nexpected:\n{}", actual, expected);
@@ -275,11 +281,10 @@ fn str_eq(actual: &str, expected: &str) {
     }
 }
 
-pub fn assert_bound_form(program: &str, bound_representation: &str) {
+pub fn assert_bound_form(program: &str, bound_representation: &str, globals: Option<&Modules>, interner: &mut SymbolIntern) {
     let bind_arena = Arena::new();
-    let mut interner = SymbolIntern::new();
-    let ast = ok_parse_1_full(program, &mut interner);
-    let bound = Bound::bind_top(ast, &bind_arena, &mut interner).unwrap();
+    let ast = ok_parse_1_full(program, interner);
+    let bound = Bound::bind_top(ast, &bind_arena, globals, interner).unwrap();
 
     let mut buffer = String::with_capacity(bound_representation.len());
     format(bound, 0, &interner, &mut buffer).unwrap();

@@ -27,7 +27,6 @@ pub enum InterpError {
         expected: ValueKind,
     },
     VariableNotFound(String),
-    NoUpvars,
     StackOverflow,
     StackUnderflow,
     StackOutOfBounds,
@@ -48,11 +47,11 @@ pub struct Return {
 #[derive(Debug)]
 pub struct Vm<S: State = ()> {
     pub stack: Stack,
-    return_stack: Vec<Return>,
-    pub interner: SymbolIntern,
-    pub globals: Globals,
-    code: Vec<Instr>,
-    pub compile_context: CompileContext,
+    pub(crate) return_stack: Vec<Return>,
+    pub(crate) interner: SymbolIntern,
+    pub(crate) globals: Modules,
+    pub(crate) code: Vec<Instr>,
+    pub(crate) compile_context: CompileContext,
     _phantom: PhantomData<S>,
 }
 
@@ -158,7 +157,7 @@ impl <S: State> Vm<S> {
         Vm {
             stack: Stack::new(),
             interner: SymbolIntern::new(),
-            globals: Globals::new(),
+            globals: Modules::new(),
             return_stack: Vec::new(),
             code: Vec::new(),
             compile_context: ::compiler::CompileContext::new(),

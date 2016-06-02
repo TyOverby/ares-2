@@ -1,19 +1,21 @@
 pub(crate) mod parse;
 pub(crate) mod emit;
-pub(crate) mod error;
+mod error;
 pub(crate) mod compile_context;
 pub(crate) mod binding;
+
 
 use typed_arena;
 pub use compiler::error::CompileError;
 use compiler::emit::EmitBuffer;
 use ares_syntax::SymbolIntern;
-use vm::Instr;
+use vm::{Instr, Modules};
 
 pub use self::compile_context::CompileContext;
 
 pub fn compile(source: &str,
                compile_context: &mut CompileContext,
+               modules: Option<&Modules>,
                interner: &mut SymbolIntern)
                -> Result<Vec<Instr>, CompileError> {
 
@@ -24,7 +26,7 @@ pub fn compile(source: &str,
     let asts: Vec<parse::Ast> = try!(parse::parse(source, interner, &ast_arena));
     let asts: Vec<&parse::Ast> = asts.into_iter().map(|a| ast_arena.alloc(a) as &_).collect();
     for ast in asts {
-        let bound = binding::Bound::bind_top(ast, &bound_arena, interner);
+        let bound = binding::Bound::bind_top(ast, &bound_arena, modules, interner);
         try!(emit::emit(try!(bound), compile_context, &mut out, None));
         // Pop because an expression just completed, so we don't
         // want to just leave the result on the stack.
