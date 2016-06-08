@@ -7,10 +7,34 @@ use ares_syntax::{SymbolIntern};
 use typed_arena::Arena;
 pub use ares_syntax::{Span, Ast, AstRef};
 use super::TestResult;
+use std::panic::catch_unwind;
 
-pub fn assert_compilation_steps(program: &str, bound: Option<String>, instr: Option<String>, output: Option<String>, result: Option<String>) -> bool {
+pub struct TestRunResults {
+    binding_test: TestResult,
+    emit_test: TestResult,
+    output_test: TestResult,
+    result_test: TestResult,
+    any_output: bool,
+}
+
+pub fn assert_compilation_steps(
+    program: &str,
+    bound: Option<String>,
+    instr: Option<String>,
+    output: Option<String>,
+    result: Option<String>) -> TestRunResults
+{
     use host::*;
     use vm::*;
+
+    let mut test_run_results = TestRunResults {
+        binding_test: TestResult::NotRan,
+        emit_test: TestResult::NotRan,
+        output_test: TestResult::NotRan,
+        result_test: TestResult::NotRan,
+        any_output: true,
+    };
+
     fn get_vm() -> UnloadedContext<Vec<String>> {
         let mut ctx: UnloadedContext<Vec<String>> = UnloadedContext::new();
 
@@ -27,20 +51,13 @@ pub fn assert_compilation_steps(program: &str, bound: Option<String>, instr: Opt
     // Binding
     if let Some(bound) = bound {
         let UnloadedContext{vm: Vm {ref mut interner, ref mut globals, ..}} = get_vm();
-        match test_binding(program, &bound, Some(globals), interner) {
-            TestResult::Good => {},
-            TestResult::Bad(s) => panic!("bad test result! {}", s),
-            TestResult::Error(e) => panic!("test errored {:?}", e),
-        }
+        catch_unwind(|| test_binding(program, &bound, Some(globals), interner));
+        test_run_results.binding_test = test_binding(program, &bound, Some(globals), interner);
     }
 
     if let Some(instr) = instr {
         let UnloadedContext{vm: Vm {ref mut interner, ref mut globals, ..}} = get_vm();
-        match test_emit(program, &instr, interner, Some(globals)) {
-            TestResult::Good => {},
-            TestResult::Bad(s) => panic!("bad test result! {}", s),
-            TestResult::Error(e) => panic!("test errored {:?}", e),
-        }
+        test_run_results.emit_test = test_emit(program, &instr, interner, Some(globals));
     }
 
     if output.is_some() || result.is_some() {
@@ -55,6 +72,7 @@ pub fn assert_compilation_steps(program: &str, bound: Option<String>, instr: Opt
         if let Some(expected_output) = output {
             assert_eq!(expected_output.lines().map(String::from).collect::<Vec<_>>(), actual_output)
         }
+
         if let Some(expected_result) = result {
             if let Some(actual_result) = actual_result {
                 let as_string = ctx.format_value(&actual_result);
@@ -63,7 +81,9 @@ pub fn assert_compilation_steps(program: &str, bound: Option<String>, instr: Opt
                 assert!(expected_result.is_empty(), "The program \n{}\n had no return value, but you provieded {}", program, expected_result);
             }
         }
-        return actual_output.len() == 0;
+
+        test_run_results.any_output = actual_output.len() != 0;
     }
-    return false;
+
+    return test_run_results;
 }

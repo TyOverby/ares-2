@@ -14,9 +14,11 @@ use ::compiler::binding::{Bound, BoundRef};
 use ::compiler::emit::{EmitBuffer, emit_all};
 
 pub enum TestResult {
+    NotRan,
     Good,
     Error(AresError),
     Bad(String),
+    Panic(Box<::std::any::Any + Send + 'static>),
 }
 
 fn do_parsing<'ast>(
