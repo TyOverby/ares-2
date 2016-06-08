@@ -1,19 +1,13 @@
 extern crate latin;
 extern crate ares;
 
+use ares::test::{TestRunResults, TestResult};
+
 const TEST_SIGNIFIER: &'static str = "#test";
 const BIND_SIGNIFIER: &'static str = "#bind";
 const EMIT_SIGNIFIER: &'static str = "#emit";
 const OUTPUT_SIGNIFIER: &'static str = "#output";
 const RESULT_SIGNIFIER: &'static str = "#result";
-
-struct Checks {
-    name: String,
-    binding: bool,
-    emit: bool,
-    output: bool,
-    result: bool,
-}
 
 enum Phase {
     Binding(String),
@@ -42,7 +36,7 @@ impl Phase {
     }
 }
 
-fn run_these(name: String, program: String, phases: Vec<Phase>) -> Checks {
+fn run_these(name: String, program: String, phases: Vec<Phase>) -> TestRunResults {
     let mut binding = None;
     let mut emitting = None;
     let mut output = None;
@@ -68,20 +62,11 @@ fn run_these(name: String, program: String, phases: Vec<Phase>) -> Checks {
         }
     }}
 
-    let (b, e, o, r) = (binding.is_some(), emitting.is_some(), output.is_some(), result.is_some());
-
-    let no_output = ares::test::assert_compilation_steps(&program, binding, emitting, output, result);
-    Checks {
-        name: name.to_string(),
-        binding: b,
-        emit: e,
-        output: o || no_output,
-        result: r,
-    }
+    ares::test::assert_compilation_steps(&name, &program, binding, emitting, output, result)
 }
 
-fn run_test<F, I: Iterator<Item=String>>(lines: I, corrector: F) -> Vec<Checks>
-where I: Iterator<Item=String>, F: Fn(String, String, Vec<Phase>) -> Checks {
+fn run_test<F, I: Iterator<Item=String>>(lines: I, corrector: F) -> Vec<TestRunResults>
+where I: Iterator<Item=String>, F: Fn(String, String, Vec<Phase>) -> TestRunResults {
     let mut out = vec![];
     let mut phases = vec![];
     let mut current_name = None;
@@ -133,9 +118,13 @@ where I: Iterator<Item=String>, F: Fn(String, String, Vec<Phase>) -> Checks {
 #[test]
 fn main() {
     use std::io::Write;
-    fn check(b: bool) -> &'static str {
-        if b { ":heavy_check_mark:" }
-        else { "                  " }
+    fn check(b: TestResult) -> String {
+        match b {
+            TestResult::Good =>   ":heavy_check_mark:".to_string(),
+            TestResult::NotRan => "                  ".to_string(),
+            TestResult::Bad(s) => s,
+            _ => panic!()
+        }
     }
 
     let mut tests = vec![];
@@ -153,16 +142,22 @@ fn main() {
     let mut buffer: Vec<u8> = Vec::new();
 
     writeln!(&mut buffer, "| {2:<0$} | {3:<1$} | {4:<1$} | {5:<1$} | {6:<1$} |",
-             longest_name, check(false).len(),
+             longest_name, check(TestResult::Good).len(),
              "name", "binding", "emit", "output", "result");
 
     writeln!(&mut buffer, "|---|---|---|---|---|");
-    for test in tests {
+    for mut test in tests {
+        // No output and not run means insta-pass
+        test.output_test = match (test.output_test, test.any_output) {
+            (TestResult::NotRan, false) => TestResult::Good,
+            (otherwise, _) => otherwise,
+        };
+
         writeln!(&mut buffer, "| {0:<1$} | {2} | {3} | {4} | {5} |", test.name, longest_name,
-               check(test.binding),
-               check(test.emit),
-               check(test.output),
-               check(test.result));
+               check(test.binding_test),
+               check(test.emit_test),
+               check(test.output_test),
+               check(test.result_test));
     }
     ::latin::file::write("./tests/readme.md", &buffer).unwrap();
 }
@@ -217,12 +212,14 @@ resultings foo
         assert!(found_outputting, "did not find a outputting");
         assert!(found_result, "did not find a result");
 
-        Checks {
-            name: name,
-            binding: true,
-            emit: true,
-            output: true,
-            result: true,
+        TestRunResults {
+            name: "test".to_string(),
+            program: "test".to_string(),
+            binding_test: TestResult::Good,
+            emit_test: TestResult::Good,
+            output_test: TestResult::Good,
+            result_test: TestResult::Good,
+            any_output: true,
         }
     });
 }

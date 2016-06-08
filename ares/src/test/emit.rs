@@ -2,9 +2,7 @@ use compiler::CompileContext;
 use ares_syntax::SymbolIntern;
 use typed_arena::Arena;
 use super::do_emitting;
-use compiler::binding::Bound;
 use compiler::emit::EmitBuffer;
-use compiler::parse::Ast;
 use vm::Modules;
 use super::TestResult;
 

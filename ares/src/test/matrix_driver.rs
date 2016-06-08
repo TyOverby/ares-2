@@ -1,23 +1,20 @@
-use super::super::compiler;
 use super::test_binding;
 use super::test_emit;
-use vm::{Instr, Modules};
-use compiler::CompileContext;
-use ares_syntax::{SymbolIntern};
-use typed_arena::Arena;
 pub use ares_syntax::{Span, Ast, AstRef};
 use super::TestResult;
-use std::panic::catch_unwind;
 
 pub struct TestRunResults {
-    binding_test: TestResult,
-    emit_test: TestResult,
-    output_test: TestResult,
-    result_test: TestResult,
-    any_output: bool,
+    pub name: String,
+    pub program: String,
+    pub binding_test: TestResult,
+    pub emit_test: TestResult,
+    pub output_test: TestResult,
+    pub result_test: TestResult,
+    pub any_output: bool,
 }
 
 pub fn assert_compilation_steps(
+    name: &str,
     program: &str,
     bound: Option<String>,
     instr: Option<String>,
@@ -28,6 +25,8 @@ pub fn assert_compilation_steps(
     use vm::*;
 
     let mut test_run_results = TestRunResults {
+        name: name.to_string(),
+        program: program.to_string(),
         binding_test: TestResult::NotRan,
         emit_test: TestResult::NotRan,
         output_test: TestResult::NotRan,
@@ -51,7 +50,6 @@ pub fn assert_compilation_steps(
     // Binding
     if let Some(bound) = bound {
         let UnloadedContext{vm: Vm {ref mut interner, ref mut globals, ..}} = get_vm();
-        catch_unwind(|| test_binding(program, &bound, Some(globals), interner));
         test_run_results.binding_test = test_binding(program, &bound, Some(globals), interner);
     }
 
@@ -70,16 +68,20 @@ pub fn assert_compilation_steps(
         };
 
         if let Some(expected_output) = output {
-            assert_eq!(expected_output.lines().map(String::from).collect::<Vec<_>>(), actual_output)
+            assert_eq!(expected_output.lines().map(String::from).collect::<Vec<_>>(), actual_output);
+            // TODO: Do better than assert and panic
+            test_run_results.output_test = TestResult::Good;
         }
 
         if let Some(expected_result) = result {
+            // TODO: Do better than assert and panic
             if let Some(actual_result) = actual_result {
                 let as_string = ctx.format_value(&actual_result);
                 assert!(expected_result == as_string, "The program \n{}\n had a result of {:?} but you thought it was {:?}", program, actual_result, expected_result);
             } else {
                 assert!(expected_result.is_empty(), "The program \n{}\n had no return value, but you provieded {}", program, expected_result);
             }
+            test_run_results.result_test = TestResult::Good;
         }
 
         test_run_results.any_output = actual_output.len() != 0;
