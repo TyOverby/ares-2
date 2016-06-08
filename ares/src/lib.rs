@@ -23,7 +23,5 @@ macro_rules! matches {
 pub mod compiler;
 pub mod vm;
 pub mod host;
-pub mod matrix_driver;
+pub mod test;
 mod util;
-
-pub use matrix_driver::assert_compilation_steps;

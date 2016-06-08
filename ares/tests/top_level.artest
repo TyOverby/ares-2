@@ -1,0 +1,28 @@
+#test var followed by print
+var x = 5;
+print(x);
+#bind
+DEFINE:
+    NAME:
+        x
+    SOURCE:
+        GLOBAL:
+            x
+    VALUE:
+        LITERAL:
+            5
+FN-CALL:
+    RECEIVER:
+        SYMBOL:
+            NAME:
+                print
+            SOURCE:
+                GLOBAL:
+                    print
+    ARGS:
+        SYMBOL:
+            NAME:
+                x
+            SOURCE:
+                GLOBAL:
+                    x

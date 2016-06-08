@@ -95,7 +95,7 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                 &Ast::SymbolLit(s, _) => {
                     out.push(Instr::SymbolLit(s))
                 }
-                _ => panic!("non-literal ast found in Bound::Literal"),
+                _ => panic!("non-literal ast found in Bound::Literal {:?}", ast),
             }
             Ok(true)
         }
@@ -215,8 +215,9 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             Ok(false)
         }
         &Bound::Define(_, source, value, _) => {
-            if let SymbolBindSource::Global(_) = source {
-                unimplemented!();
+            if let SymbolBindSource::Global(symbol) = source {
+                try!(emit(value, compile_context, out, inside_lambda));
+                out.push(Instr::PutGlobal(symbol));
             } else {
                 let binder = inside_lambda.unwrap();
                 try!(emit(value, compile_context, out, inside_lambda));

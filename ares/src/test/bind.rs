@@ -1,14 +1,14 @@
-use super::{Bound, SymbolBindSource};
+use compiler::binding::{Bound, SymbolBindSource};
 use compiler::parse::Ast;
 use ares_syntax::SymbolIntern;
-use ::matrix_driver::ok_parse_1_full;
 use typed_arena::Arena;
 use itertools::Itertools;
 use vm::Modules;
+use super::{do_binding, TestResult};
 
 fn format<'a, F>(bound: &'a Bound<'a, 'a>, level: u32, interner: &SymbolIntern, f: &mut F) -> Result<(), ::std::fmt::Error>
 where F: ::std::fmt::Write {
-    use super::Bound::*;
+    use ::compiler::binding::Bound::*;
     fn gen_indent(level: u32) -> String {
         let mut buf = String::new();
         for _ in 0 .. (level * 4) {
@@ -249,7 +249,7 @@ where F: ::std::fmt::Write {
     
 }
 
-fn str_eq(actual: &str, expected: &str) {
+fn str_eq(actual: &str, expected: &str) -> Result<(), String> {
     use itertools::{Itertools, EitherOrBoth};
     fn isnt_whitespace(s: &&str) -> bool { !s.chars().all(char::is_whitespace) }
     for eob in actual.lines().filter(isnt_whitespace).zip_longest(
@@ -263,31 +263,38 @@ fn str_eq(actual: &str, expected: &str) {
                 }
 
                 if l != r{
-                    println!("actual:\n{}\n=====\nexpected:\n{}", actual, expected);
+                    return Err(format!("actual:\n{}\n=====\nexpected:\n{}", actual, expected));
                 }
-                assert_eq!(l, r);
             }
             EitherOrBoth::Left(l) => {
-                println!("actual has more lines: {}", l);
-                println!("actual:\n{}\n=====\nexpected:\n{}", actual, expected);
-                panic!();
+                return Err(format!("actual has more lines: {} \n actual:\n{}\n=====\nexpected:\n{}",
+                                    l, actual, expected));
             }
             EitherOrBoth::Right(l) => {
-                println!("expected has more lines: {}", l);
-                println!("actual:\n{}\n=====\nexpected:\n{}", actual, expected);
-                panic!();
+                return Err(format!("expected has more lines: {} \n actual:\n{}\n=====\nexpected:\n{}",
+                                    l, actual, expected));
             }
         }
     }
+    Ok(())
 }
 
-pub fn assert_bound_form(program: &str, bound_representation: &str, globals: Option<&Modules>, interner: &mut SymbolIntern) {
+pub fn test_binding(program: &str, bound_representation: &str, modules: Option<&Modules>, interner: &mut SymbolIntern) -> TestResult {
+    let parse_arena = Arena::new();
     let bind_arena = Arena::new();
-    let ast = ok_parse_1_full(program, interner);
-    let bound = Bound::bind_top(ast, &bind_arena, globals, interner).unwrap();
+    let bound = match do_binding(program, &parse_arena, &bind_arena, interner, modules) {
+        Ok(b) => b,
+        Err(e) => return TestResult::Error(e),
+    };
 
     let mut buffer = String::with_capacity(bound_representation.len());
-    format(bound, 0, &interner, &mut buffer).unwrap();
+    for bound in bound {
+        format(bound, 0, &interner, &mut buffer).unwrap();
+    }
 
-    str_eq(&buffer, bound_representation)
+    if let Err(e) = str_eq(&buffer, bound_representation) {
+        return TestResult::Bad(e);
+    }
+
+    TestResult::Good
 }

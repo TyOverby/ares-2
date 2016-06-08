@@ -36,6 +36,7 @@
 | addition and multiplication (with parens)     | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | subtraction and division                      | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | subtraction and division (with parens)        | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| var followed by print                         | :heavy_check_mark: |                    |                    |                    |
 | use local and argument                        | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | two locals                                    | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | two locals with expr inbetween                | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |

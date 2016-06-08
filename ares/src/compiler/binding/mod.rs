@@ -2,7 +2,6 @@ use typed_arena::Arena;
 use std::collections::{HashMap, HashSet};
 
 mod error;
-pub(crate) mod test;
 pub use self::error::BindingError;
 
 use compiler::parse::{Ast, AstRef};
@@ -91,7 +90,7 @@ struct LambdaBinder<'a> {
 
 struct BlockBinder<'a> {
     parent: &'a mut Binder,
-    symbol_map: HashMap<Symbol, Symbol>
+    symbol_map: HashMap<Symbol, Symbol>,
 }
 
 trait Binder {
@@ -203,6 +202,7 @@ impl <'a> Binder for BuckStopsHereBinder<'a> {
                        symbol: Symbol,
                        _interner: &mut SymbolIntern)
                        -> SymbolBindSource {
+        println!("adding binding for {:?}: {}", symbol, _interner.lookup_or_anon(symbol));
         self.globals.insert(symbol);
         SymbolBindSource::Global(symbol)
     }
@@ -212,6 +212,7 @@ impl <'a> Binder for BuckStopsHereBinder<'a> {
     }
 
     fn lookup(&self, symbol: Symbol) -> Option<SymbolBindSource> {
+        println!("looking up {:?}", symbol);
         if let Some(modules) = self.modules {
             if modules.is_defined(self.my_module, symbol) {
                 return Some(SymbolBindSource::Global(symbol))
@@ -231,18 +232,19 @@ impl <'a> Binder for BuckStopsHereBinder<'a> {
 }
 
 impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
-    pub fn bind_top(ast: AstRef<'ast>,
+    pub fn bind_top(asts: &[AstRef<'ast>],
                     arena: &'bound Arena<Bound<'bound, 'ast>>,
                     modules: Option<&Modules>,
                     interner: &mut SymbolIntern)
-                    -> Result<BoundRef<'bound, 'ast>, BindingError> {
+                    -> Result<Vec<BoundRef<'bound, 'ast>>, BindingError> {
         let mut buck = BuckStopsHereBinder {
             globals: HashSet::new(),
             modules: modules,
             // TODO: Pass this in to binding for different namespaces
             my_module: interner.precomputed.default_namespace, 
         };
-        Bound::bind(ast, arena, &mut buck, modules, interner)
+
+       asts.iter().map(|ast| Bound::bind(ast, arena, &mut buck, modules, interner)).collect()
     }
 
     fn bind_all<I>(asts: I, 
@@ -297,7 +299,7 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 }
                 Bound::MapLit(bound, ast)
             }
-            &Ast::Identifier(symbol, span) => {
+            &Ast::Identifier(symbol, _span) => {
                 let source = match binder.lookup(symbol) {
                     Some(source) => source,
                     None => panic!("fuck") // return Err(BindingError::CouldNotBind(symbol, span)),

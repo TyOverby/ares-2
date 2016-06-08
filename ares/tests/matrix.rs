@@ -70,7 +70,7 @@ fn run_these(name: String, program: String, phases: Vec<Phase>) -> Checks {
 
     let (b, e, o, r) = (binding.is_some(), emitting.is_some(), output.is_some(), result.is_some());
 
-    let no_output = ares::assert_compilation_steps(&program, binding, emitting, output, result);
+    let no_output = ares::test::assert_compilation_steps(&program, binding, emitting, output, result);
     Checks {
         name: name.to_string(),
         binding: b,
