@@ -65,7 +65,7 @@ fn run_these(name: String, program: String, phases: Vec<Phase>) -> TestRunResult
     ares::test::assert_compilation_steps(&name, &program, binding, emitting, output, result)
 }
 
-fn run_test<F, I: Iterator<Item=String>>(lines: I, corrector: F) -> Vec<TestRunResults>
+fn run_test<F, I: Iterator<Item=String>>(file_name: String, lines: I, corrector: F) -> Vec<TestRunResults>
 where I: Iterator<Item=String>, F: Fn(String, String, Vec<Phase>) -> TestRunResults {
     let mut out = vec![];
     let mut phases = vec![];
@@ -82,7 +82,7 @@ where I: Iterator<Item=String>, F: Fn(String, String, Vec<Phase>) -> TestRunResu
                 phases = vec![];
             }
 
-            current_name = Some(line[TEST_SIGNIFIER.len() ..].trim().to_string());
+            current_name = Some(format!("{}/{}", file_name, line[TEST_SIGNIFIER.len() ..].trim().to_string()));
             current_program = Some(String::new());
         } else if current_phase.is_some() && line.chars().all(char::is_whitespace) {
             continue;
@@ -132,8 +132,9 @@ fn main() {
     for test in ::latin::directory::children("./tests/").unwrap() {
         if ::latin::file::has_extension(&test, "artest") {
             let lines = ::latin::file::read_lines(&test).unwrap().map(|l| l.unwrap());
-            println!("+ {:?}", test.display());
-            tests.append(&mut run_test(lines, run_these));
+            let file_name = format!("{}", test.display());
+            println!("+ {:?}", file_name);
+            tests.append(&mut run_test(file_name, lines, run_these));
         }
     }
 
@@ -196,8 +197,8 @@ outputings foo
 resultings foo
 "#;
 
-    let _ = run_test(file.lines().map(String::from), |name, program, phases| {
-        assert_eq!(name, "foo");
+    let _ = run_test("test_file".to_string(), file.lines().map(String::from), |name, program, phases| {
+        assert_eq!(name, "test_file/foo");
         assert_eq!(program, "a + b");
 
         let mut found_binding = false;
