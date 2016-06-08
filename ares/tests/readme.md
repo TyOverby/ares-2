@@ -31,7 +31,7 @@
 | ./tests/old_emit_tests.artest/test_add_emit_1                                |                    | :heavy_check_mark: |                    |                    |
 | ./tests/old_emit_tests.artest/test_add_emit_2                                |                    | :heavy_check_mark: |                    |                    |
 | ./tests/old_emit_tests.artest/test_sub_emit                                  |                    | :heavy_check_mark: |                    |                    |
-| ./tests/old_emit_tests.artest/                                               |                    | :heavy_check_mark: |                    |                    |
+| ./tests/old_emit_tests.artest/if expression                                  |                    | :heavy_check_mark: |                    |                    |
 | ./tests/old_emit_tests.artest/test_fn_with_expr                              |                    | :heavy_check_mark: |                    |                    |
 | ./tests/old_emit_tests.artest/test_emit_fn_call                              |                    | :heavy_check_mark: |                    |                    |
 | ./tests/old_emit_tests.artest/test_emit_one_arg_lambda                       |                    | :heavy_check_mark: |                    |                    |

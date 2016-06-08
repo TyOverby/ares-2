@@ -23,7 +23,7 @@ IntLit(5)
 IntLit(10) 
 SubInt
 
-#test
+#test if expression
 if true then 15 else 20
 #emit
 BoolLit(true)
