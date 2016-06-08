@@ -13,6 +13,12 @@ pub struct TestRunResults {
     pub any_output: bool,
 }
 
+impl TestRunResults {
+    pub fn all_results(&self) -> Vec<&TestResult> {
+        vec![&self.binding_test, &self.emit_test, &self.output_test, &self.result_test]
+    }
+}
+
 pub fn assert_compilation_steps(
     name: &str,
     program: &str,

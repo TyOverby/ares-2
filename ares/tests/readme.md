@@ -18,16 +18,25 @@
 | one-arg lambda                                | :heavy_check_mark: | :heavy_check_mark: |                    |                    |
 | one-arg statement lambda                      | :heavy_check_mark: | :heavy_check_mark: |                    |                    |
 | 2-arg expression lambda                       | :heavy_check_mark: | :heavy_check_mark: |                    |                    |
-| int literal                                   |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| string literal                                |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| symbol literal                                |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| float literal                                 |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| bool literal: true                            |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| bool literal: false                           |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| int literal                                   |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| string literal                                |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| symbol literal                                |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| float literal                                 |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| bool literal: true                            |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| bool literal: false                           |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | addition                                      | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | subtraction                                   | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | multiplication                                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | division                                      | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| test_add_emit_1                               |                    | :heavy_check_mark: |                    |                    |
+| test_add_emit_2                               |                    | :heavy_check_mark: |                    |                    |
+| test_sub_emit                                 |                    | :heavy_check_mark: |                    |                    |
+|                                               |                    | :heavy_check_mark: |                    |                    |
+| test_fn_with_expr                             |                    | :heavy_check_mark: |                    |                    |
+| test_emit_fn_call                             |                    | :heavy_check_mark: |                    |                    |
+| test_emit_one_arg_lambda                      |                    | :heavy_check_mark: |                    |                    |
+| test_emit_if_statement_no_else                |                    | :heavy_check_mark: |                    |                    |
+| test_emit_if_statement                        |                    | :heavy_check_mark: |                    |                    |
 | addition                                      | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | subtraction                                   | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | multiplication                                | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |

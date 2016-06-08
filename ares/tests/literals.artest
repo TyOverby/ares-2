@@ -1,29 +1,41 @@
 #test int literal
 5
+#emit
+IntLit(5)
 #result
 5
 
 #test string literal
 "hi"
+#emit
+LoadConstant(0)
 #result
 hi
 
 #test symbol literal
 'foo
+#emit
+SymbolLit(Symbol(9))
 #result
 'foo
 
 #test float literal
 3.14
+#emit
+LoadConstant(0)
 #result
 3.14
 
 #test bool literal: true
 true
+#emit
+BoolLit(true)
 #result
 true
 
 #test bool literal: false
 false
+#emit
+BoolLit(false)
 #result
 false

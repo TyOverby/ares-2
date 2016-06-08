@@ -143,10 +143,26 @@ fn main() {
 
     writeln!(&mut buffer, "| {2:<0$} | {3:<1$} | {4:<1$} | {5:<1$} | {6:<1$} |",
              longest_name, check(TestResult::Good).len(),
-             "name", "binding", "emit", "output", "result");
+             "name", "binding", "emit", "output", "result").unwrap();
 
-    writeln!(&mut buffer, "|---|---|---|---|---|");
+    writeln!(&mut buffer, "|---|---|---|---|---|").unwrap();
+
+    let mut any_failed = false;
     for mut test in tests {
+        for result in test.all_results() {
+            match result {
+                &TestResult::Good | &TestResult::NotRan => {}
+                &TestResult::Bad(ref s) => {
+                    any_failed = true;
+                    println!("test {} with program \n\t{}\n failed with:\n\t{}", test.name, test.program, s);
+                }
+                &TestResult::Panic(_) => unimplemented!(),
+                &TestResult::Error(ref e) => {
+                    any_failed = true;
+                    println!("\n\ntest {} with program \n\t{}\n didn't compile with \n\t{:?}", test.name, test.program, e);
+                }
+            }
+        }
         // No output and not run means insta-pass
         test.output_test = match (test.output_test, test.any_output) {
             (TestResult::NotRan, false) => TestResult::Good,
@@ -157,9 +173,12 @@ fn main() {
                check(test.binding_test),
                check(test.emit_test),
                check(test.output_test),
-               check(test.result_test));
+               check(test.result_test)).unwrap();
     }
     ::latin::file::write("./tests/readme.md", &buffer).unwrap();
+    if any_failed {
+        panic!("tests failed!");
+    }
 }
 
 #[test]

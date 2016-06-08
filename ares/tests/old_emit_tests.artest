@@ -1,0 +1,84 @@
+#test test_add_emit_1
+5 + 10
+#emit
+IntLit(5)
+IntLit(10)
+AddInt
+
+#test test_add_emit_2
+(5 + 10) + (15 + 20)
+#emit
+IntLit(5)
+IntLit(10)
+AddInt
+IntLit(15)
+IntLit(20)
+AddInt
+AddInt
+
+#test test_sub_emit
+5 - 10
+#emit
+IntLit(5)
+IntLit(10) 
+SubInt
+
+#test
+if true then 15 else 20
+#emit
+BoolLit(true)
+Ifn
+Jump(5)
+IntLit(15)
+Jump(6)
+IntLit(20)
+
+#test test_fn_with_expr
+fn() { 10; 5 }
+#emit
+CreateClosure(0)
+Jump(6)
+IntLit(10)
+Pop
+IntLit(5)
+Ret
+
+#test test_emit_fn_call
+1(2, 3)
+#emit
+IntLit(2)
+IntLit(3)
+IntLit(1)
+Execute(2)
+
+#test test_emit_one_arg_lambda
+fn(a) { a }
+#emit
+CreateClosure(0)
+Jump(4)
+Dup(0)
+Ret
+
+#test test_emit_if_statement_no_else
+if true then { 1(); }
+#emit
+BoolLit(true)
+Ifn
+Jump(6)
+IntLit(1)
+Execute(0)
+Pop
+
+#test test_emit_if_statement
+if true then { 1(); } else { 2(); }
+#emit
+BoolLit(true)
+Ifn
+Jump(7)
+IntLit(1)
+Execute(0)
+Pop
+Jump(10)
+IntLit(2)
+Execute(0)
+Pop
