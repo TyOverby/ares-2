@@ -13,12 +13,23 @@ pub fn emit_all<'bound, 'ast: 'bound, I> (bound: I,
                     compile_context: &mut CompileContext,
                     out: &mut EmitBuffer,
                     inside_lambda: Option<&LambdaBindings>)
-                    -> Result<(), EmitError>
+                    -> Result<bool, EmitError>
 where I: IntoIterator<Item=BoundRef<'bound, 'ast>> {
+    let mut last = false;
     for bound in bound {
-        try!(emit(&bound, compile_context, out, inside_lambda));
+        last = try!(emit(&bound, compile_context, out, inside_lambda));
+        if last {
+            out.push(Instr::Pop);
+        }
     }
-    Ok(())
+
+    // Pop the last pop;
+    if last {
+        out.pop();
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }
 
 #[allow(unused_variables)]
@@ -29,21 +40,12 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                     -> Result<bool, EmitError> {
     match bound {
         &Bound::BlockExpression(ref bound_bodies, _) => {
-            for body in &bound_bodies[..bound_bodies.len() - 1] {
-                if try!(emit(body, compile_context, out, inside_lambda)) {
-                    out.push(Instr::Pop);
-                }
-            }
-            if let Some(last_body) = bound_bodies.last() {
-                try!(emit(last_body, compile_context, out, inside_lambda));
-            }
+            assert!(try!(emit_all(bound_bodies.iter().map(|&a|a), compile_context, out, inside_lambda)));
             Ok(true)
         }
         &Bound::BlockStatement(ref bound_bodies, _) => {
-            for body in &bound_bodies[..] {
-                if try!(emit(body, compile_context, out, inside_lambda)) {
-                    out.push(Instr::Pop);
-                }
+            if try!(emit_all(bound_bodies.iter().map(|&a|a), compile_context, out, inside_lambda)) {
+                out.push(Instr::Pop);
             }
             Ok(false)
         }

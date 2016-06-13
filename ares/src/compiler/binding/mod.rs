@@ -202,7 +202,6 @@ impl <'a> Binder for BuckStopsHereBinder<'a> {
                        symbol: Symbol,
                        _interner: &mut SymbolIntern)
                        -> SymbolBindSource {
-        println!("adding binding for {:?}: {}", symbol, _interner.lookup_or_anon(symbol));
         self.globals.insert(symbol);
         SymbolBindSource::Global(symbol)
     }
@@ -212,7 +211,6 @@ impl <'a> Binder for BuckStopsHereBinder<'a> {
     }
 
     fn lookup(&self, symbol: Symbol) -> Option<SymbolBindSource> {
-        println!("looking up {:?}", symbol);
         if let Some(modules) = self.modules {
             if modules.is_defined(self.my_module, symbol) {
                 return Some(SymbolBindSource::Global(symbol))

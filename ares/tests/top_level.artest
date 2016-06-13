@@ -34,3 +34,51 @@ GetGlobal(Symbol(8))
 Execute(1)
 #output
 5
+
+#test "returned" value
+var x = 10;
+print(x);
+x
+#bind
+DEFINE:
+    NAME:
+        x
+    SOURCE:
+        GLOBAL:
+            x
+    VALUE:
+        LITERAL:
+            10
+FN-CALL:
+    RECEIVER:
+        SYMBOL:
+            NAME:
+                print
+            SOURCE:
+                GLOBAL:
+                    print
+    ARGS:
+        SYMBOL:
+            NAME:
+                x
+            SOURCE:
+                GLOBAL:
+                    x
+SYMBOL:
+    NAME:
+        x
+    SOURCE:
+        GLOBAL:
+            x
+#emit
+IntLit(10)
+PutGlobal(Symbol(9))
+GetGlobal(Symbol(9))
+GetGlobal(Symbol(8))
+Execute(1)
+Pop
+GetGlobal(Symbol(9))
+#output
+10
+#result
+10
