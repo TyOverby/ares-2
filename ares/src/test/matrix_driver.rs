@@ -70,7 +70,26 @@ pub fn assert_compilation_steps(
         let mut actual_output = vec![];
         let actual_result = {
             let mut ctx = ctx.load(&mut actual_output);
-            ctx.eval(&program).unwrap()
+            match ctx.eval(&program) {
+                Ok(value) => value,
+                Err(err) => {
+                    println!("{}", ctx.format_error(err));
+
+                    let (stack, instrs, i) = ctx.dump_vm_internals();
+                    println!("STACK");
+                    for value in stack {
+                        println!(" {}", ctx.format_value(&value));
+                    }
+
+                    println!("INSTRUCTIONS");
+                    for (k, instr) in instrs.into_iter().enumerate() {
+                        let current = if k == i {">"} else {" "};
+                        println!("{}{:?}", current, instr);
+                    }
+
+                    panic!();
+                }
+            }
         };
 
         if let Some(expected_output) = output {

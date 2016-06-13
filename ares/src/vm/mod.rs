@@ -39,19 +39,20 @@ pub enum InterpError {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Return {
-    code_pos: u32,
+    code_pos: usize,
     stack_frame: u32,
     namespace: Symbol
 }
 
 #[derive(Debug)]
 pub struct Vm<S: State = ()> {
-    pub stack: Stack,
+    pub(crate) stack: Stack,
     pub(crate) return_stack: Vec<Return>,
     pub(crate) interner: SymbolIntern,
     pub(crate) globals: Modules,
     pub(crate) code: Vec<Instr>,
     pub(crate) compile_context: CompileContext,
+    pub(crate) last_code_position: usize,
     _phantom: PhantomData<S>,
 }
 
@@ -161,6 +162,7 @@ impl <S: State> Vm<S> {
             return_stack: Vec::new(),
             code: Vec::new(),
             compile_context: ::compiler::CompileContext::new(),
+            last_code_position: 0,
             _phantom: PhantomData,
         }
     }
@@ -179,20 +181,21 @@ impl <S: State> Vm<S> {
                    mut current_ns: Symbol,
                    state: &mut S)
                    -> Result<(), InterpError> {
-        let &mut Vm {
-            ref mut stack,
-            ref mut return_stack,
-            ref mut interner,
-            ref mut globals,
-            ref mut code,
-            ref compile_context,
-            ..
-        } = self;
+        #[inline(always)]
+        fn step<S: State>(
+            i: &mut usize,
+            code: &[Instr],
+            stack: &mut Stack,
+            stack_frame: &mut u32,
+            globals: &mut Modules,
+            current_ns: &mut Symbol,
+            interner: &mut SymbolIntern,
+            compile_context: &CompileContext,
+            return_stack: &mut Vec<Return>,
+            state: &mut S) -> Result<bool, InterpError> {
 
-        let mut i = start_at;
-        while i < code.len() as u32 {
-            let current_instruction = &code[i as usize];
-            let after_current = code.get(i as usize + 1);
+            let current_instruction = &code[*i];
+            let after_current = code.get(*i + 1);
             // Here lay some optimizations
             if let Some(after) = after_current {
                 let mut optimized = true;
@@ -234,53 +237,53 @@ impl <S: State> Vm<S> {
                         let a = try!(try!(stack.pop()).expect_bool());
                         let b = try!(try!(stack.pop()).expect_bool());
                         if !(a || b) {
-                            i += 1;
+                            *i += 1;
                         }
                     }
                     (&Instr::Or, &Instr::Ifn) => {
                         let a = try!(try!(stack.pop()).expect_bool());
                         let b = try!(try!(stack.pop()).expect_bool());
                         if a || b {
-                            i += 1;
+                            *i += 1;
                         }
                     }
                     (&Instr::And, &Instr::If) => {
                         let a = try!(try!(stack.pop()).expect_bool());
                         let b = try!(try!(stack.pop()).expect_bool());
                         if !(a && b) {
-                            i += 1;
+                            *i += 1;
                         }
                     }
                     (&Instr::And, &Instr::Ifn) => {
                         let a = try!(try!(stack.pop()).expect_bool());
                         let b = try!(try!(stack.pop()).expect_bool());
                         if a && b {
-                            i += 1;
+                            *i += 1;
                         }
                     }
                     _ => optimized = false,
                 }
 
                 if optimized {
-                    i = i.wrapping_add(2);
-                    continue;
+                    *i = i.wrapping_add(2);
+                    return Ok(true);
                 }
             }
 
             match current_instruction {
                 &Instr::Halt => {
-                    break;
+                    return Ok(false)
                 }
                 &Instr::Nop => {}
                 &Instr::Print => {
                     println!("{:?}", try!(stack.peek()));
                 }
                 &Instr::Dbg => {
-                    print!("{:?} - ", &stack.as_slice()[..stack_frame as usize]);
-                    println!("{:?}", &stack.as_slice()[stack_frame as usize..]);
+                    print!("{:?} - ", &stack.as_slice()[.. *stack_frame as usize]);
+                    println!("{:?}", &stack.as_slice()[*stack_frame as usize..]);
                 }
                 &Instr::Dup(stack_pos) => {
-                    let value = try!(stack.peek_n_up(stack_frame as usize + stack_pos as usize))
+                    let value = try!(stack.peek_n_up(*stack_frame as usize + stack_pos as usize))
                                     .clone();
                     try!(stack.push(value));
                 }
@@ -290,13 +293,13 @@ impl <S: State> Vm<S> {
                 }
                 &Instr::SetCell(frame_pos) => {
                     let value = try!(stack.pop());
-                    let cell = try!(stack.peek_n_up(stack_frame as usize + frame_pos as usize));
+                    let cell = try!(stack.peek_n_up(*stack_frame as usize + frame_pos as usize));
                     let cell = try!(cell.expect_cell_ref());
                     let mut borrow = cell.borrow_mut();
                     *borrow = value;
                 }
                 &Instr::GetGlobal(symbol) => {
-                    if let Some(value) = globals.get(current_ns, symbol).cloned() {
+                    if let Some(value) = globals.get(*current_ns, symbol).cloned() {
                         try!(stack.push(value));
                     } else {
                         return Err(InterpError::VariableNotFound(
@@ -306,11 +309,11 @@ impl <S: State> Vm<S> {
                 &Instr::PutGlobal(symbol) => {
                     let value = try!(stack.pop());
                     let value = value.cellify();
-                    globals.set(current_ns, symbol, value);
+                    globals.set(*current_ns, symbol, value);
                 }
                 &Instr::Assign(frame_pos) => {
                     let value = try!(stack.pop());
-                    let cell = try!(stack.peek_n_up(stack_frame as usize + frame_pos as usize));
+                    let cell = try!(stack.peek_n_up(*stack_frame as usize + frame_pos as usize));
                     *cell = value;
                 }
                 &Instr::Pop => {
@@ -338,7 +341,7 @@ impl <S: State> Vm<S> {
                 &Instr::Jump(location) => {
                     // subtract one because we'll be bumping
                     // it after the match is done.
-                    i = location.wrapping_sub(1);
+                    *i = location.wrapping_sub(1) as usize;
                 }
                 &Instr::AddInt => {
                     try!(stack.binop_int(|a, b| a + b));
@@ -382,7 +385,7 @@ impl <S: State> Vm<S> {
                             try!(stack.push(result));
                         }
                         Value::Closure(ref closure) => {
-                            let code_pos = closure.class.code_offset;
+                            let code_pos = closure.class.code_offset as usize;
                             let expected_arg_count = closure.class.arg_count;
                             let local_defines_count = closure.class.local_defines_count;
 
@@ -396,13 +399,13 @@ impl <S: State> Vm<S> {
                             }
 
                             return_stack.push(Return {
-                                code_pos: i,
-                                stack_frame: stack_frame,
-                                namespace: current_ns,
+                                code_pos: *i,
+                                stack_frame: *stack_frame,
+                                namespace: *current_ns,
                             });
 
-                            i = code_pos.wrapping_sub(1);
-                            stack_frame = stack.len() as u32 - arg_count as u32;
+                            *i = code_pos.wrapping_sub(1);
+                            *stack_frame = stack.len() as u32 - arg_count as u32;
 
                             for _ in 0 .. local_defines_count {
                                 try!(stack.push(Value::Int(255)));
@@ -423,44 +426,78 @@ impl <S: State> Vm<S> {
                 }
                 &Instr::Call(position) => {
                     let arg_count = try!(try!(stack.pop()).expect_int());
-                    let offset = position;
+                    let offset = position as usize;
                     return_stack.push(Return {
-                        code_pos: i,
-                        stack_frame: stack_frame,
-                        namespace: current_ns,
+                        code_pos: *i,
+                        stack_frame: *stack_frame,
+                        namespace: *current_ns,
                     });
-                    i = offset.wrapping_sub(1);
-                    stack_frame = stack.len() as u32 - arg_count as u32;
+                    *i = offset.wrapping_sub(1);
+                    *stack_frame = stack.len() as u32 - arg_count as u32;
                 }
                 &Instr::Ret => {
                     let return_info = match return_stack.pop() {
                         Some(ri) => ri,
-                        None => return Ok(()),
+                        None => return Ok(false),
                     };
                     let Return { code_pos, stack_frame: sf, namespace } = return_info;
 
-                    i = code_pos as u32;
+                    *i = code_pos;
                     let return_value = try!(stack.pop());
-                    try!(stack.truncate(stack_frame as usize));
+                    try!(stack.truncate(*stack_frame as usize));
                     try!(stack.push(return_value));
-                    stack_frame = sf;
-                    current_ns = namespace;
+                    *stack_frame = sf;
+                    *current_ns = namespace;
                 }
                 &Instr::If => {
                     let b = try!(try!(stack.pop()).expect_bool());
                     if !b {
-                        i += 1
+                        *i += 1
                     }
                 }
                 &Instr::Ifn => {
                     let b = try!(try!(stack.pop()).expect_bool());
                     if b {
-                        i += 1
+                        *i += 1
                     }
                 }
             }
 
-            i = i.wrapping_add(1);
+            *i = i.wrapping_add(1);
+            Ok(true)
+        }
+
+        let &mut Vm {
+            ref mut stack,
+            ref mut return_stack,
+            ref mut interner,
+            ref mut globals,
+            ref code,
+            ref compile_context,
+            ..
+        } = self;
+
+        let mut i = start_at as usize;
+        while i < code.len(){
+            match step::<S>(
+                &mut i,
+                code,
+                stack,
+                &mut stack_frame,
+                globals,
+                &mut current_ns,
+                interner,
+                compile_context,
+                return_stack,
+                state) {
+
+                Ok(true) => {}
+                Ok(false) => { break; }
+                Err(e) => {
+                    self.last_code_position = i;
+                    return Err(e);
+                }
+            }
         }
 
         Ok(())

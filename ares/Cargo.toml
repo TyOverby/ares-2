@@ -7,10 +7,6 @@ authors = ["Ty Overby <ty@pre-alpha.com>"]
 name = "ares"
 path = "./src/lib.rs"
 
-[[bin]]
-name = "ares-bin"
-path = "./src/main.rs"
-
 [dependencies]
 libc = "*"
 itertools = "*"

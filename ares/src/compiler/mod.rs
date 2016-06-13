@@ -26,17 +26,8 @@ pub fn compile(source: &str,
     let asts: Vec<parse::Ast> = try!(parse::parse(source, interner, &ast_arena));
     let asts: Vec<&parse::Ast> = asts.into_iter().map(|a| ast_arena.alloc(a) as &_).collect();
     let bounds = try!(binding::Bound::bind_top(&asts, &bound_arena, modules, interner));
-    for bound in bounds {
-        try!(emit::emit(bound, compile_context, &mut out, None));
-        // Pop because an expression just completed, so we don't
-        // want to just leave the result on the stack.
-        out.push(Instr::Pop);
-    }
 
-    if out.len() != 0 {
-        // Pop the last pop.
-        out.pop();
-    }
+    try!(emit::emit_all(bounds, compile_context, &mut out, None));
 
     Ok(out.into_instructions())
 }

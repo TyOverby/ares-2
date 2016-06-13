@@ -44,7 +44,7 @@ fn do_binding<'bound, 'ast: 'bound>(
     let asts = try!(do_parsing(program, parse_arena, interner));
     let asts = asts.into_iter().map(|ast| parse_arena.alloc(ast) as &_);
     let asts: Vec<_> = asts.collect();
-    let bound = match Bound::bind_top(&asts[..], bind_arena, modules, interner) {
+    let bound = match Bound::bind_top(&asts, bind_arena, modules, interner) {
         Ok(bound) => bound,
         Err(error) => return Err(From::<CompileError>::from(From::from(error)))
     };

@@ -117,6 +117,14 @@ impl <S: State> UnloadedContext<S> {
     pub fn load<'a>(&'a mut self, state: &'a mut S) -> LoadedContext<'a, S> {
         LoadedContext::new(self, state)
     }
+
+    pub(crate) fn dump_vm_internals(&self) -> (Vec<Value>, Vec<::vm::Instr>, usize) {
+        let stack = self.vm.stack.as_slice().iter().cloned().collect();
+        let instructions = self.vm.code.clone();
+        let instruction_pointer = self.vm.last_code_position;
+
+        (stack, instructions, instruction_pointer)
+    }
 }
 
 impl <S: State> Context<S> for UnloadedContext<S> {
@@ -155,6 +163,10 @@ impl <'a, S: State> LoadedContext<'a, S> {
             context: ctx,
             state: state
         }
+    }
+
+    pub(crate) fn dump_vm_internals(&self) -> (Vec<Value>, Vec<::vm::Instr>, usize) {
+        self.context.dump_vm_internals()
     }
 
     pub fn eval(&mut self, program: &str) -> AresResult<Option<Value>> {

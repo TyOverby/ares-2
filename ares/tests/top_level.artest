@@ -26,3 +26,11 @@ FN-CALL:
             SOURCE:
                 GLOBAL:
                     x
+#emit
+IntLit(5)
+PutGlobal(Symbol(9))
+GetGlobal(Symbol(9))
+GetGlobal(Symbol(8))
+Execute(1)
+#output
+5
