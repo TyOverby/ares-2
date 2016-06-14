@@ -175,6 +175,7 @@ impl <'a, S: State> LoadedContext<'a, S> {
                 = &mut self.context.vm;
             try!(::compiler::compile(program, compile_context, Some(globals), interner))
         };
+        //println!("instructions: {:#?}", instrs);
 
         let previous_stack_size = self.context.vm.stack.len();
         try!(self.context.vm.load_and_execute(&instrs[..], 0, self.state));

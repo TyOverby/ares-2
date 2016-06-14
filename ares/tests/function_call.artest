@@ -195,3 +195,7 @@ hello
 world
 #result
 10
+
+#test empty function
+fn() {}
+#bind

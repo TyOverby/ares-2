@@ -3,6 +3,10 @@ name = "ares"
 version = "0.1.0"
 authors = ["Ty Overby <ty@pre-alpha.com>"]
 
+[[bin]]
+name = "ares-repl"
+path = "./src/repl.rs"
+
 [lib]
 name = "ares"
 path = "./src/lib.rs"
@@ -11,6 +15,8 @@ path = "./src/lib.rs"
 libc = "*"
 itertools = "*"
 typed-arena = "1.0.*"
+colored = "1.2"
+linenoise-rust = "0.2.0"
 
 [dependencies.gc]
 git = "https://github.com/Manishearth/rust-gc.git"
