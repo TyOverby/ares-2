@@ -11,6 +11,7 @@
 | ./tests/function_call.artest/user-fn function call                           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/function_call.artest/user call from function                         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/function_call.artest/curried function                                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/function_call.artest/empty function                                  | :heavy_check_mark: |                    |                    |                    |
 | ./tests/global_vars.artest/global_variable                                   | :heavy_check_mark: |                    |                    |                    |
 | ./tests/if.artest/if statement                                               | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/if.artest/if expression both branches take true                      | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |

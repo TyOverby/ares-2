@@ -199,3 +199,14 @@ world
 #test empty function
 fn() {}
 #bind
+LAMBDA:
+    NUM-ARGS:
+        0
+    NUM-UPVARS:
+        0
+    NUM-DECLARATIONS:
+        0
+    ARGS:
+    BODY:
+        BLOCK-STATEMENT:
+    BINDINGS:

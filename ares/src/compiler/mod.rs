@@ -16,13 +16,14 @@ pub use self::compile_context::CompileContext;
 pub fn compile(source: &str,
                compile_context: &mut CompileContext,
                modules: Option<&Modules>,
-               interner: &mut SymbolIntern)
+               interner: &mut SymbolIntern,
+               emit_offset: usize)
                -> Result<Vec<Instr>, CompileError> {
 
     let ast_arena: typed_arena::Arena<parse::Ast> = typed_arena::Arena::new();
     let bound_arena: typed_arena::Arena<binding::Bound> = typed_arena::Arena::new();
 
-    let mut out = EmitBuffer::new();
+    let mut out = EmitBuffer::new(emit_offset);
     let asts: Vec<parse::Ast> = try!(parse::parse(source, interner, &ast_arena));
     let asts: Vec<&parse::Ast> = asts.into_iter().map(|a| ast_arena.alloc(a) as &_).collect();
     let bounds = try!(binding::Bound::bind_top(&asts, &bound_arena, modules, interner));

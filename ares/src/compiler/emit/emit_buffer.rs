@@ -9,6 +9,8 @@ pub struct Standin(i32);
 pub struct Fulfill(i32);
 
 pub struct EmitBuffer {
+    // The "length" of the emit buffer.
+    starting_at: usize,
     next_standin_id: i32,
     code: Vec<Instr>,
     // Standin values -> the spot that they need
@@ -22,8 +24,9 @@ pub struct EmitBuffer {
 }
 
 impl EmitBuffer {
-    pub fn new() -> EmitBuffer {
+    pub fn new(starting_at: usize) -> EmitBuffer {
         EmitBuffer {
+            starting_at: starting_at,
             next_standin_id: 0,
             code: Vec::new(),
             rewrite: Vec::new(),
@@ -96,10 +99,7 @@ impl EmitBuffer {
                 &mut Instr::Jump(ref mut p) => {
                     *p += left_length as u32;
                 }
-                a => {
-                    panic!("non-relative instruction found in relative positions: `{:?}`",
-                           a)
-                }
+                a => panic!("non-relative instruction found in relative positions: `{:?}`", a)
             }
         }
         self.code.extend(code)
@@ -110,8 +110,8 @@ impl EmitBuffer {
         self.code
     }
 
-    pub fn len(&self) -> usize {
-        self.code.len()
+    pub fn offset(&self) -> usize {
+        self.starting_at + self.code.len()
     }
 
     pub fn pop(&mut self) {
@@ -121,7 +121,7 @@ impl EmitBuffer {
 
 #[test]
 fn basic_emit_buffer_test() {
-    let mut buffer = EmitBuffer::new();
+    let mut buffer = EmitBuffer::new(0);
     buffer.push(Instr::AddInt);
     let (standin, fulfill) = buffer.standin();
     buffer.push_standin(standin);

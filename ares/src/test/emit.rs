@@ -15,7 +15,7 @@ pub fn test_emit<'ast, 'bound>(
     let parse_arena = Arena::new();
     let bind_arena = Arena::new();
     let mut cc = CompileContext::new();
-    let mut buffer = EmitBuffer::new();
+    let mut buffer = EmitBuffer::new(0);
 
     if let Err(e) = do_emitting(program, &parse_arena, &bind_arena, interner, modules, &mut cc, &mut buffer) {
         return TestResult::Error(e);

@@ -100,8 +100,8 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             Ok(true)
         }
         &Bound::IfExpression(ref cond, ref tru, ref fals, _) => {
-            let mut true_code = EmitBuffer::new();
-            let mut false_code = EmitBuffer::new();
+            let mut true_code = EmitBuffer::new(0);
+            let mut false_code = EmitBuffer::new(0);
 
             try!(emit(&**cond, compile_context, out, inside_lambda));
 
@@ -114,18 +114,18 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
 
             // The true branch needs to jump past the end
             // of the false branch.
-            let end = out.len() + true_code.len() + false_code.len() + 1;
+            let end = out.offset() + true_code.offset() + false_code.offset() + 1;
             true_code.push(Instr::Jump(end as u32));
 
             out.merge(true_code);
-            let len_with_true_code = out.len();
+            let len_with_true_code = out.offset();
             out.fulfill(fulfill_false, Instr::Jump(len_with_true_code as u32));
             out.merge(false_code);
             Ok(true)
         }
         &Bound::IfStatement(ref cond, ref tru, ref fals, _) => {
-            let mut true_code = EmitBuffer::new();
-            let mut false_code = EmitBuffer::new();
+            let mut true_code = EmitBuffer::new(0);
+            let mut false_code = EmitBuffer::new(0);
 
             try!(emit(&**cond, compile_context, out, inside_lambda));
             out.push(Instr::Ifn);
@@ -138,16 +138,16 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             // Emit false code
             let false_length = if let &Some(ref fals) = fals {
                 try!(emit(fals, compile_context, &mut false_code, inside_lambda));
-                false_code.len()
+                false_code.offset()
             } else { 0 };
 
             if false_length != 0 {
-                let end = out.len() + true_code.len() + false_code.len() + 1;
+                let end = out.offset() + true_code.offset() + false_code.offset() + 1;
                 true_code.push(Instr::Jump(end as u32));
             }
 
             out.merge(true_code);
-            let len_with_true_code = out.len();
+            let len_with_true_code = out.offset();
             out.fulfill(fulfill_false, Instr::Jump(len_with_true_code as u32));
             out.merge(false_code);
 
@@ -155,10 +155,10 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
         },
         &Bound::Lambda { ref arg_symbols, ref body, ref bindings, ..} => {
             const INSTRS_BEFORE_LAMBDA_CODE: u32 = 2;
-            let prior_code_len = out.len();
+            let prior_code_len = out.offset();
 
             let closure_class = ClosureClass {
-                    code_offset: out.len() as u32 + INSTRS_BEFORE_LAMBDA_CODE,
+                    code_offset: out.offset() as u32 + INSTRS_BEFORE_LAMBDA_CODE,
                     // TODO: take varargs into account
                     arg_count: arg_symbols.len() as u32,
                     local_defines_count: bindings.num_declarations,
@@ -175,13 +175,12 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             let (eol_standin, eol_fulfill) = out.standin();
             out.push_standin(eol_standin);
 
-            debug_assert_eq!(prior_code_len + INSTRS_BEFORE_LAMBDA_CODE as usize,
-                             out.len());
+            debug_assert_eq!(prior_code_len + INSTRS_BEFORE_LAMBDA_CODE as usize, out.offset());
 
             try!(emit(body, compile_context, out, Some(bindings)));
             out.push(Instr::Ret);
 
-            let next = out.len() as u32;
+            let next = out.offset() as u32;
             out.fulfill(eol_fulfill, Instr::Jump(next));
             Ok(true)
         }
