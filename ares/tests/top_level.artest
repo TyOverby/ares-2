@@ -82,3 +82,84 @@ GetGlobal(Symbol(9))
 10
 #result
 10
+
+#test global if
+var x = 0;
+var b = true;
+if b then {
+    x = 666;
+} else {
+    x = 555;
+}
+x
+#bind
+DEFINE:
+    NAME:
+        x
+    SOURCE:
+        GLOBAL:
+            x
+    VALUE:
+        LITERAL:
+            0
+DEFINE:
+    NAME:
+        b
+    SOURCE:
+        GLOBAL:
+            b
+    VALUE:
+        LITERAL:
+            true
+IF-STATEMENT:
+    COND:
+        SYMBOL:
+            NAME:
+                b
+            SOURCE:
+                GLOBAL:
+                    b
+    TRUE:
+        BLOCK-STATEMENT:
+            ASSIGN:
+                NAME:
+                    x
+                SOURCE:
+                    GLOBAL:
+                        x
+                VALUE:
+                LITERAL:
+                    666
+    FALSE:
+        BLOCK-STATEMENT:
+            ASSIGN:
+                NAME:
+                    x
+                SOURCE:
+                    GLOBAL:
+                        x
+                VALUE:
+                LITERAL:
+                    555
+SYMBOL:
+    NAME:
+        x
+    SOURCE:
+        GLOBAL:
+            x
+#emit
+IntLit(0)
+PutGlobal(Symbol(9))
+BoolLit(true)
+PutGlobal(Symbol(10))
+GetGlobal(Symbol(10))
+Ifn
+Jump(10)
+IntLit(666)
+PutGlobal(Symbol(9))
+Jump(12)
+IntLit(555)
+PutGlobal(Symbol(9))
+GetGlobal(Symbol(9))
+#result
+666

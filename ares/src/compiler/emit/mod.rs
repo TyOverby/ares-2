@@ -210,6 +210,10 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                     out.push(Instr::DupTop);
                     out.push(Instr::Assign(binder.compute_stack_offset(source)));
                 }
+                SymbolBindSource::Global(symbol) => {
+                    try!(emit(value, compile_context, out, inside_lambda));
+                    out.push(Instr::PutGlobal(symbol));
+                }
                 _ => unimplemented!(),
             }
             Ok(false)

@@ -27,7 +27,7 @@ fn get_global() {
     vm.load_and_execute(&[Instr::PutGlobal(symbol),
                           Instr::GetGlobal(symbol)], 1, &mut ()).unwrap();
     let result = vm.stack.pop().unwrap();
-    assert_eq!(result, Value::Int(20).cellify());
+    assert_eq!(result, Value::Int(20));
 }
 
 #[test]

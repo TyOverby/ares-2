@@ -308,7 +308,6 @@ impl <S: State> Vm<S> {
                 }
                 &Instr::PutGlobal(symbol) => {
                     let value = try!(stack.pop());
-                    let value = value.cellify();
                     globals.set(*current_ns, symbol, value);
                 }
                 &Instr::Assign(frame_pos) => {

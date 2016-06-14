@@ -47,6 +47,7 @@
 | ./tests/operator_precedence.artest/subtraction and division (with parens)    | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/top_level.artest/var followed by print                               | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |                    |
 | ./tests/top_level.artest/"returned" value                                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/top_level.artest/global if                                           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/variable_definition.artest/use local and argument                    | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/variable_definition.artest/two locals                                | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/variable_definition.artest/two locals with expr inbetween            | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
