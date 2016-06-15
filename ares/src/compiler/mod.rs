@@ -6,7 +6,7 @@ pub(crate) mod binding;
 
 
 use typed_arena;
-pub use compiler::error::CompileError;
+pub use compiler::error::*;
 use compiler::emit::EmitBuffer;
 use ares_syntax::SymbolIntern;
 use vm::{Instr, Modules};

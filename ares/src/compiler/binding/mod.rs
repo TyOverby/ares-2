@@ -297,10 +297,10 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 }
                 Bound::MapLit(bound, ast)
             }
-            &Ast::Identifier(symbol, _span) => {
+            &Ast::Identifier(symbol, span) => {
                 let source = match binder.lookup(symbol) {
                     Some(source) => source,
-                    None => panic!("fuck") // return Err(BindingError::CouldNotBind(symbol, span)),
+                    None => return Err(BindingError::CouldNotBind(symbol, span)),
                 };
 
                 Bound::Symbol {

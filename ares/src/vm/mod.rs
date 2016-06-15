@@ -478,7 +478,6 @@ impl <S: State> Vm<S> {
 
         let mut i = start_at as usize;
         while i < code.len(){
-//            println!("i: {}", i);
             match step::<S>(
                 &mut i,
                 code,

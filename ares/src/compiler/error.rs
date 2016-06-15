@@ -1,6 +1,6 @@
-use compiler::parse::ParseError;
-use compiler::emit::EmitError;
-use compiler::binding::BindingError;
+pub use compiler::parse::ParseError;
+pub use compiler::emit::EmitError;
+pub use compiler::binding::BindingError;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum CompileError {
