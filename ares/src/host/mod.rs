@@ -169,14 +169,22 @@ impl <'a, S: State> LoadedContext<'a, S> {
         self.context.dump_vm_internals()
     }
 
+    pub fn state(&self) -> &S {
+        &self.state
+    }
+
+    pub fn state_mut(&mut self) -> &mut S {
+        &mut self.state
+    }
+
     pub fn eval(&mut self, program: &str) -> AresResult<Option<Value>> {
         let emitted_code_size = self.context.vm.code.len();
+
         let instrs = {
             let &mut Vm{ ref mut compile_context, ref mut interner, ref globals, .. }
                 = &mut self.context.vm;
             try!(::compiler::compile(program, compile_context, Some(globals), interner, emitted_code_size))
         };
-        //println!("instructions: {:#?}", instrs);
 
         let previous_stack_size = self.context.vm.stack.len();
         try!(self.context.vm.load_and_execute(&instrs[..], 0, self.state));
