@@ -1,5 +1,7 @@
 use typed_arena::Arena;
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
+use std::cell::Cell;
 
 mod error;
 pub use self::error::BindingError;
@@ -53,6 +55,7 @@ pub enum Bound<'bound, 'ast: 'bound> {
         body: BoundRef<'bound, 'ast>,
         ast: AstRef<'ast>,
         bindings: LambdaBindings,
+        upvar_list: Vec<SymbolBindSource>,
     },
     BlockExpression(Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
     BlockStatement(Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
@@ -60,12 +63,56 @@ pub enum Bound<'bound, 'ast: 'bound> {
     Define(Symbol, SymbolBindSource, BoundRef<'bound, 'ast>, AstRef<'ast>),
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 pub enum SymbolBindSource {
-    Arg(u32),
-    Upvar(u32),
-    LocalDefine(u32),
+    Arg {
+        position: u32,
+        upvar: Rc<Cell<bool>>,
+    },
+    Upvar {
+        position: u32,
+        upvar: Rc<Cell<bool>>,
+    },
+    LocalDefine {
+        position: u32,
+        upvar: Rc<Cell<bool>>,
+    },
     Global(Symbol),
+}
+
+impl SymbolBindSource {
+    fn set_as_upvar(&self)  {
+        match self {
+            &SymbolBindSource::Arg{ref upvar, ..} |
+            &SymbolBindSource::Upvar{ref upvar, ..} |
+            &SymbolBindSource::LocalDefine{ref upvar, ..}  => {
+                upvar.set(true)
+            }
+            _ => {}
+        }
+    }
+
+    fn new_arg(position: u32) -> SymbolBindSource {
+        SymbolBindSource::Arg {
+            position: position,
+            upvar: Rc::new(Cell::new(false)),
+        }
+    }
+    fn new_upvar(position: u32) -> SymbolBindSource {
+        SymbolBindSource::Upvar {
+            position: position,
+            upvar: Rc::new(Cell::new(false)),
+        }
+    }
+    fn new_local_define(position: u32) -> SymbolBindSource {
+        SymbolBindSource::LocalDefine {
+            position: position,
+            upvar: Rc::new(Cell::new(false)),
+        }
+    }
+    fn new_global(symbol: Symbol) -> SymbolBindSource {
+        SymbolBindSource::Global(symbol)
+    }
 }
 
 struct BuckStopsHereBinder<'a> {
@@ -86,6 +133,7 @@ struct LambdaBinder<'a> {
     parent: &'a mut Binder,
     args: &'a Vec<Symbol>,
     bindings: LambdaBindings,
+    upvar_list: Vec<SymbolBindSource>,
 }
 
 struct BlockBinder<'a> {
@@ -96,7 +144,7 @@ struct BlockBinder<'a> {
 trait Binder {
     fn add_declaration(&mut self, symbol: Symbol, interner: &mut SymbolIntern) -> SymbolBindSource;
     fn already_binds(&self, symbol: Symbol) -> bool;
-    fn lookup(&self, symbol: Symbol) -> Option<SymbolBindSource>;
+    fn lookup(&mut self, symbol: Symbol, from_closure: bool) -> Option<SymbolBindSource>;
     fn module(&self) -> Symbol;
 }
 
@@ -110,12 +158,12 @@ impl LambdaBindings {
         }
     }
 
-    pub fn compute_stack_offset(&self, bind_source: SymbolBindSource) -> u32 {
+    pub fn compute_stack_offset(&self, bind_source: &SymbolBindSource) -> u32 {
         match bind_source {
-            SymbolBindSource::Arg(a) => a,
-            SymbolBindSource::Upvar(_) => unimplemented!(),
-            SymbolBindSource::LocalDefine(a) => self.num_args + self.num_upvars + a,
-            SymbolBindSource::Global(_) => panic!("no stack offset for global"),
+            &SymbolBindSource::Arg { position, .. } => position,
+            &SymbolBindSource::Upvar { position, .. } => self.num_args + position,
+            &SymbolBindSource::LocalDefine { position, .. } => self.num_args + self.num_upvars + position,
+            &SymbolBindSource::Global(_) => panic!("no stack offset for global"),
         }
     }
 }
@@ -124,7 +172,8 @@ impl<'a> LambdaBinder<'a> {
     fn new(parent: &'a mut Binder, args: &'a Vec<Symbol>) -> LambdaBinder<'a> {
         let mut bindings = LambdaBindings::new();
         for (i, arg_symbol) in args.iter().enumerate() {
-            bindings.bindings.insert(arg_symbol.clone(), SymbolBindSource::Arg(i as u32));
+            bindings.bindings.insert(arg_symbol.clone(),
+                SymbolBindSource::new_arg(i as u32));
         }
         bindings.num_args = args.len() as u32;
 
@@ -132,6 +181,7 @@ impl<'a> LambdaBinder<'a> {
             parent: parent,
             args: args,
             bindings: bindings,
+            upvar_list: Vec::new(),
         }
     }
 }
@@ -142,8 +192,8 @@ impl<'a> Binder for LambdaBinder<'a> {
                        _interner: &mut SymbolIntern)
                        -> SymbolBindSource {
         assert!(!self.bindings.bindings.contains_key(&symbol));
-        let source = SymbolBindSource::LocalDefine(self.bindings.num_declarations);
-        self.bindings.bindings.insert(symbol, source);
+        let source = SymbolBindSource::new_local_define(self.bindings.num_declarations);
+        self.bindings.bindings.insert(symbol, source.clone());
         self.bindings.num_declarations += 1;
         source
     }
@@ -152,11 +202,25 @@ impl<'a> Binder for LambdaBinder<'a> {
         self.bindings.bindings.contains_key(&symbol)
     }
 
-    fn lookup(&self, symbol: Symbol) -> Option<SymbolBindSource> {
+    fn lookup(&mut self, symbol: Symbol, from_closure: bool) -> Option<SymbolBindSource> {
         if let Some(local_binding) = self.bindings.bindings.get(&symbol).cloned() {
+            if from_closure {
+                local_binding.set_as_upvar();
+            }
             Some(local_binding)
         } else {
-            self.parent.lookup(symbol)
+            match self.parent.lookup(symbol, true) {
+                None => None,
+                Some(g@SymbolBindSource::Global(_)) => Some(g),
+                Some(other) => {
+                    let upvar_position = self.upvar_list.len();
+                    self.upvar_list.push(other);
+                    self.bindings.num_upvars += 1;
+                    let source = SymbolBindSource::new_upvar(upvar_position as u32);
+                    self.bindings.bindings.insert(symbol, source.clone());
+                    Some(source)
+                }
+            }
         }
     }
 
@@ -185,10 +249,10 @@ impl <'a> Binder for BlockBinder<'a> {
         self.symbol_map.contains_key(&symbol) || self.parent.already_binds(symbol)
     }
 
-    fn lookup(&self, symbol: Symbol) -> Option<SymbolBindSource> {
+    fn lookup(&mut self, symbol: Symbol, from_closure: bool) -> Option<SymbolBindSource> {
         match self.symbol_map.get(&symbol) {
-            Some(&translated) => self.parent.lookup(translated),
-            None => self.parent.lookup(symbol)
+            Some(&translated) => self.parent.lookup(translated, from_closure),
+            None => self.parent.lookup(symbol, from_closure)
         }
     }
 
@@ -210,7 +274,7 @@ impl <'a> Binder for BuckStopsHereBinder<'a> {
         self.globals.contains(&symbol)
     }
 
-    fn lookup(&self, symbol: Symbol) -> Option<SymbolBindSource> {
+    fn lookup(&mut self, symbol: Symbol, _from_closure: bool) -> Option<SymbolBindSource> {
         if let Some(modules) = self.modules {
             if modules.is_defined(self.my_module, symbol) {
                 return Some(SymbolBindSource::Global(symbol))
@@ -298,7 +362,7 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 Bound::MapLit(bound, ast)
             }
             &Ast::Identifier(symbol, span) => {
-                let source = match binder.lookup(symbol) {
+                let source = match binder.lookup(symbol, false) {
                     Some(source) => source,
                     None => return Err(BindingError::CouldNotBind(symbol, span)),
                 };
@@ -356,6 +420,7 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                     body: bound_body,
                     ast: ast,
                     bindings: new_binder.bindings,
+                    upvar_list: new_binder.upvar_list,
                 }
             }
             &Ast::BlockExpression(ref bodies, _) => {
@@ -369,13 +434,13 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 Bound::BlockStatement(bound_bodies, ast)
             }
             &Ast::Assign(symbol, value, _) => {
-                match binder.lookup(symbol) {
-                    Some(source@SymbolBindSource::LocalDefine(_)) |
-                    Some(source@SymbolBindSource::Arg(_)) => {
+                match binder.lookup(symbol, false) {
+                    Some(source@SymbolBindSource::LocalDefine{..}) |
+                    Some(source@SymbolBindSource::Arg{..}) |
+                    Some(source@SymbolBindSource::Upvar{..}) => {
                         let value = try!(Bound::bind(value, arena, binder, modules, interner));
                         Bound::Assign(symbol, source, value, ast)
                     }
-                    Some(SymbolBindSource::Upvar(_)) => unimplemented!(),
                     Some(source@SymbolBindSource::Global(_)) => {
                         let value = try!(Bound::bind(value, arena, binder, modules, interner));
                         Bound::Assign(symbol, source, value, ast)

@@ -1,0 +1,208 @@
+#test close over local
+var f = fn () {
+    var x = 10;
+    fn () {
+        x * 2
+    }
+};
+f()()
+#bind
+DEFINE:
+    NAME:
+        f
+    SOURCE:
+        GLOBAL:
+            f
+    VALUE:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                1
+            ARGS:
+            BODY:
+                BLOCK-EXPRESSION:
+                    DEFINE:
+                        NAME:
+                            x
+                        SOURCE:
+                            LOCAL-DEFINE:
+                                0
+                                Is an upvar
+                        VALUE:
+                            LITERAL:
+                                10
+                    LAMBDA:
+                        NUM-ARGS:
+                            0
+                        NUM-UPVARS:
+                            1
+                        NUM-DECLARATIONS:
+                            0
+                        ARGS:
+                        BODY:
+                            BLOCK-EXPRESSION:
+                                MUL:
+                                    SYMBOL:
+                                        NAME:
+                                            x
+                                        SOURCE:
+                                            UPVAR:
+                                                0
+                                    LITERAL:
+                                        2
+                        BINDINGS:
+                            BINDING:
+                                SYMBOL:
+                                    x
+                                SOURCE:
+                                    UPVAR:
+                                        0
+                        UPVAR-LIST:
+                            0
+                                LOCAL-DEFINE:
+                                    0
+                                    Is an upvar
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        s11
+                    SOURCE:
+                        LOCAL-DEFINE:
+                            0
+                            Is an upvar
+FN-CALL:
+    RECEIVER:
+        FN-CALL:
+            RECEIVER:
+                SYMBOL:
+                    NAME:
+                        f
+                    SOURCE:
+                        GLOBAL:
+                            f
+            ARGS:
+    ARGS:
+#emit
+CreateClosure(0)
+Jump(14)
+IntLit(10)
+WrapCell
+Assign(0)
+Dup(0)
+CreateClosure(1)
+Jump(13)
+Dup(0)
+UnwrapCell
+IntLit(2)
+MulInt
+Ret
+Ret
+PutGlobal(Symbol(10))
+GetGlobal(Symbol(10))
+Execute(0)
+Execute(0)
+#result
+20
+
+#test closure counters
+var cntr = fn() {
+    var i = 0;
+    fn() {
+        var last = i;
+        i = i + 1;
+        last
+    }
+};
+var c = cntr();
+print(c());
+print(c());
+print(c());
+print(c());
+print(c());
+print(c());
+#output
+0
+1
+2
+3
+4
+5
+
+#test toggler
+var toggler = fn(initial) {
+    var current = initial;
+    fn(new) {
+        var prev = current;
+        current = new;
+        prev
+    }
+};
+var t = toggler(true);
+print(t("hello"));
+print(t(false));
+print(t(1134));
+print(t(true));
+#output
+true
+hello
+false
+1134
+
+#test incrementor argument
+var f = fn(current) {
+  fn() {
+    var next = current;
+    current = current + 1;
+    next
+  }
+};
+#emit
+CreateClosure(0)
+Jump(19)
+Dup(0)
+WrapCell
+Assign(0)
+Dup(0)
+CreateClosure(1)
+Jump(18)
+Dup(0)
+UnwrapCell
+Assign(1)
+Dup(0)
+UnwrapCell
+IntLit(1)
+AddInt
+SetCell(0)
+Dup(1)
+Ret
+Ret
+PutGlobal(Symbol(11))
+
+#test fibonacci
+var fibs = fn() {
+  var y = 0;
+  var x = 1;
+  fn() {
+    var aux = y;
+    y = x;
+    x = x + aux;
+    y
+  }
+};
+var next = fibs();
+print(next());
+print(next());
+print(next());
+print(next());
+print(next());
+print(next());
+#output
+1
+1
+2
+3
+5
+8

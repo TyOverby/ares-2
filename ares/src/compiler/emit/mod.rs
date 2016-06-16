@@ -153,29 +153,43 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
 
             Ok(false)
         },
-        &Bound::Lambda { ref arg_symbols, ref body, ref bindings, ..} => {
-            const INSTRS_BEFORE_LAMBDA_CODE: u32 = 2;
-            let prior_code_len = out.offset();
+        &Bound::Lambda { ref arg_symbols, ref body, ref bindings, ref upvar_list, ..} => {
+            // Push all needed upvars onto the stack for the closure to take hold of.
+            if !upvar_list.is_empty() {
+                let binder = inside_lambda.unwrap();
+                for upvar in upvar_list {
+                    out.push(Instr::Dup(binder.compute_stack_offset(&upvar)));
+                }
+            }
+
+            let (create_closure_standin, create_closure_fulfill) = out.standin();
+            let (eol_standin, eol_fulfill) = out.standin();
+            out.push_standin(create_closure_standin);
+            out.push_standin(eol_standin);
 
             let closure_class = ClosureClass {
-                    code_offset: out.offset() as u32 + INSTRS_BEFORE_LAMBDA_CODE,
-                    // TODO: take varargs into account
-                    arg_count: arg_symbols.len() as u32,
-                    local_defines_count: bindings.num_declarations,
-                    upvars_count: bindings.num_upvars,
-                    has_rest_params: false,
+                code_offset: out.offset() as u32,
+                // TODO: take varargs into account
+                arg_count: arg_symbols.len() as u32,
+                local_defines_count: bindings.num_declarations,
+                upvars_count: bindings.num_upvars,
+                has_rest_params: false,
             };
 
             let cc_id = compile_context.add_closure_class(closure_class);
+            out.fulfill(create_closure_fulfill, Instr::CreateClosure(cc_id));
 
-            out.push(Instr::CreateClosure(cc_id));
-            // TODO: load closure with upvars
-
-            // Standin for the end of the lambda code.
-            let (eol_standin, eol_fulfill) = out.standin();
-            out.push_standin(eol_standin);
-
-            debug_assert_eq!(prior_code_len + INSTRS_BEFORE_LAMBDA_CODE as usize, out.offset());
+            // Convert any closed over argument into a cell
+            for (_, binding) in bindings.bindings.iter() {
+                if let &SymbolBindSource::Arg{ ref upvar, .. } = binding {
+                    if upvar.get() {
+                        let position = bindings.compute_stack_offset(binding);
+                        out.push(Instr::Dup(position));
+                        out.push(Instr::WrapCell);
+                        out.push(Instr::Assign(position));
+                    }
+                }
+            }
 
             try!(emit(body, compile_context, out, Some(bindings)));
             out.push(Instr::Ret);
@@ -192,39 +206,64 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             out.push(Instr::Execute(args.len() as u32));
             Ok(true)
         }
-        &Bound::Symbol { symbol, ast, source, } => {
-            if let SymbolBindSource::Global(symbol) = source {
-                out.push(Instr::GetGlobal(symbol));
-            } else {
-                let binder = inside_lambda.unwrap();
-                out.push(Instr::Dup(binder.compute_stack_offset(source)));
+        &Bound::Symbol { symbol, ast, ref source, } => {
+            match source {
+                &SymbolBindSource::Global(symbol) => {
+                    out.push(Instr::GetGlobal(symbol));
+                }
+                &SymbolBindSource::Arg{..} | &SymbolBindSource::LocalDefine{..} => {
+                    let binder = inside_lambda.unwrap();
+                    out.push(Instr::Dup(binder.compute_stack_offset(&source)));
+                }
+                &SymbolBindSource::Upvar{..} => {
+                    let binder = inside_lambda.unwrap();
+                    out.push(Instr::Dup(binder.compute_stack_offset(&source)));
+                    out.push(Instr::UnwrapCell);
+                }
             }
             Ok(true)
         }
-        &Bound::Assign(_, source, value, _) => {
+        &Bound::Assign(_, ref source, value, _) => {
             match source {
-                SymbolBindSource::Arg(_) | SymbolBindSource::LocalDefine(_) => {
+                &SymbolBindSource::Arg{..} | &SymbolBindSource::LocalDefine{..} => {
                     let binder = inside_lambda.unwrap();
                     try!(emit(value, compile_context, out, inside_lambda));
                     out.push(Instr::DupTop);
                     out.push(Instr::Assign(binder.compute_stack_offset(source)));
                 }
-                SymbolBindSource::Global(symbol) => {
+                &SymbolBindSource::Global(symbol) => {
                     try!(emit(value, compile_context, out, inside_lambda));
                     out.push(Instr::PutGlobal(symbol));
                 }
-                _ => unimplemented!(),
+                &SymbolBindSource::Upvar{..} => {
+                    let binder = inside_lambda.unwrap();
+                    try!(emit(value, compile_context, out, inside_lambda));
+                    out.push(Instr::SetCell(binder.compute_stack_offset(source)))
+                }
             }
             Ok(false)
         }
-        &Bound::Define(_, source, value, _) => {
-            if let SymbolBindSource::Global(symbol) = source {
-                try!(emit(value, compile_context, out, inside_lambda));
-                out.push(Instr::PutGlobal(symbol));
-            } else {
-                let binder = inside_lambda.unwrap();
-                try!(emit(value, compile_context, out, inside_lambda));
-                out.push(Instr::Assign(binder.compute_stack_offset(source)));
+        &Bound::Define(_, ref source, value, _) => {
+            match source {
+                &SymbolBindSource::Arg{ref upvar, ..} |
+                &SymbolBindSource::LocalDefine{ref upvar, ..} if upvar.get() => {
+                    let binder = inside_lambda.unwrap();
+                    let stack_offset = binder.compute_stack_offset(&source);
+                    try!(emit(value, compile_context, out, inside_lambda));
+                    out.push(Instr::WrapCell);
+                    out.push(Instr::Assign(stack_offset));
+                }
+                &SymbolBindSource::Arg{ref upvar, ..} |
+                &SymbolBindSource::LocalDefine{ref upvar, ..} => {
+                    let binder = inside_lambda.unwrap();
+                    try!(emit(value, compile_context, out, inside_lambda));
+                    out.push(Instr::Assign(binder.compute_stack_offset(&source)));
+                }
+                &SymbolBindSource::Global(symbol) => {
+                    try!(emit(value, compile_context, out, inside_lambda));
+                    out.push(Instr::PutGlobal(symbol));
+                }
+                &SymbolBindSource::Upvar{..} => panic!("defining an upvar should be impossible"),
             }
             Ok(false)
         }

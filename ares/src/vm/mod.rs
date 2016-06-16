@@ -104,6 +104,13 @@ pub enum Instr {
     /// Pop the top value and overwrite this position in the
     /// stack with that value.
     Assign(u32),
+    /// Pop the value at the top of the stack, and assuming that
+    /// it is a Cell, take the value out of the cell and place it
+    /// back on the stack
+    UnwrapCell,
+    /// Pops a value at the top of the stack, wraps it with a cell,
+    /// and puts it back on the stack.
+    WrapCell,
 
     /// Calls a function at the specified location.
     /// Pops the first argument off the top of the stack to
@@ -298,6 +305,23 @@ impl <S: State> Vm<S> {
                     let mut borrow = cell.borrow_mut();
                     *borrow = value;
                 }
+                &Instr::WrapCell => {
+                    let value = try!(stack.peek());
+                    let mut swap = Value::Nil;
+                    ::std::mem::swap(value, &mut swap);
+                    swap = swap.cellify();
+                    ::std::mem::swap(value, &mut swap);
+                    ::std::mem::forget(swap);
+                }
+                &Instr::UnwrapCell => {
+                    let slot = try!(stack.peek());
+                    let value = {
+                        let cell = try!(slot.expect_cell_ref());
+                        let value: &Value = &*cell.borrow();
+                        value.clone()
+                    };
+                    *slot = value;
+                }
                 &Instr::GetGlobal(symbol) => {
                     if let Some(value) = globals.get(*current_ns, symbol).cloned() {
                         try!(stack.push(value));
@@ -406,8 +430,12 @@ impl <S: State> Vm<S> {
                             *i = code_pos.wrapping_sub(1);
                             *stack_frame = stack.len() as u32 - arg_count as u32;
 
+                            for v in &closure.upvars {
+                                try!(stack.push(v.clone()));
+                            }
+
                             for _ in 0 .. local_defines_count {
-                                try!(stack.push(Value::Int(255)));
+                                try!(stack.push(Value::Nil));
                             }
                         }
                         _ => panic!()
@@ -478,6 +506,17 @@ impl <S: State> Vm<S> {
 
         let mut i = start_at as usize;
         while i < code.len(){
+            /*
+            println!("STACK");
+            for value in stack.as_slice() {
+                println!("  {:?}", value);
+            }
+            println!("INSTRUCTIONS");
+            for (k, instr) in code.iter().enumerate() {
+                let padding = if i == k { "> " } else { "  " };
+                println!("{:02}{}{:?}", k, padding, instr);
+            }*/
+
             match step::<S>(
                 &mut i,
                 code,

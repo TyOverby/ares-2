@@ -30,20 +30,35 @@ where F: ::std::fmt::Write {
         f: &mut F) -> Result<(), ::std::fmt::Error> {
 
         match *source {
-            SymbolBindSource::Arg(a) => {
+            SymbolBindSource::Arg{position, ref upvar} => {
                 try!(label("ARG", level, f));
                 try!(f.write_str(&gen_indent(level + 1)));
-                try!(f.write_str(&a.to_string()));
+                try!(f.write_str(&position.to_string()));
+                if upvar.get() {
+                    try!(f.write_str("\n"));
+                    try!(f.write_str(&gen_indent(level + 1)));
+                    try!(f.write_str("Is an upvar"));
+                }
             }
-            SymbolBindSource::Upvar(a) => {
+            SymbolBindSource::Upvar{position, ref upvar} => {
                 try!(label("UPVAR", level, f));
                 try!(f.write_str(&gen_indent(level + 1)));
-                try!(f.write_str(&a.to_string()));
+                try!(f.write_str(&position.to_string()));
+                if upvar.get() {
+                    try!(f.write_str("\n"));
+                    try!(f.write_str(&gen_indent(level + 1)));
+                    try!(f.write_str("Is an upvar"));
+                }
             }
-            SymbolBindSource::LocalDefine(a) => {
+            SymbolBindSource::LocalDefine{position, ref upvar} => {
                 try!(label("LOCAL-DEFINE", level, f));
                 try!(f.write_str(&gen_indent(level + 1)));
-                try!(f.write_str(&a.to_string()));
+                try!(f.write_str(&position.to_string()));
+                if upvar.get() {
+                    try!(f.write_str("\n"));
+                    try!(f.write_str(&gen_indent(level + 1)));
+                    try!(f.write_str("Is an upvar"));
+                }
             }
             SymbolBindSource::Global(a) => {
                 try!(label("GLOBAL", level, f));
@@ -158,7 +173,7 @@ where F: ::std::fmt::Write {
             }
             Ok(())
         }
-        &Lambda{ ref arg_symbols, ref body, ref bindings, ..} => {
+        &Lambda{ ref arg_symbols, ref body, ref bindings, ref upvar_list, ..} => {
             let (_, _, _) = (arg_symbols, body, bindings);
             try!(label("LAMBDA", level, f));
 
@@ -197,6 +212,14 @@ where F: ::std::fmt::Write {
 
                 try!(label("SOURCE", level + 3, f));
                 try!(print_source(source, level + 4, interner, f));
+            }
+
+            if upvar_list.len() > 0 {
+                try!(label("UPVAR-LIST", level + 1, f));
+                for (i, source) in upvar_list.iter().enumerate() {
+                    try!(f.write_str(&format!("{}{}\n", gen_indent(level + 2), i)));
+                    try!(print_source(source, level + 3, interner, f));
+                }
             }
 
             Ok(())
