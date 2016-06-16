@@ -12,6 +12,7 @@
 | ./tests/closure.artest/toggler                                               |                    |                    | :heavy_check_mark: |                    |
 | ./tests/closure.artest/incrementor argument                                  |                    | :heavy_check_mark: |                    |                    |
 | ./tests/closure.artest/fibonacci                                             |                    |                    | :heavy_check_mark: |                    |
+| ./tests/closure.artest/combination of upvars =                               |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/function_call.artest/anonymous function call                         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/function_call.artest/user-fn function call                           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/function_call.artest/user call from function                         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |

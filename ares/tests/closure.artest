@@ -206,3 +206,13 @@ print(next());
 3
 5
 8
+
+#test combination of upvars =
+var f = fn(a, b) {
+    var c = a + b;
+    var d = a - b;
+    fn(e, f) { a * b * c * d * e * f }
+};
+f(5, 7)(11, 14)
+#result
+-129360

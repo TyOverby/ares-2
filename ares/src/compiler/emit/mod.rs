@@ -211,6 +211,11 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                 &SymbolBindSource::Global(symbol) => {
                     out.push(Instr::GetGlobal(symbol));
                 }
+                &SymbolBindSource::Arg{ref upvar, ..} | &SymbolBindSource::LocalDefine{ref upvar, ..} if upvar.get() => {
+                    let binder = inside_lambda.unwrap();
+                    out.push(Instr::Dup(binder.compute_stack_offset(&source)));
+                    out.push(Instr::UnwrapCell);
+                }
                 &SymbolBindSource::Arg{..} | &SymbolBindSource::LocalDefine{..} => {
                     let binder = inside_lambda.unwrap();
                     out.push(Instr::Dup(binder.compute_stack_offset(&source)));
