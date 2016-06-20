@@ -29,6 +29,8 @@
 | ./tests/comparison.artest/greater than 2                                     |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/comparison.artest/eq                                                 |                    |                    | :heavy_check_mark: |                    |
 | ./tests/comparison.artest/neq                                                |                    |                    | :heavy_check_mark: |                    |
+| ./tests/examples.artest/recursion                                            | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |                    |
+| ./tests/examples.artest/fibb                                                 |                    |                    | :heavy_check_mark: |                    |
 | ./tests/function_call.artest/anonymous function call                         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/function_call.artest/user-fn function call                           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/function_call.artest/user call from function                         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
@@ -38,6 +40,7 @@
 | ./tests/if.artest/if statement                                               | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/if.artest/if expression both branches take true                      | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/if.artest/if statement both branches take false                      |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/if.artest/nested ifs                                                 |                    | :heavy_check_mark: |                    |                    |
 | ./tests/lambda.artest/one-arg lambda                                         | :heavy_check_mark: | :heavy_check_mark: |                    |                    |
 | ./tests/lambda.artest/one-arg statement lambda                               | :heavy_check_mark: | :heavy_check_mark: |                    |                    |
 | ./tests/lambda.artest/2-arg expression lambda                                | :heavy_check_mark: | :heavy_check_mark: |                    |                    |

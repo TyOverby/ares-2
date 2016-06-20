@@ -1,0 +1,300 @@
+#test recursion
+var rec = fn(recurse, n, acc) {
+    if n <= 0 then acc
+    else recurse(recurse, n-1, acc + n)
+};
+
+var r = fn(n) { rec(rec, n, 0) };
+
+print(r(0));
+print(r(3));
+print(r(4));
+#bind
+DEFINE:
+    NAME:
+        rec
+    SOURCE:
+        GLOBAL:
+            rec
+    VALUE:
+        LAMBDA:
+            NUM-ARGS:
+                3
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+                recurse
+                n
+                acc
+            BODY:
+                BLOCK-EXPRESSION:
+                    IF-EXPRESSION:
+                        COND:
+                            LESS-THAN-OR-EQUAL:
+                                SYMBOL:
+                                    NAME:
+                                        n
+                                    SOURCE:
+                                        ARG:
+                                            1
+                                LITERAL:
+                                    0
+                        TRUE:
+                            SYMBOL:
+                                NAME:
+                                    acc
+                                SOURCE:
+                                    ARG:
+                                        2
+                        FALSE:
+                            FN-CALL:
+                                RECEIVER:
+                                    SYMBOL:
+                                        NAME:
+                                            recurse
+                                        SOURCE:
+                                            ARG:
+                                                0
+                                ARGS:
+                                    SYMBOL:
+                                        NAME:
+                                            recurse
+                                        SOURCE:
+                                            ARG:
+                                                0
+                                    SUB:
+                                        SYMBOL:
+                                            NAME:
+                                                n
+                                            SOURCE:
+                                                ARG:
+                                                    1
+                                        LITERAL:
+                                            1
+                                    ADD:
+                                        SYMBOL:
+                                            NAME:
+                                                acc
+                                            SOURCE:
+                                                ARG:
+                                                    2
+                                        SYMBOL:
+                                            NAME:
+                                                n
+                                            SOURCE:
+                                                ARG:
+                                                    1
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        recurse
+                    SOURCE:
+                        ARG:
+                            0
+                BINDING:
+                    SYMBOL:
+                        n
+                    SOURCE:
+                        ARG:
+                            1
+                BINDING:
+                    SYMBOL:
+                        acc
+                    SOURCE:
+                        ARG:
+                            2
+DEFINE:
+    NAME:
+        r
+    SOURCE:
+        GLOBAL:
+            r
+    VALUE:
+        LAMBDA:
+            NUM-ARGS:
+                1
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+                n
+            BODY:
+                BLOCK-EXPRESSION:
+                    FN-CALL:
+                        RECEIVER:
+                            SYMBOL:
+                                NAME:
+                                    rec
+                                SOURCE:
+                                    GLOBAL:
+                                        rec
+                        ARGS:
+                            SYMBOL:
+                                NAME:
+                                    rec
+                                SOURCE:
+                                    GLOBAL:
+                                        rec
+                            SYMBOL:
+                                NAME:
+                                    n
+                                SOURCE:
+                                    ARG:
+                                        0
+                            LITERAL:
+                                0
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        n
+                    SOURCE:
+                        ARG:
+                            0
+FN-CALL:
+    RECEIVER:
+        SYMBOL:
+            NAME:
+                print
+            SOURCE:
+                GLOBAL:
+                    print
+    ARGS:
+        FN-CALL:
+            RECEIVER:
+                SYMBOL:
+                    NAME:
+                        r
+                    SOURCE:
+                        GLOBAL:
+                            r
+            ARGS:
+                LITERAL:
+                    0
+FN-CALL:
+    RECEIVER:
+        SYMBOL:
+            NAME:
+                print
+            SOURCE:
+                GLOBAL:
+                    print
+    ARGS:
+        FN-CALL:
+            RECEIVER:
+                SYMBOL:
+                    NAME:
+                        r
+                    SOURCE:
+                        GLOBAL:
+                            r
+            ARGS:
+                LITERAL:
+                    3
+FN-CALL:
+    RECEIVER:
+        SYMBOL:
+            NAME:
+                print
+            SOURCE:
+                GLOBAL:
+                    print
+    ARGS:
+        FN-CALL:
+            RECEIVER:
+                SYMBOL:
+                    NAME:
+                        r
+                    SOURCE:
+                        GLOBAL:
+                            r
+            ARGS:
+                LITERAL:
+                    4
+#emit
+CreateClosure(0)
+Jump(19)
+Dup(1)
+IntLit(0)
+Lte
+Ifn
+Jump(9)
+Dup(2)
+Jump(18)
+Dup(0)
+Dup(1)
+IntLit(1)
+SubInt
+Dup(2)
+Dup(1)
+AddInt
+Dup(0)
+Execute(3)
+Ret
+PutGlobal(Symbol(12))
+CreateClosure(1)
+Jump(28)
+GetGlobal(Symbol(12))
+Dup(0)
+IntLit(0)
+GetGlobal(Symbol(12))
+Execute(3)
+Ret
+PutGlobal(Symbol(13))
+IntLit(0)
+GetGlobal(Symbol(13))
+Execute(1)
+GetGlobal(Symbol(8))
+Execute(1)
+Pop
+IntLit(3)
+GetGlobal(Symbol(13))
+Execute(1)
+GetGlobal(Symbol(8))
+Execute(1)
+Pop
+IntLit(4)
+GetGlobal(Symbol(13))
+Execute(1)
+GetGlobal(Symbol(8))
+Execute(1)
+#output
+0
+6
+10
+
+#test fibb
+var fibb_rec = fn(recurse, n) {
+    if n == 0 then {
+        0
+    }
+    else {
+        if n == 1 then {
+            1
+        } else {
+            recurse(recurse, n - 1) + recurse(recurse, n - 2)
+        }
+    }
+};
+var fibb = fn(n) { fibb_rec(fibb_rec, n) };
+print(fibb(0));
+print(fibb(1));
+print(fibb(2));
+print(fibb(3));
+print(fibb(4));
+print(fibb(5));
+print(fibb(6));
+print(fibb(7));
+print(fibb(8));
+#output
+0
+1
+1
+2
+3
+5
+8
+13
+21

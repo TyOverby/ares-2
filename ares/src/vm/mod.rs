@@ -481,7 +481,7 @@ impl <S: State> Vm<S> {
                                 try!(stack.push(Value::Nil));
                             }
                         }
-                        _ => panic!()
+                        o => panic!("tried to call {:?}", o),
                     }
                 }
                 &Instr::CreateClosure(class_id) => {

@@ -81,3 +81,23 @@ if false then {
 #result
 #output
 b
+
+#test nested ifs
+var x = if 1 < 2 then "a" else if 999 < 888 then "b" else "c";
+#emit
+IntLit(1)
+IntLit(2)
+Lt
+Ifn
+Jump(7)
+LoadConstant(0)
+Jump(15)
+IntLit(999)
+IntLit(888)
+Lt
+Ifn
+Jump(14)
+LoadConstant(1)
+Jump(15)
+LoadConstant(2)
+PutGlobal(Symbol(9))

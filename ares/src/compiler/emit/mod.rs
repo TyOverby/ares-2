@@ -136,8 +136,6 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             Ok(true)
         }
         &Bound::IfExpression(ref cond, ref tru, ref fals, _) => {
-            let mut true_code = EmitBuffer::new(0);
-            let mut false_code = EmitBuffer::new(0);
 
             try!(emit(&**cond, compile_context, out, inside_lambda));
 
@@ -145,13 +143,18 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             let (false_pos, fulfill_false) = out.standin();
             out.push_standin(false_pos);
 
+            let mut true_code = EmitBuffer::new(out.offset());
             try!(emit(&**tru, compile_context, &mut true_code, inside_lambda));
+            let (hop_standin, hop_fulfil) = true_code.standin();
+            true_code.push_standin(hop_standin);
+
+            let mut false_code = EmitBuffer::new(true_code.offset());
             try!(emit(&**fals, compile_context, &mut false_code, inside_lambda));
 
             // The true branch needs to jump past the end
             // of the false branch.
-            let end = out.offset() + true_code.offset() + false_code.offset() + 1;
-            true_code.push(Instr::Jump(end as u32));
+            let end = false_code.offset();
+            true_code.fulfill(hop_fulfil, Instr::Jump(end as u32));
 
             out.merge(true_code);
             let len_with_true_code = out.offset();
