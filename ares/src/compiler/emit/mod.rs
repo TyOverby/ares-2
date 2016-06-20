@@ -163,17 +163,17 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             Ok(true)
         }
         &Bound::IfStatement(ref cond, ref tru, ref fals, _) => {
-            let mut true_code = EmitBuffer::new(0);
-            let mut false_code = EmitBuffer::new(0);
 
             try!(emit(&**cond, compile_context, out, inside_lambda));
             out.push(Instr::Ifn);
             let (false_pos, fulfill_false) = out.standin();
             out.push_standin(false_pos);
 
+            let mut true_code = EmitBuffer::new(out.offset());
             // Emit true code
             try!(emit(tru, compile_context, &mut true_code, inside_lambda));
 
+            let mut false_code = EmitBuffer::new(true_code.offset() + 1);
             // Emit false code
             let false_length = if let &Some(ref fals) = fals {
                 try!(emit(fals, compile_context, &mut false_code, inside_lambda));
@@ -181,7 +181,7 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             } else { 0 };
 
             if false_length != 0 {
-                let end = out.offset() + true_code.offset() + false_code.offset() + 1;
+                let end = false_code.offset();
                 true_code.push(Instr::Jump(end as u32));
             }
 

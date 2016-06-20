@@ -82,8 +82,46 @@ if false then {
 #output
 b
 
-#test nested ifs
-var x = if 1 < 2 then "a" else if 999 < 888 then "b" else "c";
+#test nested if expression
+var x =
+    if 1 < 2 then
+        "a"
+    else if 999 < 888 then
+        "b"
+    else
+        "c";
+#bind
+DEFINE:
+    NAME:
+        x
+    SOURCE:
+        GLOBAL:
+            x
+    VALUE:
+        IF-EXPRESSION:
+            COND:
+                LESS-THAN:
+                    LITERAL:
+                        1
+                    LITERAL:
+                        2
+            TRUE:
+                LITERAL:
+                    "a"
+            FALSE:
+                IF-EXPRESSION:
+                    COND:
+                        LESS-THAN:
+                            LITERAL:
+                                999
+                            LITERAL:
+                                888
+                    TRUE:
+                        LITERAL:
+                            "b"
+                    FALSE:
+                        LITERAL:
+                            "c"
 #emit
 IntLit(1)
 IntLit(2)
@@ -101,3 +139,95 @@ LoadConstant(1)
 Jump(15)
 LoadConstant(2)
 PutGlobal(Symbol(9))
+
+#test nested if statement
+if 1 < 2 then {
+    print("a");
+} else {
+    if 999 < 888 then {
+        print("b");
+    } else {
+        print("c");
+    }
+}
+#bind
+IF-STATEMENT:
+    COND:
+        LESS-THAN:
+            LITERAL:
+                1
+            LITERAL:
+                2
+    TRUE:
+        BLOCK-STATEMENT:
+            FN-CALL:
+                RECEIVER:
+                    SYMBOL:
+                        NAME:
+                            print
+                        SOURCE:
+                            GLOBAL:
+                                print
+                ARGS:
+                    LITERAL:
+                        "a"
+    FALSE:
+        BLOCK-STATEMENT:
+            IF-STATEMENT:
+                COND:
+                    LESS-THAN:
+                        LITERAL:
+                            999
+                        LITERAL:
+                            888
+                TRUE:
+                    BLOCK-STATEMENT:
+                        FN-CALL:
+                            RECEIVER:
+                                SYMBOL:
+                                    NAME:
+                                        print
+                                    SOURCE:
+                                        GLOBAL:
+                                            print
+                            ARGS:
+                                LITERAL:
+                                    "b"
+                FALSE:
+                    BLOCK-STATEMENT:
+                        FN-CALL:
+                            RECEIVER:
+                                SYMBOL:
+                                    NAME:
+                                        print
+                                    SOURCE:
+                                        GLOBAL:
+                                            print
+                            ARGS:
+                                LITERAL:
+                                    "c"
+#emit
+IntLit(1)
+IntLit(2)
+Lt
+Ifn
+Jump(10)
+LoadConstant(0)
+GetGlobal(Symbol(8))
+Execute(1)
+Pop
+Jump(24)
+IntLit(999)
+IntLit(888)
+Lt
+Ifn
+Jump(20)
+LoadConstant(1)
+GetGlobal(Symbol(8))
+Execute(1)
+Pop
+Jump(24)
+LoadConstant(2)
+GetGlobal(Symbol(8))
+Execute(1)
+Pop
