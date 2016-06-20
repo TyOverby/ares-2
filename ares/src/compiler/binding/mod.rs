@@ -41,6 +41,30 @@ pub enum Bound<'bound, 'ast: 'bound> {
     Div(BoundRef<'bound, 'ast>,
         BoundRef<'bound, 'ast>,
         AstRef<'ast>),
+    LessThan(
+        BoundRef<'bound, 'ast>,
+        BoundRef<'bound, 'ast>,
+        AstRef<'ast>),
+    LessThanOrEqual(
+        BoundRef<'bound, 'ast>,
+        BoundRef<'bound, 'ast>,
+        AstRef<'ast>),
+    GreaterThan(
+        BoundRef<'bound, 'ast>,
+        BoundRef<'bound, 'ast>,
+        AstRef<'ast>),
+    GreaterThanOrEqual(
+        BoundRef<'bound, 'ast>,
+        BoundRef<'bound, 'ast>,
+        AstRef<'ast>),
+    Equal(
+        BoundRef<'bound, 'ast>,
+        BoundRef<'bound, 'ast>,
+        AstRef<'ast>),
+    NotEqual(
+        BoundRef<'bound, 'ast>,
+        BoundRef<'bound, 'ast>,
+        AstRef<'ast>),
     FnCall(BoundRef<'bound, 'ast>, Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
     IfExpression(BoundRef<'bound, 'ast>,
        BoundRef<'bound, 'ast>,
@@ -392,6 +416,36 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 Bound::Div(try!(Bound::bind(left, arena, binder, modules, interner)),
                            try!(Bound::bind(right, arena, binder, modules, interner)),
                            ast)
+            }
+            &Ast::LessThan(ref left, ref right, _) => {
+                Bound::LessThan(try!(Bound::bind(left, arena, binder, modules, interner)),
+                                try!(Bound::bind(right, arena, binder, modules, interner)),
+                                ast)
+            }
+            &Ast::LessThanOrEqual(ref left, ref right, _) => {
+                Bound::LessThanOrEqual(try!(Bound::bind(left, arena, binder, modules, interner)),
+                                try!(Bound::bind(right, arena, binder, modules, interner)),
+                                ast)
+            }
+            &Ast::GreaterThan(ref left, ref right, _) => {
+                Bound::GreaterThan(try!(Bound::bind(left, arena, binder, modules, interner)),
+                                try!(Bound::bind(right, arena, binder, modules, interner)),
+                                ast)
+            }
+            &Ast::GreaterThanOrEqual(ref left, ref right, _) => {
+                Bound::GreaterThanOrEqual(try!(Bound::bind(left, arena, binder, modules, interner)),
+                                try!(Bound::bind(right, arena, binder, modules, interner)),
+                                ast)
+            }
+            &Ast::Equal(ref left, ref right, _) => {
+                Bound::Equal(try!(Bound::bind(left, arena, binder, modules, interner)),
+                                try!(Bound::bind(right, arena, binder, modules, interner)),
+                                ast)
+            }
+            &Ast::NotEqual(ref left, ref right, _) => {
+                Bound::NotEqual(try!(Bound::bind(left, arena, binder, modules, interner)),
+                                try!(Bound::bind(right, arena, binder, modules, interner)),
+                                ast)
             }
             &Ast::FnCall(ref receiver, ref arguments, _) => {
                 let bound_receiver = try!(Bound::bind(receiver, arena, binder, modules, interner));

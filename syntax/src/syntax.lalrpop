@@ -77,16 +77,22 @@ ShiftExpression: Ast<'a> = {
 };
 
 RelationalExpression: Ast<'a> = {
-    <l: RelationalExpression> ">" <r: ShiftExpression> => unimplemented!(),
-    <l: RelationalExpression> "<" <r: ShiftExpression> => unimplemented!(),
-    <l: RelationalExpression> ">=" <r: ShiftExpression> => unimplemented!(),
-    <l: RelationalExpression> "<=" <r: ShiftExpression> => unimplemented!(),
+    <l: RelationalExpression> ">" <r: ShiftExpression> =>
+        Ast::GreaterThan(arena.alloc(l), arena.alloc(r), Span(0, 0)),
+    <l: RelationalExpression> "<" <r: ShiftExpression> => 
+        Ast::LessThan(arena.alloc(l), arena.alloc(r), Span(0, 0)),
+    <l: RelationalExpression> ">=" <r: ShiftExpression> => 
+        Ast::GreaterThanOrEqual(arena.alloc(l), arena.alloc(r), Span(0, 0)),
+    <l: RelationalExpression> "<=" <r: ShiftExpression> => 
+        Ast::LessThanOrEqual(arena.alloc(l), arena.alloc(r), Span(0, 0)),
     ShiftExpression,
 };
 
 EqualityExpression: Ast<'a> = {
-    <l: EqualityExpression> "==" <r: RelationalExpression> => unimplemented!(),
-    <l: EqualityExpression> "!=" <r: RelationalExpression> => unimplemented!(),
+    <l: EqualityExpression> "==" <r: RelationalExpression> =>
+        Ast::Equal(arena.alloc(l), arena.alloc(r), Span(0, 0)),
+    <l: EqualityExpression> "!=" <r: RelationalExpression> => 
+        Ast::NotEqual(arena.alloc(l), arena.alloc(r), Span(0, 0)),
     RelationalExpression,
 };
 

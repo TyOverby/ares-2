@@ -26,6 +26,7 @@ pub enum InterpError {
         value: Value,
         expected: ValueKind,
     },
+    IncomparableValues(Value, Value),
     VariableNotFound(String),
     StackOverflow,
     StackUnderflow,
@@ -140,7 +141,12 @@ pub enum Instr {
     And,
     Or,
 
+    Lt,
+    Lte,
+    Gt,
+    Gte,
     Eq,
+    Neq,
 
     /// Execute a lambda on the top of the stack with
     /// a specified number of arguments
@@ -158,6 +164,18 @@ pub enum Instr {
     /// Read a bool off the stack, if false, continue executing,
     /// else skip the next instruction.
     Ifn,
+}
+
+fn compare<I, F>(a: &Value, b: Value, i: I, f: F) -> Result<bool, InterpError>
+where I: FnOnce(i64, i64) -> bool,
+      F: FnOnce(f64, f64) -> bool {
+    Ok(match (a, b) {
+        (&Value::Int(ai), Value::Int(bi)) => i(ai, bi),
+        (&Value::Float(af), Value::Float(bf)) => f(af, bf),
+        (&Value::Int(ai), Value::Float(bf)) => f(ai as f64, bf),
+        (&Value::Float(af), Value::Int(bi)) => f(af, bi as f64),
+        (a, b) => return Err(InterpError::IncomparableValues(a.clone(), b)),
+    })
 }
 
 impl <S: State> Vm<S> {
@@ -388,10 +406,35 @@ impl <S: State> Vm<S> {
                     let b = try!(try!(stack.peek()).expect_bool_mut());
                     *b = a || *b;
                 }
+                &Instr::Lt => {
+                    let a = try!(stack.pop());
+                    let b = try!(stack.peek());
+                    *b = Value::Bool(try!(compare(b, a, |a, b| a < b, |a, b| a < b)));
+                }
+                &Instr::Lte => {
+                    let a = try!(stack.pop());
+                    let b = try!(stack.peek());
+                    *b = Value::Bool(try!(compare(b, a, |a, b| a <= b, |a, b| a <= b)));
+                }
+                &Instr::Gt => {
+                    let a = try!(stack.pop());
+                    let b = try!(stack.peek());
+                    *b = Value::Bool(try!(compare(b, a, |a, b| a > b, |a, b| a > b)));
+                }
+                &Instr::Gte => {
+                    let a = try!(stack.pop());
+                    let b = try!(stack.peek());
+                    *b = Value::Bool(try!(compare(b, a, |a, b| a >= b, |a, b| a >= b)));
+                }
                 &Instr::Eq => {
                     let a = try!(stack.pop());
                     let b = try!(stack.peek());
                     *b = Value::Bool(&a == b);
+                }
+                &Instr::Neq => {
+                    let a = try!(stack.pop());
+                    let b = try!(stack.peek());
+                    *b = Value::Bool(&a != b);
                 }
                 &Instr::Execute(arg_count) => {
                     let callable = try!(stack.pop());
@@ -545,4 +588,3 @@ impl <S: State> Vm<S> {
         println!("{:?}", self.stack);
     }
 }
-

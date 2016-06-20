@@ -133,6 +133,42 @@ where F: ::std::fmt::Write {
             try!(format(r, level + 1, interner, f));
             Ok(())
         },
+        &LessThan(ref l, ref r, _) => {
+            try!(label("LESS-THAN", level, f));
+            try!(format(l, level + 1, interner, f));
+            try!(format(r, level + 1, interner, f));
+            Ok(())
+        },
+        &LessThanOrEqual(ref l, ref r, _) => {
+            try!(label("LESS-THAN-OR-EQUAL", level, f));
+            try!(format(l, level + 1, interner, f));
+            try!(format(r, level + 1, interner, f));
+            Ok(())
+        },
+        &GreaterThan(ref l, ref r, _) => {
+            try!(label("GREATER-THAN", level, f));
+            try!(format(l, level + 1, interner, f));
+            try!(format(r, level + 1, interner, f));
+            Ok(())
+        },
+        &GreaterThanOrEqual(ref l, ref r, _) => {
+            try!(label("GREATER-THAN-OR-EQUAL", level, f));
+            try!(format(l, level + 1, interner, f));
+            try!(format(r, level + 1, interner, f));
+            Ok(())
+        },
+        &Equal(ref l, ref r, _) => {
+            try!(label("EQUAL", level, f));
+            try!(format(l, level + 1, interner, f));
+            try!(format(r, level + 1, interner, f));
+            Ok(())
+        },
+        &NotEqual(ref l, ref r, _) => {
+            try!(label("NotEqual", level, f));
+            try!(format(l, level + 1, interner, f));
+            try!(format(r, level + 1, interner, f));
+            Ok(())
+        },
         &FnCall(ref rec, ref args, _) => {
             try!(label("FN-CALL", level, f));
 

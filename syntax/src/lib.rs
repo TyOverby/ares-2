@@ -20,18 +20,28 @@ pub type AstRef<'ast> = &'ast Ast<'ast>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Ast<'ast> {
+    Identifier(Symbol, Span),
     BoolLit(bool, Span),
     StringLit(String, Span),
     IntLit(i64, Span),
     FloatLit(f64, Span),
     SymbolLit(Symbol, Span),
-    Identifier(Symbol, Span),
+
     ListLit(Vec<AstRef<'ast>>, Span),
     MapLit(Vec<(AstRef<'ast>, AstRef<'ast>)>, Span),
+
     Add(AstRef<'ast>, AstRef<'ast>, Span),
     Sub(AstRef<'ast>, AstRef<'ast>, Span),
     Mul(AstRef<'ast>, AstRef<'ast>, Span),
     Div(AstRef<'ast>, AstRef<'ast>, Span),
+
+    LessThan(AstRef<'ast>, AstRef<'ast>, Span),
+    LessThanOrEqual(AstRef<'ast>, AstRef<'ast>, Span),
+    GreaterThan(AstRef<'ast>, AstRef<'ast>, Span),
+    GreaterThanOrEqual(AstRef<'ast>, AstRef<'ast>, Span),
+    Equal(AstRef<'ast>, AstRef<'ast>, Span),
+    NotEqual(AstRef<'ast>, AstRef<'ast>, Span),
+
     FnCall(AstRef<'ast>, Vec<Ast<'ast>>, Span),
     IfExpression(AstRef<'ast>, AstRef<'ast>, AstRef<'ast>, Span),
     IfStatement(AstRef<'ast>, AstRef<'ast>, Option<AstRef<'ast>>, Span),
@@ -61,6 +71,14 @@ impl <'ast> Ast<'ast> {
             Ast::Sub(_, _, s) |
             Ast::Mul(_, _, s) |
             Ast::Div(_, _, s) |
+
+            Ast::GreaterThan(_, _, s) |
+            Ast::GreaterThanOrEqual(_, _, s) |
+            Ast::LessThan(_, _, s) |
+            Ast::LessThanOrEqual(_, _, s) |
+            Ast::Equal(_, _, s) |
+            Ast::NotEqual(_, _, s) |
+
             Ast::FnCall(_, _, s) |
             Ast::IfExpression(_, _, _, s) |
             Ast::IfStatement(_, _, _, s) |
@@ -72,7 +90,7 @@ impl <'ast> Ast<'ast> {
         }
     }
 
-    fn with_default_span(self, arena: &Arena<Ast<'ast>>) -> Ast<'ast> {
+    fn with_default_span(self) -> Ast<'ast> {
         use self::Ast::*;
         match self {
             BoolLit(a, _) => BoolLit(a, Span::dummy()),
@@ -87,6 +105,12 @@ impl <'ast> Ast<'ast> {
             Sub(l, r, _) => Sub(l, r, Span::dummy()),
             Mul(l, r, _) => Mul(l, r, Span::dummy()),
             Div(l, r, _) => Div(l, r, Span::dummy()),
+            LessThan(l, r, _) => LessThan(l, r, Span::dummy()),
+            LessThanOrEqual(l, r, _) => LessThanOrEqual(l, r, Span::dummy()),
+            GreaterThan(l, r, _) => GreaterThan(l, r, Span::dummy()),
+            GreaterThanOrEqual(l, r, _) => GreaterThanOrEqual(l, r, Span::dummy()),
+            Equal(l, r, _) => Equal(l, r, Span::dummy()),
+            NotEqual(l, r, _) => NotEqual(l, r, Span::dummy()),
             FnCall(o, a, _) => FnCall(o, a, Span::dummy()),
             IfExpression(c, t, f, _) => IfExpression(c, t, f, Span::dummy()),
             IfStatement(c, t, f, _) => IfStatement(c, t, f, Span::dummy()),
@@ -99,8 +123,7 @@ impl <'ast> Ast<'ast> {
     }
 
     pub fn equals_sans_span(&self, other: &Ast<'ast>) -> bool {
-        let arena = Arena::new();
-        self.clone().with_default_span(&arena) == other.clone().with_default_span(&arena)
+        self.clone().with_default_span() == other.clone().with_default_span()
     }
 }
 

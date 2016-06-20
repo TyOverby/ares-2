@@ -13,6 +13,22 @@
 | ./tests/closure.artest/incrementor argument                                  |                    | :heavy_check_mark: |                    |                    |
 | ./tests/closure.artest/fibonacci                                             |                    |                    | :heavy_check_mark: |                    |
 | ./tests/closure.artest/combination of upvars =                               |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/closure.artest/abomination                                           |                    |                    |                    | :heavy_check_mark: |
+| ./tests/closure.artest/y combinator                                          |                    |                    | :heavy_check_mark: |                    |
+| ./tests/comparison.artest/less than                                          | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/comparison.artest/less than 2                                        |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/comparison.artest/less than 3                                        |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/comparison.artest/less than or equal to                              | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/comparison.artest/less than or equal to 2                            |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/comparison.artest/less than or equal to 2                            |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/comparison.artest/greater than                                       | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/comparison.artest/greater than 2                                     |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/comparison.artest/greater than 3                                     |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/comparison.artest/greater than or equal to                           | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/comparison.artest/greater than or equal to 2                         |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/comparison.artest/greater than 2                                     |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/comparison.artest/eq                                                 |                    |                    | :heavy_check_mark: |                    |
+| ./tests/comparison.artest/neq                                                |                    |                    | :heavy_check_mark: |                    |
 | ./tests/function_call.artest/anonymous function call                         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/function_call.artest/user-fn function call                           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/function_call.artest/user call from function                         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |

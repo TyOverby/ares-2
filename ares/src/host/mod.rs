@@ -90,6 +90,8 @@ pub trait Context<S: State> {
             AresError::InterpError(InterpError::StackOverflow) => "StackOverflow".to_string(),
             AresError::InterpError(InterpError::StackUnderflow) => "StackUnderflow".to_string(),
             AresError::InterpError(InterpError::StackOutOfBounds) => "StackOutOfBounds".to_string(),
+            AresError::InterpError(InterpError::IncomparableValues(a, b)) =>
+                format!("Could not compare {} with {}", self.format_value(&a), self.format_value(&b)),
             AresError::InterpError(InterpError::BadArity{got, expected}) =>
                 format!("BadArity{{got: {}, expected: {}}}", got, expected),
             AresError::InterpError(InterpError::UserFnWithWrongStateType) => "UserFnWithWrongStateType".to_string()

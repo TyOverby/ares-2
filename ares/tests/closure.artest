@@ -216,3 +216,65 @@ var f = fn(a, b) {
 f(5, 7)(11, 14)
 #result
 -129360
+
+#test abomination
+var nil = print("");
+var cons = fn(a, b) {
+  fn (left_or_right) {
+    if left_or_right then a else b
+  }
+};
+
+var car = fn(pair) {
+  pair(true)
+};
+
+var cdr = fn(pair) {
+  pair(false)
+};
+
+var list = cons(1, cons(2, nil));
+car(cdr(list))
+#result
+2
+
+#test y combinator
+var Y = fn(f) {
+    (fn (h) {
+        h(h)
+    })(fn (h) {
+        f(fn(a) {
+            h(h)(a)
+        })
+    })
+};
+
+var fib = Y(fn(f) {
+    fn(n) {
+        if n > 1 then
+            f(n - 1) + f(n - 2)
+        else n
+    }
+});
+
+print(fib(1));
+print(fib(2));
+print(fib(3));
+print(fib(4));
+print(fib(5));
+print(fib(6));
+print(fib(7));
+print(fib(8));
+print(fib(9));
+print(fib(10));
+#output
+1
+1
+2
+3
+5
+8
+13
+21
+34
+55

@@ -73,6 +73,42 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             out.push(Instr::DivInt);
             Ok(true)
         }
+        &Bound::LessThan(ref l, ref r, _) => {
+            try!(emit(l, compile_context, out, inside_lambda));
+            try!(emit(r, compile_context, out, inside_lambda));
+            out.push(Instr::Lt);
+            Ok(true)
+        }
+        &Bound::LessThanOrEqual(ref l, ref r, _) => {
+            try!(emit(l, compile_context, out, inside_lambda));
+            try!(emit(r, compile_context, out, inside_lambda));
+            out.push(Instr::Lte);
+            Ok(true)
+        }
+        &Bound::GreaterThan(ref l, ref r, _) => {
+            try!(emit(l, compile_context, out, inside_lambda));
+            try!(emit(r, compile_context, out, inside_lambda));
+            out.push(Instr::Gt);
+            Ok(true)
+        }
+        &Bound::GreaterThanOrEqual(ref l, ref r, _) => {
+            try!(emit(l, compile_context, out, inside_lambda));
+            try!(emit(r, compile_context, out, inside_lambda));
+            out.push(Instr::Gte);
+            Ok(true)
+        }
+        &Bound::Equal(ref l, ref r, _) => {
+            try!(emit(l, compile_context, out, inside_lambda));
+            try!(emit(r, compile_context, out, inside_lambda));
+            out.push(Instr::Eq);
+            Ok(true)
+        }
+        &Bound::NotEqual(ref l, ref r, _) => {
+            try!(emit(l, compile_context, out, inside_lambda));
+            try!(emit(r, compile_context, out, inside_lambda));
+            out.push(Instr::Neq);
+            Ok(true)
+        }
         &Bound::Literal(ast) => {
             match ast {
                 &Ast::IntLit(i, _) => {

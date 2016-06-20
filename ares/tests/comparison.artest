@@ -1,0 +1,121 @@
+#test less than
+1 < 2
+#bind
+LESS-THAN:
+    LITERAL:
+        1
+    LITERAL:
+        2
+#result
+true
+
+#test less than 2
+2 < 1
+#result
+false
+
+#test less than 3
+2 < 2
+#result
+false
+
+#test less than or equal to
+1 <= 2
+#bind
+LESS-THAN-OR-EQUAL:
+    LITERAL:
+        1
+    LITERAL:
+        2
+#result
+true
+
+#test less than or equal to 2
+2 <= 1
+#result
+false
+
+#test less than or equal to 2
+2 <= 2
+#result
+true
+
+#test greater than
+1 > 2
+#bind
+GREATER-THAN:
+    LITERAL:
+        1
+    LITERAL:
+        2
+#result
+false
+
+#test greater than 2
+2 > 1
+#result
+true
+
+#test greater than 3
+2 > 2
+#result
+false
+
+#test greater than or equal to
+1 >= 2
+#bind
+GREATER-THAN-OR-EQUAL:
+    LITERAL:
+        1
+    LITERAL:
+        2
+#result
+false
+
+#test greater than or equal to 2
+2 >= 1
+#result
+true
+
+#test greater than 2
+2 >= 2
+#result
+true
+
+#test eq
+print(1 == 1);
+print(1 == 2);
+print("hi" == "hi");
+print("hi" == "hello");
+print('foo == 'foo);
+print('foo == 'bar);
+print(3.14 == 3.14);
+print(3.14 == 3.0);
+#output
+true
+false
+true
+false
+true
+false
+true
+false
+
+#test neq
+print(1 != 1);
+print(1 != 2);
+print("hi" != "hi");
+print("hi" != "hello");
+print('foo != 'foo);
+print('foo != 'bar);
+print(3.14 != 3.14);
+print(3.14 != 3.0);
+#output
+false
+true
+false
+true
+false
+true
+false
+true
