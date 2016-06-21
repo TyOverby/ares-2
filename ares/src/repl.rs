@@ -30,6 +30,7 @@ fn main() {
 
     let mut exit_requested = false;
     let mut ctx = ctx.load(&mut exit_requested);
+    let mut expr_iter = 0;
 
     let mut buildup = String::new();
     while !*ctx.state() {
@@ -43,9 +44,14 @@ fn main() {
                     buildup.clear();
                 },
                 Ok(Some(v)) => {
+                    expr_iter += 1;
+                    let expr_id = format!("__{}", expr_iter);
+                    let value_str = ctx.format_value(&v);
+                    ctx.set_global(&expr_id[..], v);
+
                     linenoise::history_add(&buildup);
                     buildup.clear();
-                    println!("{}", ctx.format_value(&v).green());
+                    println!("{} = {}", expr_id.yellow(), value_str.green());
                 }
                 Err(AresError::CompileError(CompileError::ParseError(ParseError::UnrecognizedToken{token: None, ..}))) => {
 
