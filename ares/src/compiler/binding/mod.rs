@@ -85,6 +85,8 @@ pub enum Bound<'bound, 'ast: 'bound> {
     BlockStatement(Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
     Assign(Symbol, SymbolBindSource, BoundRef<'bound, 'ast>, AstRef<'ast>),
     Define(Symbol, SymbolBindSource, BoundRef<'bound, 'ast>, AstRef<'ast>),
+    Shift(Vec<BoundRef<'bound, 'ast>>, BoundRef<'bound, 'ast>, AstRef<'ast>),
+    Reset(Vec<BoundRef<'bound, 'ast>>, BoundRef<'bound, 'ast>, AstRef<'ast>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
@@ -509,6 +511,16 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 let source = binder.add_declaration(symbol, interner);
                 let bound_value = try!(Bound::bind(value, arena, binder, modules, interner));
                 Bound::Define(symbol, source, bound_value, ast)
+            }
+            &Ast::Shift(ref symbols, ref closure, _) => {
+                let bound_symbols = try!(Bound::bind_all(symbols, arena, binder, modules, interner));
+                let bound_closure = try!(Bound::bind(closure, arena, binder, modules, interner));
+                Bound::Shift(bound_symbols, bound_closure, ast)
+            }
+            &Ast::Reset(ref symbols, ref closure, _) => {
+                let bound_symbols = try!(Bound::bind_all(symbols, arena, binder, modules, interner));
+                let bound_closure = try!(Bound::bind(closure, arena, binder, modules, interner));
+                Bound::Reset(bound_symbols, bound_closure, ast)
             }
         }))
     }

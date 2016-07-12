@@ -1,0 +1,254 @@
+#test basic shift
+shift
+#bind
+SHIFT:
+    SYMBOLS:
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                1
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+                s9
+            BODY:
+                SYMBOL:
+                    NAME:
+                        s9
+                    SOURCE:
+                        ARG:
+                            0
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        s9
+                    SOURCE:
+                        ARG:
+                            0
+#emit
+Shift(0)
+CreateClosure(0)
+Jump(5)
+Dup(0)
+Ret
+Execute(1)
+Swap
+JumpTo
+
+#test shift-with-symbol
+shift ('a)
+#bind
+SHIFT:
+    SYMBOLS:
+        LITERAL:
+            'a
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                1
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+                s10
+            BODY:
+                SYMBOL:
+                    NAME:
+                        s10
+                    SOURCE:
+                        ARG:
+                            0
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        s10
+                    SOURCE:
+                        ARG:
+                            0
+
+#test shit-with-gen-symbol
+shift (if true then 'a else 'b)
+#bind
+SHIFT:
+    SYMBOLS:
+        IF-EXPRESSION:
+            COND:
+                LITERAL:
+                    true
+            TRUE:
+                LITERAL:
+                    'a
+            FALSE:
+                LITERAL:
+                    'b
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                1
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+                s11
+            BODY:
+                SYMBOL:
+                    NAME:
+                        s11
+                    SOURCE:
+                        ARG:
+                            0
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        s11
+                    SOURCE:
+                        ARG:
+                            0
+
+#test shift with multiple symbols
+shift('a, 'b)
+#bind
+SHIFT:
+    SYMBOLS:
+        LITERAL:
+            'a
+        LITERAL:
+            'b
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                1
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+                s11
+            BODY:
+                SYMBOL:
+                    NAME:
+                        s11
+                    SOURCE:
+                        ARG:
+                            0
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        s11
+                    SOURCE:
+                        ARG:
+                            0
+
+#test shift with lambda
+shift k {
+    k
+}
+#bind
+SHIFT:
+    SYMBOLS:
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                1
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+                k
+            BODY:
+                BLOCK-EXPRESSION:
+                    SYMBOL:
+                        NAME:
+                            k
+                        SOURCE:
+                            ARG:
+                                0
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        k
+                    SOURCE:
+                        ARG:
+                            0
+
+#test assign cont to outer variable
+var c = 0;
+shift k {
+    c = k;
+    0
+};
+#bind
+DEFINE:
+    NAME:
+        c
+    SOURCE:
+        GLOBAL:
+            c
+    VALUE:
+        LITERAL:
+            0
+SHIFT:
+    SYMBOLS:
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                1
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+                k
+            BODY:
+                BLOCK-EXPRESSION:
+                    ASSIGN:
+                        NAME:
+                            c
+                        SOURCE:
+                            GLOBAL:
+                                c
+                        VALUE:
+                        SYMBOL:
+                            NAME:
+                                k
+                            SOURCE:
+                                ARG:
+                                    0
+                    LITERAL:
+                        0
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        k
+                    SOURCE:
+                        ARG:
+                            0
+#test empty shift
+shift k {}
+#bind
+SHIFT:
+    SYMBOLS:
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                1
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+                k
+            BODY:
+                BLOCK-STATEMENT:
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        k
+                    SOURCE:
+                        ARG:
+                            0

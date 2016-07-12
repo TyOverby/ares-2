@@ -45,6 +45,7 @@
 | ./tests/lambda.artest/one-arg lambda                                         | :heavy_check_mark: | :heavy_check_mark: |                    |                    |
 | ./tests/lambda.artest/one-arg statement lambda                               | :heavy_check_mark: | :heavy_check_mark: |                    |                    |
 | ./tests/lambda.artest/2-arg expression lambda                                | :heavy_check_mark: | :heavy_check_mark: |                    |                    |
+| ./tests/lambda.artest/empty closure                                          |                    | :heavy_check_mark: |                    |                    |
 | ./tests/literals.artest/int literal                                          |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/literals.artest/string literal                                       |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/literals.artest/symbol literal                                       |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |

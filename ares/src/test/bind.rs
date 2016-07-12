@@ -304,6 +304,30 @@ where F: ::std::fmt::Write {
             try!(format(value, level + 2, interner, f));
             Ok(())
         }
+        &Shift(ref symbols, ref lambda, _) => {
+            try!(label("SHIFT", level, f));
+
+            try!(label("SYMBOLS", level + 1, f));
+            for &symbol in symbols {
+                try!(format(symbol, level + 2, interner, f));
+            }
+
+            try!(label("LAMBDA", level + 1, f));
+            try!(format(lambda, level + 2, interner, f));
+            Ok(())
+        }
+        &Reset(ref symbols, ref lambda, _) => {
+            try!(label("RESET", level, f));
+
+            try!(label("SYMBOLS", level + 1, f));
+            for &symbol in symbols {
+                try!(format(symbol, level + 2, interner, f));
+            }
+
+            try!(label("LAMBDA", level + 1, f));
+            try!(format(lambda, level + 2, interner, f));
+            Ok(())
+        }
     }
     
 }

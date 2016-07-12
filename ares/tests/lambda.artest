@@ -60,9 +60,10 @@ LAMBDA:
                     0
 #emit
 CreateClosure(0)
-Jump(5)
+Jump(6)
 Dup(0)
 Pop
+NilLit
 Ret
 
 #test 2-arg expression lambda
@@ -113,3 +114,12 @@ Dup(0)
 Dup(1)
 AddInt
 Ret
+
+#test empty closure
+(fn () {})()
+#emit
+CreateClosure(0)
+Jump(4)
+NilLit
+Ret
+Execute(0)

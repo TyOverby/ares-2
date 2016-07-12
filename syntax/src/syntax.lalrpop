@@ -68,24 +68,24 @@ AdditiveExpression: Ast<'a> = {
     MultiplicativeExpression,
 };
 
-ShiftExpression: Ast<'a> = {
-    <l: ShiftExpression> "<<" <r: AdditiveExpression> =>
+BitShiftExpression: Ast<'a> = {
+    <l: BitShiftExpression> "<<" <r: AdditiveExpression> =>
         unimplemented!(),
-    <l: ShiftExpression> ">>" <r: AdditiveExpression> =>
+    <l: BitShiftExpression> ">>" <r: AdditiveExpression> =>
         unimplemented!(),
     AdditiveExpression,
 };
 
 RelationalExpression: Ast<'a> = {
-    <l: RelationalExpression> ">" <r: ShiftExpression> =>
+    <l: RelationalExpression> ">" <r: BitShiftExpression> =>
         Ast::GreaterThan(arena.alloc(l), arena.alloc(r), Span(0, 0)),
-    <l: RelationalExpression> "<" <r: ShiftExpression> => 
+    <l: RelationalExpression> "<" <r: BitShiftExpression> =>
         Ast::LessThan(arena.alloc(l), arena.alloc(r), Span(0, 0)),
-    <l: RelationalExpression> ">=" <r: ShiftExpression> => 
+    <l: RelationalExpression> ">=" <r: BitShiftExpression> =>
         Ast::GreaterThanOrEqual(arena.alloc(l), arena.alloc(r), Span(0, 0)),
-    <l: RelationalExpression> "<=" <r: ShiftExpression> => 
+    <l: RelationalExpression> "<=" <r: BitShiftExpression> =>
         Ast::LessThanOrEqual(arena.alloc(l), arena.alloc(r), Span(0, 0)),
-    ShiftExpression,
+    BitShiftExpression,
 };
 
 EqualityExpression: Ast<'a> = {
@@ -126,10 +126,47 @@ LogicalXorExpression: Ast<'a> = {
     LogicalOrExpression,
 };
 
-IfExpression: Ast<'a> = {
-    "if" <a: LogicalXorExpression> "then" <t: Expr> "else" <f: IfExpression> =>
-        Ast::IfExpression(arena.alloc(a), arena.alloc(t), arena.alloc(f), Span(0, 0)),
+ShiftExpression: Ast<'a> = {
+    "shift" => {
+        let id = interner.gensym();
+        let body = arena.alloc(Ast::Identifier(id, Span(0, 0)));
+        let closure = Ast::Closure(None, vec![vec![id]], body, Span(0, 0));
+        Ast::Shift(vec![], arena.alloc(closure), Span(0, 0))
+    },
+    "shift" "(" <s: Comma<Expr>> ")" => {
+        let id = interner.gensym();
+        let body = arena.alloc(Ast::Identifier(id, Span(0, 0)));
+        let closure = Ast::Closure(None, vec![vec![id]], body, Span(0, 0));
+        Ast::Shift(s, arena.alloc(closure), Span(0, 0))
+    },
+    "shift" <i: Identifier> <b: MethodBodyBlock> => {
+        let closure = Ast::Closure(None, vec![vec![i]], arena.alloc(b), Span(0, 0));
+        Ast::Shift(vec![], arena.alloc(closure), Span(0, 0))
+    },
+    "shift" "(" <s: Comma<Expr>> ")" <i: Identifier> <b: MethodBodyBlock> => {
+        let closure = Ast::Closure(None, vec![vec![i]], arena.alloc(b), Span(0, 0));
+        Ast::Shift(s, arena.alloc(closure), Span(0, 0))
+    },
     LogicalXorExpression,
+};
+
+ResetExpression: Ast<'a> = {
+    "reset" <b: MethodBodyBlock> => {
+        let closure = Ast::Closure(None, vec![vec![]], arena.alloc(b), Span(0, 0));
+        Ast::Reset(vec![], arena.alloc(closure), Span(0, 0))
+    },
+    "reset" "(" <s: Comma<Expr>> ")" <b: MethodBodyBlock> => {
+        let closure = Ast::Closure(None, vec![vec![]], arena.alloc(b), Span(0, 0));
+        Ast::Reset(s, arena.alloc(closure), Span(0, 0))
+    },
+    ShiftExpression,
+};
+
+
+IfExpression: Ast<'a> = {
+    "if" <a: ResetExpression> "then" <t: Expr> "else" <f: IfExpression> =>
+        Ast::IfExpression(arena.alloc(a), arena.alloc(t), arena.alloc(f), Span(0, 0)),
+    ResetExpression,
 };
 
 AssignmentExpression: Ast<'a> = {
@@ -147,9 +184,9 @@ pub Expr: Ast<'a> = {
 };
 
 pub Statement: Ast<'a> = {
-    "if" <a: LogicalXorExpression> "then" <trs:BlockStatement> "else" <fls:BlockStatement> =>
+    "if" <a: ResetExpression> "then" <trs:BlockStatement> "else" <fls:BlockStatement> =>
         Ast::IfStatement(arena.alloc(a), arena.alloc(trs), Some(arena.alloc(fls)), Span(0, 0)),
-    "if" <a: LogicalXorExpression> "then" <trs:BlockStatement> =>
+    "if" <a: ResetExpression> "then" <trs:BlockStatement> =>
         Ast::IfStatement(arena.alloc(a), arena.alloc(trs), None, Span(0, 0)),
     <e: BlockStatement> => e,
     <e: DefineStatement> => e,

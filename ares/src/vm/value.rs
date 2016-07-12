@@ -2,8 +2,58 @@ use gc::{Gc, Trace, GcCell};
 use std::ops::Deref;
 use std::collections::HashMap;
 use ares_syntax::{Symbol, SymbolIntern};
-use vm::{InterpError, Closure};
+use vm::{InterpError, Closure, Continuation};
 use vm::function::UserFunction;
+
+macro_rules! gen_expect {
+    ($self_fn: ident, $ref_fn: ident, $mut_fn: ident, $selector: path, $out: ty, $expected: expr) => {
+        pub fn $self_fn(self) -> Result<$out, InterpError> {
+            if let $selector(v) = self {
+                Ok(v)
+            } else {
+                Err(InterpError::MismatchedType {
+                    value: self,
+                    expected: $expected,
+                })
+            }
+        }
+
+        pub fn $ref_fn(&self) -> Result<&$out, InterpError> {
+            if let &$selector(ref v) = self {
+                Ok(v)
+            } else {
+                Err(InterpError::MismatchedType {
+                    value: self.clone(),
+                    expected: $expected,
+                })
+            }
+        }
+        pub fn $mut_fn(&mut self) -> Result<&mut $out, InterpError> {
+            if let &mut $selector(ref mut v) = self {
+                Ok(v)
+            } else {
+                Err(InterpError::MismatchedType {
+                    value: self.clone(),
+                    expected: $expected,
+                })
+            }
+        }
+    };
+}
+
+macro_rules! gen_from {
+    ($inx: ty, $out: path) => {
+        gen_from!($inx, $out, |i| i);
+    };
+    ($inx: ty, $out: path, $tr: expr) => {
+        impl From<$inx> for Value {
+            fn from(i: $inx) -> Value {
+                $out($tr(i))
+            }
+        }
+    }
+}
+
 
 #[derive(Clone)]
 pub enum Value {
@@ -18,6 +68,7 @@ pub enum Value {
     Closure(Gc<Closure>),
     UserFn(Gc<GcCell<UserFunction<()>>>),
     Cell(Gc<GcCell<Value>>),
+    Continuation(Gc<Continuation>),
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -33,6 +84,7 @@ pub enum ValueKind {
     Closure,
     UserFn,
     Cell,
+    Continuation,
 }
 
 #[derive(Debug, PartialEq)]
@@ -113,6 +165,22 @@ impl Value {
         }
     }
 
+    /*
+    Cell(Gc<GcCell<Value>>),
+    Continuation(Gc<Continuation>),
+     */
+    gen_expect!(expect_string, expect_string_ref, expect_string_mut, Value::String, Gc<String>, ValueKind::String);
+    gen_expect!(expect_list, expect_list_ref, expect_list_mut, Value::List, Gc<Vec<Value>>, ValueKind::List);
+    gen_expect!(expect_map, expect_map_ref, expect_map_mut, Value::Map, Gc<MapWrapper>, ValueKind::Map);
+    gen_expect!(expect_float, expect_float_ref, expect_float_mut, Value::Float, f64, ValueKind::Float);
+    gen_expect!(expect_int, expect_int_ref, expect_int_mut, Value::Int, i64, ValueKind::Int);
+    gen_expect!(expect_bool, expect_bool_ref, expect_bool_mut, Value::Bool, bool, ValueKind::Bool);
+    gen_expect!(expect_symbol, expect_symbol_ref, expect_symbol_mut, Value::Symbol, Symbol, ValueKind::Symbol);
+    gen_expect!(expect_closure, expect_closure_ref, expect_closure_mut, Value::Closure, Gc<Closure>, ValueKind::Closure);
+    gen_expect!(expect_user_fn, expect_user_fn_ref, expect_user_fn_mut, Value::UserFn, Gc<GcCell<UserFunction<()>>>, ValueKind::UserFn);
+    gen_expect!(expect_cell, expect_cell_ref, expect_cell_mut, Value::Cell, Gc<GcCell<Value>>, ValueKind::Cell);
+    gen_expect!(expect_continuation, expect_continuation_ref, expect_continuation_mut, Value::Continuation, Gc<Continuation>, ValueKind::Continuation);
+
     pub fn expect_nil(self) -> Result<(), InterpError> {
         if let Value::Nil = self { Ok(()) }
         else {
@@ -142,363 +210,6 @@ impl Value {
             })
         }
     }
-
-    pub fn expect_list(self) -> Result<Gc<Vec<Value>>, InterpError> {
-        match self {
-            Value::List(list) => Ok(list),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other,
-                    expected: ValueKind::List,
-                })
-            }
-        }
-    }
-
-    pub fn expect_map(self) -> Result<Gc<MapWrapper>, InterpError> {
-        match self {
-            Value::Map(map) => Ok(map),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other,
-                    expected: ValueKind::Map,
-                })
-            }
-        }
-    }
-
-    pub fn expect_string(self) -> Result<Gc<String>, InterpError> {
-        match self {
-            Value::String(string) => Ok(string),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other,
-                    expected: ValueKind::String,
-                })
-            }
-        }
-    }
-
-    pub fn expect_float(self) -> Result<f64, InterpError> {
-        match self {
-            Value::Float(float) => Ok(float),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other,
-                    expected: ValueKind::Float,
-                })
-            }
-        }
-    }
-
-    pub fn expect_int(self) -> Result<i64, InterpError> {
-        match self {
-            Value::Int(int) => Ok(int),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other,
-                    expected: ValueKind::Int,
-                })
-            }
-        }
-    }
-
-    pub fn expect_bool(self) -> Result<bool, InterpError> {
-        match self {
-            Value::Bool(b) => Ok(b),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other,
-                    expected: ValueKind::Bool,
-                })
-            }
-        }
-    }
-
-    pub fn expect_symbol(self) -> Result<Symbol, InterpError> {
-        match self {
-            Value::Symbol(symbol) => Ok(symbol),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other,
-                    expected: ValueKind::Symbol,
-                })
-            }
-        }
-    }
-
-    pub fn expect_closure(self) -> Result<Gc<Closure>, InterpError> {
-        match self {
-            Value::Closure(closure) => Ok(closure),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other,
-                    expected: ValueKind::Closure,
-                })
-            }
-        }
-    }
-
-    pub fn expect_user_fn(self) -> Result<Gc<GcCell<UserFunction<()>>>, InterpError> {
-        if let Value::UserFn(user_fn) = self {
-            Ok(user_fn)
-        } else {
-            Err(InterpError::MismatchedType {
-                value: self,
-                expected: ValueKind::List
-            })
-        }
-    }
-
-    pub fn expect_cell(self) -> Result<Gc<GcCell<Value>>, InterpError> {
-        match self {
-            Value::Cell(cell) => Ok(cell),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other,
-                    expected: ValueKind::Cell,
-                })
-            }
-        }
-    }
-
-    pub fn expect_list_ref(&self) -> Result<&Gc<Vec<Value>>, InterpError> {
-        match self {
-            &Value::List(ref list) => Ok(list),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::List,
-                })
-            }
-        }
-    }
-
-    pub fn expect_cell_ref(&self) -> Result<&Gc<GcCell<Value>>, InterpError> {
-        match self {
-            &Value::Cell(ref cell) => Ok(cell),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::List,
-                })
-            }
-        }
-    }
-
-    pub fn expect_map_ref(&self) -> Result<&Gc<MapWrapper>, InterpError> {
-        match self {
-            &Value::Map(ref map) => Ok(map),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::Map,
-                })
-            }
-        }
-    }
-
-    pub fn expect_string_ref(&self) -> Result<&Gc<String>, InterpError> {
-        match self {
-            &Value::String(ref string) => Ok(string),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::String,
-                })
-            }
-        }
-    }
-
-    pub fn expect_float_ref(&self) -> Result<&f64, InterpError> {
-        match self {
-            &Value::Float(ref float) => Ok(float),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::Float,
-                })
-            }
-        }
-    }
-
-    pub fn expect_int_ref(&self) -> Result<&i64, InterpError> {
-        match self {
-            &Value::Int(ref int) => Ok(int),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::Int,
-                })
-            }
-        }
-    }
-
-    pub fn expect_bool_ref(&self) -> Result<&bool, InterpError> {
-        match self {
-            &Value::Bool(ref b) => Ok(b),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::Bool,
-                })
-            }
-        }
-    }
-
-    pub fn expect_symbol_ref(&self) -> Result<&Symbol, InterpError> {
-        match self {
-            &Value::Symbol(ref symbol) => Ok(symbol),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::Symbol,
-                })
-            }
-        }
-    }
-
-    pub fn expect_closure_ref(&self) -> Result<&Gc<Closure>, InterpError> {
-        match self {
-            &Value::Closure(ref closure) => Ok(closure),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::Closure,
-                })
-            }
-        }
-    }
-
-    pub fn expect_user_fn_ref(&self) -> Result<&Gc<GcCell<UserFunction<()>>>, InterpError> {
-        if let &Value::UserFn(ref user_fn) = self {
-            Ok(user_fn)
-        } else {
-            Err(InterpError::MismatchedType {
-                value: self.clone(),
-                expected: ValueKind::List
-            })
-        }
-    }
-
-    pub fn expect_list_mut(&mut self) -> Result<&mut Gc<Vec<Value>>, InterpError> {
-        match self {
-            &mut Value::List(ref mut list) => Ok(list),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::List,
-                })
-            }
-        }
-    }
-
-    pub fn expect_map_mut(&mut self) -> Result<&mut Gc<MapWrapper>, InterpError> {
-        match self {
-            &mut Value::Map(ref mut map) => Ok(map),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::Map,
-                })
-            }
-        }
-    }
-
-    pub fn expect_string_mut(&mut self) -> Result<&mut Gc<String>, InterpError> {
-        match self {
-            &mut Value::String(ref mut string) => Ok(string),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::String,
-                })
-            }
-        }
-    }
-
-    pub fn expect_float_mut(&mut self) -> Result<&mut f64, InterpError> {
-        match self {
-            &mut Value::Float(ref mut float) => Ok(float),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::Float,
-                })
-            }
-        }
-    }
-
-    pub fn expect_int_mut(&mut self) -> Result<&mut i64, InterpError> {
-        match self {
-            &mut Value::Int(ref mut int) => Ok(int),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::Int,
-                })
-            }
-        }
-    }
-
-    pub fn expect_bool_mut(&mut self) -> Result<&mut bool, InterpError> {
-        match self {
-            &mut Value::Bool(ref mut b) => Ok(b),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::Bool,
-                })
-            }
-        }
-    }
-
-    pub fn expect_symbol_mut(&mut self) -> Result<&mut Symbol, InterpError> {
-        match self {
-            &mut Value::Symbol(ref mut symbol) => Ok(symbol),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::Symbol,
-                })
-            }
-        }
-    }
-
-    pub fn expect_closure_mut(&mut self) -> Result<&mut Gc<Closure>, InterpError> {
-        match self {
-            &mut Value::Closure(ref mut closure) => Ok(closure),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::Closure,
-                })
-            }
-        }
-    }
-
-    pub fn expect_user_fn_mut(&mut self) -> Result<&mut Gc<GcCell<UserFunction<()>>>, InterpError> {
-        if let &mut Value::UserFn(ref mut func) = self {
-            Ok(func)
-        } else {
-            Err(InterpError::MismatchedType {
-                value: self.clone(),
-                expected: ValueKind::UserFn,
-            })
-        }
-    }
-
-    pub fn expect_cell_mut(&mut self) -> Result<&mut Gc<GcCell<Value>>, InterpError> {
-        match self {
-            &mut Value::Cell(ref mut cell) => Ok(cell),
-            other => {
-                Err(InterpError::MismatchedType {
-                    value: other.clone(),
-                    expected: ValueKind::Cell,
-                })
-            }
-        }
-    }
 }
 
 fn gc_to_usize<T: Trace>(gc: &Gc<T>) -> usize {
@@ -517,6 +228,7 @@ pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
         &Value::Bool(b) => format!("{}", b),
         &Value::Symbol(s) => format!("'{}", interner.lookup_or_anon(s)),
         &Value::Closure(_) => format!("<Closure>"),
+        &Value::Continuation(_) => format!("<Continuation>"),
         &Value::UserFn(ref f) => {
             let f = f.borrow();
             let name = f.name().unwrap_or("{anon}");
@@ -612,22 +324,14 @@ impl ::std::hash::Hash for Value {
             }
             &Value::Symbol(ref rc) => rc.hash(state),
             &Value::Cell(ref t) => t.borrow().hash(state),
+            &Value::Continuation(ref c) => {
+                c.instruction_pos.hash(state);
+                c.saved_stack.len().hash(state);
+                c.saved_utility_stack.len().hash(state);
+            }
             &Value::Closure(ref c) => state.write_usize(unsafe {transmute(&*c)}),
             &Value::UserFn(ref f) => {
                 state.write_usize(unsafe {transmute(&*f.borrow())})
-            }
-        }
-    }
-}
-
-macro_rules! gen_from {
-    ($inx: ty, $out: path) => {
-        gen_from!($inx, $out, |i| i);
-    };
-    ($inx: ty, $out: path, $tr: expr) => {
-        impl From<$inx> for Value {
-            fn from(i: $inx) -> Value {
-                $out($tr(i))
             }
         }
     }

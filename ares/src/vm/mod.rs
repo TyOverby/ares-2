@@ -2,6 +2,7 @@ mod lambda;
 mod value;
 mod stack;
 mod module;
+mod continuation;
 mod function;
 #[cfg(test)]
 mod test;
@@ -16,6 +17,7 @@ pub use vm::lambda::*;
 pub use vm::stack::*;
 pub use vm::module::*;
 pub use vm::function::*;
+pub use vm::continuation::*;
 
 use ares_syntax::*;
 
@@ -38,17 +40,32 @@ pub enum InterpError {
     UserFnWithWrongStateType,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct Reset {
+    symbols: Vec<Symbol>,
+    instruction_pos: u32,
+    stack_pos: u32,
+    return_stack_pos: u32,
+    reset_stack_pos: u32,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub struct Return {
     code_pos: usize,
     stack_frame: u32,
     namespace: Symbol
 }
 
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub enum UtilityStackItem {
+    Reset(Reset),
+    Return(Return),
+}
+
 #[derive(Debug)]
 pub struct Vm<S: State = ()> {
     pub(crate) stack: Stack,
-    pub(crate) return_stack: Vec<Return>,
+    pub(crate) utility_stack: Vec<UtilityStackItem>,
     pub(crate) interner: SymbolIntern,
     pub(crate) globals: Modules,
     pub(crate) code: Vec<Instr>,
@@ -76,6 +93,15 @@ pub enum Instr {
     Pop,
     /// Swap the top two values on the stack
     Swap,
+
+    /// Pops n symbols off the stack and pushes it
+    /// into the reset stack.
+    Reset(u32),
+    /// Pops most recent reset off the stack.
+    PopReset,
+    /// Pops a symbol off the stack and shifts on
+    /// that symbol.
+    Shift(u32),
 
     /// Push nil on to the stack.
     NilLit,
@@ -119,6 +145,8 @@ pub enum Instr {
     Call(u32),
     /// Move the instruction pointer to a specified location
     Jump(u32),
+    /// Pops an int off the stack and jumps to that location in code.
+    JumpTo,
     /// Clear the current frame (except for the item on the very top),
     /// move the instruction pointer back to where it was before the
     /// lambda was called.
@@ -182,9 +210,9 @@ impl <S: State> Vm<S> {
     pub fn new() -> Vm<S> {
         Vm {
             stack: Stack::new(),
+            utility_stack: Vec::new(),
             interner: SymbolIntern::new(),
             globals: Modules::new(),
-            return_stack: Vec::new(),
             code: Vec::new(),
             compile_context: ::compiler::CompileContext::new(),
             last_code_position: 0,
@@ -216,7 +244,7 @@ impl <S: State> Vm<S> {
             current_ns: &mut Symbol,
             interner: &mut SymbolIntern,
             compile_context: &CompileContext,
-            return_stack: &mut Vec<Return>,
+            utility_stack: &mut Vec<UtilityStackItem>,
             state: &mut S) -> Result<bool, InterpError> {
 
             let current_instruction = &code[*i];
@@ -298,6 +326,73 @@ impl <S: State> Vm<S> {
             match current_instruction {
                 &Instr::Halt => {
                     return Ok(false)
+                }
+                &Instr::Reset(_n) => {
+                    /*
+                    let n = n as usize;
+                    let mut symbols = Vec::with_capacity(n);
+                    for value in try!(stack.pop_n(n)) {
+                        symbols.push(try!(value.expect_symbol()));
+                    }
+
+                    let reset_stack_len = reset_stack.len();
+                    reset_stack.push(
+                        Reset {
+                            symbols: symbols,
+                            stack_pos: stack.len() - 1, // account for the closure on the stack
+                            return_stack_pos: return_stack.len() as u32,
+                            reset_stack_pos: reset_stack_len as u32,
+                            instruction_pos: *i as u32 + 3,
+                        });
+                    */
+                    unimplemented!();
+                }
+                &Instr::PopReset => {
+                    /*
+                    reset_stack.pop().unwrap();
+                    */
+                    unimplemented!();
+                }
+                &Instr::Shift(_n) => {
+                    /*
+                    let n = n as usize;
+                    let mut shifting_symbols = Vec::with_capacity(n);
+                    for value in try!(stack.pop_n(n)) {
+                        shifting_symbols.push(try!(value.expect_symbol()));
+                    }
+
+                    let mut index = None;
+                    for (i, &Reset{ref symbols, ..}) in reset_stack.iter().enumerate().rev() {
+                        for &shifting_symbol in &shifting_symbols {
+                            if symbols.iter().any(|&s| s == shifting_symbol) {
+                                index = Some(i);
+                                break;
+                            }
+                        }
+                    }
+
+                    let index = match index {
+                        Some(i) => i,
+                        // TODO: DONT PANIC :thumb:
+                        None => panic!("no reset found for shift {:?}", shifting_symbols)
+                    };
+
+                    let Reset{ stack_pos, return_stack_pos, instruction_pos, ..} = reset_stack[index];
+                    let inner_stack = try!(stack.split_off(stack_pos));
+                    let inner_resets = reset_stack.split_off(index);
+                    let inner_return_stack = return_stack.split_off(return_stack_pos as usize);
+
+                    let cont = Continuation {
+                        instruction_pos: *i as u32,
+                        stack: inner_stack,
+                        reset_stack: inner_resets,
+                        return_stack: inner_return_stack,
+                    };
+
+                    // *i = instruction_pos as usize + 1;
+                    try!(stack.push(Value::Int(instruction_pos as i64)));
+                    try!(stack.push(Value::Continuation(Gc::new(cont))));
+                    */
                 }
                 &Instr::Nop => {}
                 &Instr::Print => {
@@ -384,6 +479,10 @@ impl <S: State> Vm<S> {
                     // it after the match is done.
                     *i = location.wrapping_sub(1) as usize;
                 }
+                &Instr::JumpTo => {
+                    let location = try!(try!(stack.pop()).expect_int());
+                    *i = location.wrapping_sub(1) as usize;
+                }
                 &Instr::AddInt => {
                     try!(stack.binop_int(|a, b| a + b));
                 }
@@ -464,11 +563,11 @@ impl <S: State> Vm<S> {
                                 });
                             }
 
-                            return_stack.push(Return {
+                            utility_stack.push(UtilityStackItem::Return(Return {
                                 code_pos: *i,
                                 stack_frame: *stack_frame,
                                 namespace: *current_ns,
-                            });
+                            }));
 
                             *i = code_pos.wrapping_sub(1);
                             *stack_frame = stack.len() as u32 - arg_count as u32;
@@ -480,6 +579,23 @@ impl <S: State> Vm<S> {
                             for _ in 0 .. local_defines_count {
                                 try!(stack.push(Value::Nil));
                             }
+                        }
+                        Value::Continuation(ref c) => {
+                            let &Continuation{
+                                instruction_pos,
+                                ref saved_stack,
+                                ref saved_utility_stack,
+                            } = &**c;
+
+                            for v in saved_stack {
+                                try!(stack.push(v.clone()));
+                            }
+
+                            for r in saved_utility_stack {
+                                utility_stack.push(r.clone());
+                            }
+
+                            *i = instruction_pos as usize + 1;
                         }
                         o => panic!("tried to call {:?}", o),
                     }
@@ -497,19 +613,27 @@ impl <S: State> Vm<S> {
                 &Instr::Call(position) => {
                     let arg_count = try!(try!(stack.pop()).expect_int());
                     let offset = position as usize;
-                    return_stack.push(Return {
+                    utility_stack.push(UtilityStackItem::Return(Return {
                         code_pos: *i,
                         stack_frame: *stack_frame,
                         namespace: *current_ns,
-                    });
+                    }));
                     *i = offset.wrapping_sub(1);
                     *stack_frame = stack.len() as u32 - arg_count as u32;
                 }
                 &Instr::Ret => {
-                    let return_info = match return_stack.pop() {
-                        Some(ri) => ri,
-                        None => return Ok(false),
-                    };
+                    let return_info;
+                    loop {
+                        match utility_stack.pop() {
+                            None => return Ok(false),
+                            Some(UtilityStackItem::Return(r)) => {
+                                return_info = r;
+                                break;
+                            },
+                            Some(_) => {  }
+                        }
+                    }
+
                     let Return { code_pos, stack_frame: sf, namespace } = return_info;
 
                     *i = code_pos;
@@ -539,7 +663,7 @@ impl <S: State> Vm<S> {
 
         let &mut Vm {
             ref mut stack,
-            ref mut return_stack,
+            ref mut utility_stack,
             ref mut interner,
             ref mut globals,
             ref code,
@@ -550,8 +674,12 @@ impl <S: State> Vm<S> {
         let mut i = start_at as usize;
         while i < code.len(){
             /*
-            println!("STACK");
+            println!("\n\nSTACK");
             for value in stack.as_slice() {
+                println!("  {:?}", value);
+            }
+            println!("UTILITY-STACK");
+            for value in utility_stack.as_slice() {
                 println!("  {:?}", value);
             }
             println!("INSTRUCTIONS");
@@ -569,7 +697,7 @@ impl <S: State> Vm<S> {
                 &mut current_ns,
                 interner,
                 compile_context,
-                return_stack,
+                utility_stack,
                 state) {
 
                 Ok(true) => {}

@@ -1,0 +1,208 @@
+#test empty reset
+reset { }
+#bind
+RESET:
+    SYMBOLS:
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+            BODY:
+                BLOCK-STATEMENT:
+            BINDINGS:
+#emit
+CreateClosure(0)
+Jump(4)
+NilLit
+Ret
+Swap
+Reset(0)
+Execute(0)
+PopReset
+#result
+nil
+
+#test empty reset with symbols
+reset('a) {}
+#bind
+RESET:
+    SYMBOLS:
+        LITERAL:
+            'a
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+            BODY:
+                BLOCK-STATEMENT:
+            BINDINGS:
+#emit
+SymbolLit(Symbol(9))
+Reset(1)
+CreateClosure(0)
+Jump(6)
+NilLit
+Ret
+Execute(0)
+PopReset
+#result
+nil
+
+#test empty reset with multiple symbols
+reset('a, 'b, 'c) {}
+#bind
+RESET:
+    SYMBOLS:
+        LITERAL:
+            'a
+        LITERAL:
+            'b
+        LITERAL:
+            'c
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+            BODY:
+                BLOCK-STATEMENT:
+            BINDINGS:
+#emit
+SymbolLit(Symbol(9))
+SymbolLit(Symbol(10))
+SymbolLit(Symbol(11))
+Reset(3)
+CreateClosure(0)
+Jump(8)
+NilLit
+Ret
+Execute(0)
+PopReset
+#result
+nil
+
+#test reset with expr symbol
+reset(if true then 'a else 'b) {}
+#bind
+RESET:
+    SYMBOLS:
+        IF-EXPRESSION:
+            COND:
+                LITERAL:
+                    true
+            TRUE:
+                LITERAL:
+                    'a
+            FALSE:
+                LITERAL:
+                    'b
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+            BODY:
+                BLOCK-STATEMENT:
+            BINDINGS:
+#emit
+BoolLit(true)
+Ifn
+Jump(5)
+SymbolLit(Symbol(9))
+Jump(6)
+SymbolLit(Symbol(10))
+Reset(1)
+CreateClosure(0)
+Jump(11)
+NilLit
+Ret
+Execute(0)
+PopReset
+#result
+nil
+
+#test reset with body
+reset {
+    5
+}
+#bind
+RESET:
+    SYMBOLS:
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+            BODY:
+                BLOCK-EXPRESSION:
+                    LITERAL:
+                        5
+            BINDINGS:
+
+#emit
+Reset(0)
+CreateClosure(0)
+Jump(5)
+IntLit(5)
+Ret
+Execute(0)
+PopReset
+#result
+5
+
+#test reset with symbol and body
+reset('a) {
+    5
+}
+#bind
+RESET:
+    SYMBOLS:
+        LITERAL:
+            'a
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+            BODY:
+                BLOCK-EXPRESSION:
+                    LITERAL:
+                        5
+            BINDINGS:
+#emit
+SymbolLit(Symbol(9))
+Reset(1)
+CreateClosure(0)
+Jump(6)
+IntLit(5)
+Ret
+Execute(0)
+PopReset
+#result
+5

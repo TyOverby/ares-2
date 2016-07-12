@@ -230,7 +230,10 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                 }
             }
 
-            try!(emit(body, compile_context, out, Some(bindings)));
+            if !try!(emit(body, compile_context, out, Some(bindings))) {
+                // If the body was a statement, return nil
+                out.push(Instr::NilLit);
+            }
             out.push(Instr::Ret);
 
             let next = out.offset() as u32;
@@ -311,8 +314,41 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             }
             Ok(false)
         }
-        &Bound::ListLit(_, _) |
-        &Bound::MapLit(_, _) => unimplemented!(),
+        &Bound::Reset(ref symbols, ref closure, _) => {
+            /*
+            for symbol_expr in symbols {
+                try!(emit(symbol_expr, compile_context, out, inside_lambda));
+            }
+
+            try!(emit(closure, compile_context, out, inside_lambda));
+            out.push(Instr::Swap);
+            out.push(Instr::Reset(symbols.len() as u32));
+            out.push(Instr::Execute(0));
+            out.push(Instr::PopReset);
+
+            Ok(true)
+            */
+            unimplemented!();
+        }
+        &Bound::Shift(ref symbols, ref closure, _) => {
+            /*
+            for symbol_expr in symbols {
+                try!(emit(symbol_expr, compile_context, out, inside_lambda));
+            }
+
+            out.push(Instr::Shift(symbols.len() as u32));
+            try!(emit(closure, compile_context, out, inside_lambda));
+            out.push(Instr::Execute(1));
+            out.push(Instr::Swap);
+            out.push(Instr::JumpTo);
+
+            Ok(true)
+            */
+            unimplemented!();
+        }
+        &Bound::ListLit(..) |
+        &Bound::MapLit(..) 
+        => unimplemented!(),
     }
 }
 

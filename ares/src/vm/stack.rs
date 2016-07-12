@@ -66,6 +66,16 @@ impl Stack {
     }
 
     #[inline(always)]
+    pub fn split_off(&mut self, index: u32) -> Result<Vec<Value>, InterpError> {
+        // 0 1 2 3 4 5 | len = 6
+        //       ^     | index = 3
+        //             | number_to_pop = 3
+        println!("len: {}, idx: {}", self.len(), index);
+        let number_to_pop = self.len() - index;
+        self.pop_n(number_to_pop as usize)
+    }
+
+    #[inline(always)]
     pub fn pop(&mut self) -> Result<Value, InterpError> {
         use std::mem::{uninitialized, swap, transmute};
         self.pops += 1;
