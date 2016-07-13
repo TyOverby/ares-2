@@ -29,6 +29,14 @@
 | ./tests/comparison.artest/greater than 2                                     |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/comparison.artest/eq                                                 |                    |                    | :heavy_check_mark: |                    |
 | ./tests/comparison.artest/neq                                                |                    |                    | :heavy_check_mark: |                    |
+| ./tests/continuation.artest/no args reset                                    | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/no args reset with value                         | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/one arg reset no body                            | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/reset and shift                                  | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/nested resets                                    |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/nested resets with shift                         |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/nested resets with shift 2                       |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/nested shifts                                    |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/examples.artest/recursion                                            | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |                    |
 | ./tests/examples.artest/fibb                                                 |                    |                    | :heavy_check_mark: |                    |
 | ./tests/function_call.artest/anonymous function call                         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |

@@ -1,0 +1,229 @@
+#test no args reset
+reset {  }
+#bind
+RESET:
+    SYMBOLS:
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+            BODY:
+                BLOCK-STATEMENT:
+            BINDINGS:
+#result
+nil
+
+#test no args reset with value
+reset { 5 }
+#bind
+RESET:
+    SYMBOLS:
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+            BODY:
+                BLOCK-EXPRESSION:
+                    LITERAL:
+                        5
+            BINDINGS:
+#result
+5
+
+#test one arg reset no body
+reset('a) {}
+#bind
+RESET:
+    SYMBOLS:
+        LITERAL:
+            'a
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+            BODY:
+                BLOCK-STATEMENT:
+            BINDINGS:
+#result
+nil
+
+#test reset and shift
+print(1);
+reset('a) {
+    print(2);
+    shift('a) k { "done" };
+    print(3);
+}
+#bind
+FN-CALL:
+    RECEIVER:
+        SYMBOL:
+            NAME:
+                print
+            SOURCE:
+                GLOBAL:
+                    print
+    ARGS:
+        LITERAL:
+            1
+RESET:
+    SYMBOLS:
+        LITERAL:
+            'a
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+            BODY:
+                BLOCK-STATEMENT:
+                    FN-CALL:
+                        RECEIVER:
+                            SYMBOL:
+                                NAME:
+                                    print
+                                SOURCE:
+                                    GLOBAL:
+                                        print
+                        ARGS:
+                            LITERAL:
+                                2
+                    SHIFT:
+                        SYMBOLS:
+                            LITERAL:
+                                'a
+                        LAMBDA:
+                            LAMBDA:
+                                NUM-ARGS:
+                                    1
+                                NUM-UPVARS:
+                                    0
+                                NUM-DECLARATIONS:
+                                    0
+                                ARGS:
+                                    k
+                                BODY:
+                                    BLOCK-EXPRESSION:
+                                        LITERAL:
+                                            "done"
+                                BINDINGS:
+                                    BINDING:
+                                        SYMBOL:
+                                            k
+                                        SOURCE:
+                                            ARG:
+                                                0
+                    FN-CALL:
+                        RECEIVER:
+                            SYMBOL:
+                                NAME:
+                                    print
+                                SOURCE:
+                                    GLOBAL:
+                                        print
+                        ARGS:
+                            LITERAL:
+                                3
+            BINDINGS:
+#output
+1
+2
+#result
+done
+
+#test nested resets
+reset ('a) {
+    reset('b) {
+        10
+    }
+}
+#result
+10
+
+#test nested resets with shift
+print(1);
+reset ('a) {
+    print(2);
+    reset('b) {
+        print(3);
+        shift('a) k { "done" };
+        print(4);
+    };
+    print(5);
+}
+#output
+1
+2
+3
+#result
+done
+
+#test nested resets with shift 2
+print(1);
+reset ('a) {
+    print(2);
+    reset('b) {
+        print(3);
+        shift('b) k { "done" };
+        print(4);
+    };
+    print(5);
+    shift('a) k {
+        "inner"
+    };
+    print(4);
+    "outer"
+}
+#output
+1
+2
+3
+5
+#result
+inner
+
+#test nested shifts
+print(1);
+reset('a) {
+    print(2);
+    reset('b) {
+        print(3);
+        shift('b) k {
+            print(4);
+            shift('a) c {
+                print(5);
+                "inside"
+            };
+            print(5);
+        };
+        print(6);
+    };
+    print(7);
+};
+#output
+1
+2
+3
+4
+5
+#result
+inside

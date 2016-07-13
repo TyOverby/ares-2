@@ -315,36 +315,43 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             Ok(false)
         }
         &Bound::Reset(ref symbols, ref closure, _) => {
-            /*
+            try!(emit(closure, compile_context, out, inside_lambda));
+
             for symbol_expr in symbols {
                 try!(emit(symbol_expr, compile_context, out, inside_lambda));
             }
 
-            try!(emit(closure, compile_context, out, inside_lambda));
-            out.push(Instr::Swap);
             out.push(Instr::Reset(symbols.len() as u32));
             out.push(Instr::Execute(0));
             out.push(Instr::PopReset);
 
             Ok(true)
-            */
-            unimplemented!();
         }
         &Bound::Shift(ref symbols, ref closure, _) => {
-            /*
+
             for symbol_expr in symbols {
                 try!(emit(symbol_expr, compile_context, out, inside_lambda));
             }
-
             out.push(Instr::Shift(symbols.len() as u32));
             try!(emit(closure, compile_context, out, inside_lambda));
+
+            // at this point the stack looks like
+            // Int (jump here)
+            // Continuation
+            // Closure
             out.push(Instr::Execute(1));
+
+            // at this point the stack looks like
+            // Int (jump here)
+            // <return value>
             out.push(Instr::Swap);
+            
+            // at this point the stack looks like
+            // <return value>
+            // Int (jump here)
             out.push(Instr::JumpTo);
 
             Ok(true)
-            */
-            unimplemented!();
         }
         &Bound::ListLit(..) |
         &Bound::MapLit(..) 

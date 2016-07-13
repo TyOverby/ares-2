@@ -18,6 +18,7 @@ pub use vm::stack::*;
 pub use vm::module::*;
 pub use vm::function::*;
 pub use vm::continuation::*;
+pub use gc::Gc;
 
 use ares_syntax::*;
 
@@ -44,9 +45,7 @@ pub enum InterpError {
 pub struct Reset {
     symbols: Vec<Symbol>,
     instruction_pos: u32,
-    stack_pos: u32,
-    return_stack_pos: u32,
-    reset_stack_pos: u32,
+    stack_len: u32,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
@@ -327,72 +326,84 @@ impl <S: State> Vm<S> {
                 &Instr::Halt => {
                     return Ok(false)
                 }
-                &Instr::Reset(_n) => {
-                    /*
+                &Instr::Reset(n) => {
                     let n = n as usize;
                     let mut symbols = Vec::with_capacity(n);
                     for value in try!(stack.pop_n(n)) {
                         symbols.push(try!(value.expect_symbol()));
                     }
 
-                    let reset_stack_len = reset_stack.len();
-                    reset_stack.push(
-                        Reset {
-                            symbols: symbols,
-                            stack_pos: stack.len() - 1, // account for the closure on the stack
-                            return_stack_pos: return_stack.len() as u32,
-                            reset_stack_pos: reset_stack_len as u32,
-                            instruction_pos: *i as u32 + 3,
-                        });
-                    */
-                    unimplemented!();
+                    println!("at reset:\n {:?}", stack);
+
+
+                    utility_stack.push(UtilityStackItem::Reset(Reset {
+                        symbols: symbols,
+                        // -1 because we need to account for the "reset" closure
+                        // on the stack.
+                        stack_len: stack.len() - 1,
+                        // 0 would be this,
+                        // 1 would be execute,
+                        // 2 would be pop reset
+                        // 3 would be the next instruction
+                        instruction_pos: *i as u32 + 3, 
+                    }));
                 }
                 &Instr::PopReset => {
-                    /*
-                    reset_stack.pop().unwrap();
-                    */
-                    unimplemented!();
+                    match utility_stack.pop() {
+                        Some(UtilityStackItem::Reset(Reset {..})) => { }
+                        Some(_) => panic!("no reset found for pop reset"),
+                        None => panic!("empty utility stack"),
+                    }
                 }
-                &Instr::Shift(_n) => {
-                    /*
+                &Instr::Shift(n) => {
+                    fn symbols_intersect(xs: &[Symbol], ys: &[Symbol]) -> bool {
+                        for &x in xs {
+                            if ys.iter().any(|&y| x == y) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+
                     let n = n as usize;
                     let mut shifting_symbols = Vec::with_capacity(n);
                     for value in try!(stack.pop_n(n)) {
                         shifting_symbols.push(try!(value.expect_symbol()));
                     }
 
-                    let mut index = None;
-                    for (i, &Reset{ref symbols, ..}) in reset_stack.iter().enumerate().rev() {
-                        for &shifting_symbol in &shifting_symbols {
-                            if symbols.iter().any(|&s| s == shifting_symbol) {
-                                index = Some(i);
-                                break;
+                    let mut saved_utility_stack = Vec::new();
+                    let mut saved_instruction_pos: u32;
+                    let mut saved_stack_len: u32;
+
+                    loop {
+                        let next = utility_stack.pop().expect("ran out of items on the utility stack");
+                        match next {
+                            UtilityStackItem::Reset(r) => {
+                                let done = symbols_intersect(&r.symbols, &shifting_symbols);
+                                saved_stack_len = r.stack_len;
+                                saved_instruction_pos = r.instruction_pos;
+                                saved_utility_stack.push(UtilityStackItem::Reset(r));
+                                if done {
+                                    break;
+                                }
+                            }
+                            UtilityStackItem::Return(r) => {
+                                saved_utility_stack.push(UtilityStackItem::Return(r));
                             }
                         }
                     }
 
-                    let index = match index {
-                        Some(i) => i,
-                        // TODO: DONT PANIC :thumb:
-                        None => panic!("no reset found for shift {:?}", shifting_symbols)
-                    };
+                    saved_utility_stack.reverse();
 
-                    let Reset{ stack_pos, return_stack_pos, instruction_pos, ..} = reset_stack[index];
-                    let inner_stack = try!(stack.split_off(stack_pos));
-                    let inner_resets = reset_stack.split_off(index);
-                    let inner_return_stack = return_stack.split_off(return_stack_pos as usize);
-
+                    let saved_stack = try!(stack.keep(saved_stack_len));
                     let cont = Continuation {
                         instruction_pos: *i as u32,
-                        stack: inner_stack,
-                        reset_stack: inner_resets,
-                        return_stack: inner_return_stack,
+                        saved_stack: saved_stack,
+                        saved_utility_stack: saved_utility_stack,
                     };
 
-                    // *i = instruction_pos as usize + 1;
-                    try!(stack.push(Value::Int(instruction_pos as i64)));
+                    try!(stack.push(Value::Int(saved_instruction_pos as i64)));
                     try!(stack.push(Value::Continuation(Gc::new(cont))));
-                    */
                 }
                 &Instr::Nop => {}
                 &Instr::Print => {
@@ -580,7 +591,9 @@ impl <S: State> Vm<S> {
                                 try!(stack.push(Value::Nil));
                             }
                         }
-                        Value::Continuation(ref c) => {
+                        Value::Continuation(ref _c) => {
+                            unimplemented!();
+                            /*
                             let &Continuation{
                                 instruction_pos,
                                 ref saved_stack,
@@ -596,6 +609,7 @@ impl <S: State> Vm<S> {
                             }
 
                             *i = instruction_pos as usize + 1;
+                            */
                         }
                         o => panic!("tried to call {:?}", o),
                     }
@@ -686,7 +700,8 @@ impl <S: State> Vm<S> {
             for (k, instr) in code.iter().enumerate() {
                 let padding = if i == k { "> " } else { "  " };
                 println!("{:02}{}{:?}", k, padding, instr);
-            }*/
+            }
+            */
 
             match step::<S>(
                 &mut i,
