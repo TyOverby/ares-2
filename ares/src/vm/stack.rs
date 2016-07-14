@@ -70,7 +70,6 @@ impl Stack {
         // 0 1 2 3 4 5 | len = 6
         //       ^     | n = 3
         //             | number_to_pop = 3
-        println!("len: {}, n: {}", self.len(), n);
         let number_to_pop = self.len() - n;
         self.pop_n(number_to_pop as usize)
     }

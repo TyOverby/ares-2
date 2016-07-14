@@ -332,6 +332,8 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             for symbol_expr in symbols {
                 try!(emit(symbol_expr, compile_context, out, inside_lambda));
             }
+            let (s, f) = out.standin();
+            out.push_standin(s);
             out.push(Instr::Shift(symbols.len() as u32));
             try!(emit(closure, compile_context, out, inside_lambda));
 
@@ -350,6 +352,9 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             // <return value>
             // Int (jump here)
             out.push(Instr::JumpTo);
+
+            let cur_len = out.offset() as i64;
+            out.fulfill(f, compile_context.add_constant(cur_len.into()));
 
             Ok(true)
         }

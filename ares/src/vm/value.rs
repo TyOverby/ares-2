@@ -228,7 +228,7 @@ pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
         &Value::Bool(b) => format!("{}", b),
         &Value::Symbol(s) => format!("'{}", interner.lookup_or_anon(s)),
         &Value::Closure(_) => format!("<Closure>"),
-        &Value::Continuation(_) => format!("<Continuation>"),
+        &Value::Continuation(ref c) => format!("<Continuation {:?}>", c),
         &Value::UserFn(ref f) => {
             let f = f.borrow();
             let name = f.name().unwrap_or("{anon}");

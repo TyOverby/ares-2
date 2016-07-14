@@ -333,9 +333,6 @@ impl <S: State> Vm<S> {
                         symbols.push(try!(value.expect_symbol()));
                     }
 
-                    println!("at reset:\n {:?}", stack);
-
-
                     utility_stack.push(UtilityStackItem::Reset(Reset {
                         symbols: symbols,
                         // -1 because we need to account for the "reset" closure
@@ -364,6 +361,8 @@ impl <S: State> Vm<S> {
                         }
                         return false;
                     }
+
+                    let resume_at = try!(try!(stack.pop()).expect_int());
 
                     let n = n as usize;
                     let mut shifting_symbols = Vec::with_capacity(n);
@@ -397,7 +396,7 @@ impl <S: State> Vm<S> {
 
                     let saved_stack = try!(stack.keep(saved_stack_len));
                     let cont = Continuation {
-                        instruction_pos: *i as u32,
+                        instruction_pos: resume_at as u32,
                         saved_stack: saved_stack,
                         saved_utility_stack: saved_utility_stack,
                     };
@@ -591,25 +590,42 @@ impl <S: State> Vm<S> {
                                 try!(stack.push(Value::Nil));
                             }
                         }
-                        Value::Continuation(ref _c) => {
-                            unimplemented!();
-                            /*
+                        Value::Continuation(ref c) => {
                             let &Continuation{
                                 instruction_pos,
                                 ref saved_stack,
                                 ref saved_utility_stack,
                             } = &**c;
 
+                            // The continuation can be resumed with either 0 args or
+                            // 1 argument.  If we have no args passed, resume with
+                            // a nil.
+                            let arg = if arg_count == 1 {
+                                try!(stack.pop())
+                            } else {
+                                Value::Nil
+                            };
+
                             for v in saved_stack {
                                 try!(stack.push(v.clone()));
                             }
 
-                            for r in saved_utility_stack {
-                                utility_stack.push(r.clone());
+                            try!(stack.push(arg));
+
+                            for (k, r) in saved_utility_stack.into_iter().enumerate() {
+                                if k == 1 {
+                                    if let &UtilityStackItem::Return(mut r) = r {
+                                        r.code_pos = *i + 1;
+                                        utility_stack.push(UtilityStackItem::Return(r));
+                                    } else {
+                                        panic!("didn't find a return at offset 1");
+                                    }
+                                } else {
+                                    utility_stack.push(r.clone());
+                                }
                             }
 
-                            *i = instruction_pos as usize + 1;
-                            */
+                            *i = (instruction_pos as usize).wrapping_sub(1);
                         }
                         o => panic!("tried to call {:?}", o),
                     }
