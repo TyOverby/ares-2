@@ -8,6 +8,7 @@ mod function;
 mod test;
 
 use std::marker::PhantomData;
+use std::cell::RefCell;
 
 use compiler::CompileContext;
 use host::{State, EphemeralContext};
@@ -41,30 +42,18 @@ pub enum InterpError {
     UserFnWithWrongStateType,
 }
 
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct Reset {
-    symbols: Vec<Symbol>,
-    instruction_pos: u32,
-    stack_len: u32,
-}
-
-#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Return {
     code_pos: usize,
     stack_frame: u32,
-    namespace: Symbol
-}
-
-#[derive(Debug, Eq, PartialEq, Clone)]
-pub enum UtilityStackItem {
-    Reset(Reset),
-    Return(Return),
+    namespace: Symbol,
+    reset_symbols: Option<Vec<Symbol>>
 }
 
 #[derive(Debug)]
 pub struct Vm<S: State = ()> {
     pub(crate) stack: Stack,
-    pub(crate) utility_stack: Vec<UtilityStackItem>,
+    pub(crate) return_stack: Vec<Return>,
     pub(crate) interner: SymbolIntern,
     pub(crate) globals: Modules,
     pub(crate) code: Vec<Instr>,
@@ -96,8 +85,6 @@ pub enum Instr {
     /// Pops n symbols off the stack and pushes it
     /// into the reset stack.
     Reset(u32),
-    /// Pops most recent reset off the stack.
-    PopReset,
     /// Pops a symbol off the stack and shifts on
     /// that symbol.
     Shift(u32),
@@ -209,7 +196,7 @@ impl <S: State> Vm<S> {
     pub fn new() -> Vm<S> {
         Vm {
             stack: Stack::new(),
-            utility_stack: Vec::new(),
+            return_stack: Vec::new(),
             interner: SymbolIntern::new(),
             globals: Modules::new(),
             code: Vec::new(),
@@ -243,7 +230,7 @@ impl <S: State> Vm<S> {
             current_ns: &mut Symbol,
             interner: &mut SymbolIntern,
             compile_context: &CompileContext,
-            utility_stack: &mut Vec<UtilityStackItem>,
+            return_stack: &mut Vec<Return>,
             state: &mut S) -> Result<bool, InterpError> {
 
             let current_instruction = &code[*i];
@@ -333,24 +320,8 @@ impl <S: State> Vm<S> {
                         symbols.push(try!(value.expect_symbol()));
                     }
 
-                    utility_stack.push(UtilityStackItem::Reset(Reset {
-                        symbols: symbols,
-                        // -1 because we need to account for the "reset" closure
-                        // on the stack.
-                        stack_len: stack.len() - 1,
-                        // 0 would be this,
-                        // 1 would be execute,
-                        // 2 would be pop reset
-                        // 3 would be the next instruction
-                        instruction_pos: *i as u32 + 3, 
-                    }));
-                }
-                &Instr::PopReset => {
-                    match utility_stack.pop() {
-                        Some(UtilityStackItem::Reset(Reset {..})) => { }
-                        Some(_) => panic!("no reset found for pop reset"),
-                        None => panic!("empty utility stack"),
-                    }
+                    let closure = try!(try!(stack.peek()).expect_closure_mut());
+                    *closure.reset_symbols.borrow_mut() = Some(symbols);
                 }
                 &Instr::Shift(n) => {
                     fn symbols_intersect(xs: &[Symbol], ys: &[Symbol]) -> bool {
@@ -370,38 +341,38 @@ impl <S: State> Vm<S> {
                         shifting_symbols.push(try!(value.expect_symbol()));
                     }
 
-                    let mut saved_utility_stack = Vec::new();
-                    let mut saved_instruction_pos: u32;
-                    let mut saved_stack_len: u32;
+                    let mut saved_return_stack = Vec::new();
+                    let saved_instruction_pos: u32;
+                    let saved_stack_len: u32;
 
                     loop {
-                        let next = utility_stack.pop().expect("ran out of items on the utility stack");
-                        match next {
-                            UtilityStackItem::Reset(r) => {
-                                let done = symbols_intersect(&r.symbols, &shifting_symbols);
-                                saved_stack_len = r.stack_len;
-                                saved_instruction_pos = r.instruction_pos;
-                                saved_utility_stack.push(UtilityStackItem::Reset(r));
-                                if done {
-                                    break;
-                                }
-                            }
-                            UtilityStackItem::Return(r) => {
-                                saved_utility_stack.push(UtilityStackItem::Return(r));
-                            }
+                        let next = return_stack.pop().expect("ran out of items on the utility stack");
+                        let done = match &next.reset_symbols {
+                            &Some(ref s) => symbols_intersect(s, &shifting_symbols),
+                            &None => false
+                        };
+
+                        if done {
+                            saved_stack_len = next.stack_frame;
+                            saved_instruction_pos = next.code_pos as u32;
+                            saved_return_stack.push(next);
+                            break;
+                        } else {
+                            saved_return_stack.push(next);
                         }
                     }
 
-                    saved_utility_stack.reverse();
+                    saved_return_stack.reverse();
 
                     let saved_stack = try!(stack.keep(saved_stack_len));
+
                     let cont = Continuation {
                         instruction_pos: resume_at as u32,
                         saved_stack: saved_stack,
-                        saved_utility_stack: saved_utility_stack,
+                        saved_return_stack: saved_return_stack,
                     };
 
-                    try!(stack.push(Value::Int(saved_instruction_pos as i64)));
+                    try!(stack.push(Value::Int((saved_instruction_pos + 1)as i64)));
                     try!(stack.push(Value::Continuation(Gc::new(cont))));
                 }
                 &Instr::Nop => {}
@@ -446,6 +417,7 @@ impl <S: State> Vm<S> {
                     *slot = value;
                 }
                 &Instr::GetGlobal(symbol) => {
+                    //println!("globals: {:#?}", globals);
                     if let Some(value) = globals.get(*current_ns, symbol).cloned() {
                         try!(stack.push(value));
                     } else {
@@ -573,11 +545,12 @@ impl <S: State> Vm<S> {
                                 });
                             }
 
-                            utility_stack.push(UtilityStackItem::Return(Return {
+                            return_stack.push(Return {
                                 code_pos: *i,
                                 stack_frame: *stack_frame,
                                 namespace: *current_ns,
-                            }));
+                                reset_symbols: closure.reset_symbols.borrow().clone(),
+                            });
 
                             *i = code_pos.wrapping_sub(1);
                             *stack_frame = stack.len() as u32 - arg_count as u32;
@@ -594,7 +567,7 @@ impl <S: State> Vm<S> {
                             let &Continuation{
                                 instruction_pos,
                                 ref saved_stack,
-                                ref saved_utility_stack,
+                                ref saved_return_stack,
                             } = &**c;
 
                             // The continuation can be resumed with either 0 args or
@@ -612,29 +585,32 @@ impl <S: State> Vm<S> {
 
                             try!(stack.push(arg));
 
-                            for (k, r) in saved_utility_stack.into_iter().enumerate() {
-                                if k == 1 {
-                                    if let &UtilityStackItem::Return(mut r) = r {
-                                        r.code_pos = *i + 1;
-                                        utility_stack.push(UtilityStackItem::Return(r));
-                                    } else {
-                                        panic!("didn't find a return at offset 1");
-                                    }
+                            let mut first_stack_frame = 0;
+                            let mut last_stack_frame = 0;
+                            for (k, r) in saved_return_stack.into_iter().enumerate() {
+                                let mut r = r.clone();
+                                if k == 0 {
+                                    r.code_pos = *i;
+                                    first_stack_frame = r.stack_frame;
+                                    r.stack_frame = *stack_frame;
                                 } else {
-                                    utility_stack.push(r.clone());
+                                    r.stack_frame = *stack_frame + (r.stack_frame - first_stack_frame);
+                                    last_stack_frame = r.stack_frame;
                                 }
+                                return_stack.push(r);
                             }
 
                             *i = (instruction_pos as usize).wrapping_sub(1);
+                            *stack_frame = last_stack_frame;
                         }
-                        o => panic!("tried to call {:?}", o),
+                        o => panic!("tried to call value ({:?})", o),
                     }
                 }
                 &Instr::CreateClosure(class_id) => {
                     let class = compile_context.get_lambda_class(class_id);
                     let upvar_nums = class.upvars_count;
                     let values = try!(stack.pop_n(upvar_nums as usize));
-                    let instance = Closure { class: class, upvars: values};
+                    let instance = Closure { class: class, upvars: values, reset_symbols: RefCell::new(None)};
                     try!(stack.push(instance.into()));
                 }
                 &Instr::ExecuteN => {
@@ -643,28 +619,22 @@ impl <S: State> Vm<S> {
                 &Instr::Call(position) => {
                     let arg_count = try!(try!(stack.pop()).expect_int());
                     let offset = position as usize;
-                    utility_stack.push(UtilityStackItem::Return(Return {
+                    return_stack.push(Return {
                         code_pos: *i,
                         stack_frame: *stack_frame,
                         namespace: *current_ns,
-                    }));
+                        reset_symbols: None,
+                    });
                     *i = offset.wrapping_sub(1);
                     *stack_frame = stack.len() as u32 - arg_count as u32;
                 }
                 &Instr::Ret => {
-                    let return_info;
-                    loop {
-                        match utility_stack.pop() {
-                            None => return Ok(false),
-                            Some(UtilityStackItem::Return(r)) => {
-                                return_info = r;
-                                break;
-                            },
-                            Some(_) => {  }
-                        }
-                    }
+                    let return_info = match return_stack.pop() {
+                        None => return Ok(false),
+                        Some(r) => r,
+                    };
 
-                    let Return { code_pos, stack_frame: sf, namespace } = return_info;
+                    let Return { code_pos, stack_frame: sf, namespace, .. } = return_info;
 
                     *i = code_pos;
                     let return_value = try!(stack.pop());
@@ -693,7 +663,7 @@ impl <S: State> Vm<S> {
 
         let &mut Vm {
             ref mut stack,
-            ref mut utility_stack,
+            ref mut return_stack,
             ref mut interner,
             ref mut globals,
             ref code,
@@ -708,8 +678,8 @@ impl <S: State> Vm<S> {
             for value in stack.as_slice() {
                 println!("  {:?}", value);
             }
-            println!("UTILITY-STACK");
-            for value in utility_stack.as_slice() {
+            println!("RETURN-STACK");
+            for value in return_stack.as_slice() {
                 println!("  {:?}", value);
             }
             println!("INSTRUCTIONS");
@@ -728,7 +698,7 @@ impl <S: State> Vm<S> {
                 &mut current_ns,
                 interner,
                 compile_context,
-                utility_stack,
+                return_stack,
                 state) {
 
                 Ok(true) => {}

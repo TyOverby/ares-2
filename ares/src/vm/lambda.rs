@@ -1,5 +1,7 @@
 use gc::Trace;
 use vm::Value;
+use ares_syntax::Symbol;
+use std::cell::RefCell;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct ClosureClass {
@@ -14,6 +16,7 @@ pub struct ClosureClass {
 pub struct Closure {
     pub class: ClosureClass,
     pub upvars: Vec<Value>,
+    pub reset_symbols: RefCell<Option<Vec<Symbol>>>,
 }
 
 unsafe impl Trace for Closure {

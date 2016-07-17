@@ -227,7 +227,7 @@ pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
         &Value::String(ref s) => (&**s).clone(),
         &Value::Bool(b) => format!("{}", b),
         &Value::Symbol(s) => format!("'{}", interner.lookup_or_anon(s)),
-        &Value::Closure(_) => format!("<Closure>"),
+        &Value::Closure(ref c) => format!("<Closure {:?}>", c),
         &Value::Continuation(ref c) => format!("<Continuation {:?}>", c),
         &Value::UserFn(ref f) => {
             let f = f.borrow();
@@ -327,7 +327,7 @@ impl ::std::hash::Hash for Value {
             &Value::Continuation(ref c) => {
                 c.instruction_pos.hash(state);
                 c.saved_stack.len().hash(state);
-                c.saved_utility_stack.len().hash(state);
+                c.saved_return_stack.len().hash(state);
             }
             &Value::Closure(ref c) => state.write_usize(unsafe {transmute(&*c)}),
             &Value::UserFn(ref f) => {

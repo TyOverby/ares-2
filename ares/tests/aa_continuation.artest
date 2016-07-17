@@ -227,3 +227,73 @@ reset('a) {
 5
 #result
 inside
+
+#test resume 1
+var x = reset('a) {
+    print(1);
+    shift('a) k { k };
+    print(2);
+};
+print("inbetween");
+x();
+#output
+1
+inbetween
+2
+
+#test resume 2
+var x = reset('a) {
+    print(1);
+    shift('a) k { k };
+    print(2);
+    shift('a) k { k };
+    print(3);
+};
+print("inbetween");
+var c = x();
+print("inbetween");
+c();
+#output
+1
+inbetween
+2
+inbetween
+3
+
+#test pauses
+var pause = fn() {
+    print("paused");
+    shift('a) k { k };
+};
+
+var k = reset('a) {
+    print(1);
+    pause();
+    print(2);
+    pause();
+    print(3);
+    "done"
+};
+
+var g = k();
+var h = g();
+h
+#output
+1
+paused
+2
+paused
+3
+#result
+done
+
+#test resume with value
+var k = reset('a) {
+    var a = shift('a) k { k };
+    var b = shift('a) k { k };
+    a + b
+};
+print(k(1)(2));
+
+#test stack messiness
+1 + (reset('a) { shift('a) k { k } })(3)

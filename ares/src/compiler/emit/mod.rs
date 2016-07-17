@@ -323,15 +323,14 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
 
             out.push(Instr::Reset(symbols.len() as u32));
             out.push(Instr::Execute(0));
-            out.push(Instr::PopReset);
 
             Ok(true)
         }
         &Bound::Shift(ref symbols, ref closure, _) => {
-
             for symbol_expr in symbols {
                 try!(emit(symbol_expr, compile_context, out, inside_lambda));
             }
+
             let (s, f) = out.standin();
             out.push_standin(s);
             out.push(Instr::Shift(symbols.len() as u32));

@@ -1,11 +1,11 @@
 use gc::Trace;
-use vm::{Value, UtilityStackItem};
+use vm::{Value, Return};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Continuation {
     pub instruction_pos: u32,
     pub saved_stack: Vec<Value>,
-    pub saved_utility_stack: Vec<UtilityStackItem>,
+    pub saved_return_stack: Vec<Return>,
 }
 
 unsafe impl Trace for Continuation {

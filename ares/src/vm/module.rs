@@ -45,6 +45,7 @@ impl Modules {
 
     pub fn set(&mut self, namespace: Symbol, name: Symbol, value: Value) -> Option<Value> {
         use ::std::mem::swap;
+
         let mut value = value;
         if let Some(existing) = self.get_mut(namespace, name) {
             swap(&mut value, existing);

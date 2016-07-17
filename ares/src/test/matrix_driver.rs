@@ -92,7 +92,7 @@ pub fn assert_compilation_steps(
             }
         };
 
-        assert!(ctx.vm.utility_stack.len() == 0);
+        assert!(ctx.vm.return_stack.len() == 0);
 
         if let Some(expected_output) = output {
             assert_eq!(expected_output.lines().map(String::from).collect::<Vec<_>>(), actual_output);
