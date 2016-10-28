@@ -1,9 +1,6 @@
-mod lambda;
 mod value;
-mod stack;
-mod module;
-mod continuation;
-mod function;
+mod util;
+mod concept;
 #[cfg(test)]
 mod test;
 
@@ -14,11 +11,11 @@ use compiler::CompileContext;
 use host::{State, EphemeralContext};
 
 pub use vm::value::*;
-pub use vm::lambda::*;
-pub use vm::stack::*;
-pub use vm::module::*;
-pub use vm::function::*;
-pub use vm::continuation::*;
+pub use vm::concept::lambda::*;
+pub use vm::util::stack::*;
+pub use vm::util::module::*;
+pub use vm::concept::function::*;
+pub use vm::concept::continuation::*;
 pub use gc::Gc;
 
 use ares_syntax::*;

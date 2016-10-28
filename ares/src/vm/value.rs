@@ -3,7 +3,7 @@ use std::ops::Deref;
 use std::collections::HashMap;
 use ares_syntax::{Symbol, SymbolIntern};
 use vm::{InterpError, Closure, Continuation};
-use vm::function::UserFunction;
+use vm::concept::function::UserFunction;
 
 macro_rules! gen_expect {
     ($self_fn: ident, $ref_fn: ident, $mut_fn: ident, $selector: path, $out: ty, $expected: expr) => {

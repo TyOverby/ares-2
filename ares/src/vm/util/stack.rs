@@ -1,4 +1,4 @@
-use super::*;
+use vm::*;
 pub struct Stack {
     capacity: usize,
     size: usize,
