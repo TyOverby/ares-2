@@ -10,6 +10,7 @@ pub struct ClosureClass {
     pub local_defines_count: u32,
     pub upvars_count: u32,
     pub has_rest_params: bool,
+    pub namespace: Symbol,
 }
 
 #[derive(Debug, PartialEq, Clone)]

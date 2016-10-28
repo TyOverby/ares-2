@@ -28,7 +28,7 @@ pub fn compile(source: &str,
     let asts: Vec<&parse::Ast> = asts.into_iter().map(|a| ast_arena.alloc(a) as &_).collect();
     let bounds = try!(binding::Bound::bind_top(&asts, &bound_arena, modules, interner));
 
-    try!(emit::emit_all(bounds, compile_context, &mut out, None));
+    try!(emit::emit_all(bounds, compile_context, interner, &mut out, None));
 
     Ok(out.into_instructions())
 }

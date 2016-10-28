@@ -1,11 +1,11 @@
 use gc::Trace;
-use vm::{Value, Return};
+use vm::{Value, Frame};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Continuation {
     pub instruction_pos: u32,
     pub saved_stack: Vec<Value>,
-    pub saved_return_stack: Vec<Return>,
+    pub saved_return_stack: Vec<Frame>,
 }
 
 unsafe impl Trace for Continuation {

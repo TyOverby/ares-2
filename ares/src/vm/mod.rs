@@ -43,8 +43,8 @@ pub enum InterpError {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub struct Return {
-    code_pos: usize,
+pub struct Frame {
+    resume_code_pos: usize,
     stack_frame: u32,
     namespace: Symbol,
     reset_symbols: Option<Vec<Symbol>>
@@ -53,7 +53,7 @@ pub struct Return {
 #[derive(Debug)]
 pub struct Vm<S: State = ()> {
     pub(crate) stack: Stack,
-    pub(crate) return_stack: Vec<Return>,
+    pub(crate) frames: Vec<Frame>,
     pub(crate) interner: SymbolIntern,
     pub(crate) globals: Modules,
     pub(crate) code: Vec<Instr>,
@@ -196,10 +196,10 @@ impl <S: State> Vm<S> {
     pub fn new() -> Vm<S> {
         Vm {
             stack: Stack::new(),
-            return_stack: Vec::new(),
-            interner: SymbolIntern::new(),
+            frames: vec![],
             globals: Modules::new(),
             code: Vec::new(),
+            interner: SymbolIntern::new(),
             compile_context: ::compiler::CompileContext::new(),
             last_code_position: 0,
             _phantom: PhantomData,
@@ -208,16 +208,22 @@ impl <S: State> Vm<S> {
 
     pub fn load_and_execute(&mut self, code: &[Instr], arg_count: u32, state: &mut S) -> Result<(), InterpError> {
         let start = self.code.len() as u32;
-        let stackframe = self.stack.len() - arg_count;
         let default_ns = self.interner.precomputed.default_namespace;
+
+        let base_frame = Frame {
+            resume_code_pos: 0,
+            stack_frame: self.stack.len() - arg_count,
+            namespace: default_ns,
+            reset_symbols: None,
+        };
+        self.frames.push(base_frame);
+
         self.code.extend(code.iter().cloned());
-        self.execute(start, stackframe, default_ns, state)
+        self.execute(start, state)
     }
 
     fn execute(&mut self,
                    start_at: u32,
-                   mut stack_frame: u32,
-                   mut current_ns: Symbol,
                    state: &mut S)
                    -> Result<(), InterpError> {
         #[inline(always)]
@@ -225,12 +231,10 @@ impl <S: State> Vm<S> {
             i: &mut usize,
             code: &[Instr],
             stack: &mut Stack,
-            stack_frame: &mut u32,
             globals: &mut Modules,
-            current_ns: &mut Symbol,
             interner: &mut SymbolIntern,
             compile_context: &CompileContext,
-            return_stack: &mut Vec<Return>,
+            frames: &mut Vec<Frame>,
             state: &mut S) -> Result<bool, InterpError> {
 
             let current_instruction = &code[*i];
@@ -323,7 +327,7 @@ impl <S: State> Vm<S> {
                     let closure = try!(try!(stack.peek()).expect_closure_mut());
                     *closure.reset_symbols.borrow_mut() = Some(symbols);
                 }
-                &Instr::Shift(n) => {
+                &Instr::Shift(_n) => {
                     fn symbols_intersect(xs: &[Symbol], ys: &[Symbol]) -> bool {
                         for &x in xs {
                             if ys.iter().any(|&y| x == y) {
@@ -333,6 +337,7 @@ impl <S: State> Vm<S> {
                         return false;
                     }
 
+                    /*
                     let resume_at = try!(try!(stack.pop()).expect_int());
 
                     let n = n as usize;
@@ -346,7 +351,7 @@ impl <S: State> Vm<S> {
                     let saved_stack_len: u32;
 
                     loop {
-                        let next = return_stack.pop().expect("ran out of items on the utility stack");
+                        let next = frames.pop().expect("ran out of items on the utility stack");
                         let done = match &next.reset_symbols {
                             &Some(ref s) => symbols_intersect(s, &shifting_symbols),
                             &None => false
@@ -374,17 +379,18 @@ impl <S: State> Vm<S> {
 
                     try!(stack.push(Value::Int((saved_instruction_pos + 1)as i64)));
                     try!(stack.push(Value::Continuation(Gc::new(cont))));
+                    */
                 }
                 &Instr::Nop => {}
                 &Instr::Print => {
                     println!("{:?}", try!(stack.peek()));
                 }
                 &Instr::Dbg => {
-                    print!("{:?} - ", &stack.as_slice()[.. *stack_frame as usize]);
-                    println!("{:?}", &stack.as_slice()[*stack_frame as usize..]);
+                    print!("{:?} - ", &stack.as_slice()[.. frames.last().unwrap().stack_frame as usize]);
+                    println!("{:?}", &stack.as_slice()[frames.last().unwrap().stack_frame as usize..]);
                 }
                 &Instr::Dup(stack_pos) => {
-                    let value = try!(stack.peek_n_up(*stack_frame as usize + stack_pos as usize))
+                    let value = try!(stack.peek_n_up(frames.last().unwrap().stack_frame as usize + stack_pos as usize))
                                     .clone();
                     try!(stack.push(value));
                 }
@@ -394,7 +400,7 @@ impl <S: State> Vm<S> {
                 }
                 &Instr::SetCell(frame_pos) => {
                     let value = try!(stack.pop());
-                    let cell = try!(stack.peek_n_up(*stack_frame as usize + frame_pos as usize));
+                    let cell = try!(stack.peek_n_up(frames.last().unwrap().stack_frame as usize + frame_pos as usize));
                     let cell = try!(cell.expect_cell_ref());
                     let mut borrow = cell.borrow_mut();
                     *borrow = value;
@@ -418,7 +424,7 @@ impl <S: State> Vm<S> {
                 }
                 &Instr::GetGlobal(symbol) => {
                     //println!("globals: {:#?}", globals);
-                    if let Some(value) = globals.get(*current_ns, symbol).cloned() {
+                    if let Some(value) = globals.get(frames.last().unwrap().namespace, symbol).cloned() {
                         try!(stack.push(value));
                     } else {
                         return Err(InterpError::VariableNotFound(
@@ -427,11 +433,11 @@ impl <S: State> Vm<S> {
                 }
                 &Instr::PutGlobal(symbol) => {
                     let value = try!(stack.pop());
-                    globals.set(*current_ns, symbol, value);
+                    globals.set(frames.last().unwrap().namespace, symbol, value);
                 }
                 &Instr::Assign(frame_pos) => {
                     let value = try!(stack.pop());
-                    let cell = try!(stack.peek_n_up(*stack_frame as usize + frame_pos as usize));
+                    let cell = try!(stack.peek_n_up(frames.last().unwrap().stack_frame as usize + frame_pos as usize));
                     *cell = value;
                 }
                 &Instr::Pop => {
@@ -535,6 +541,7 @@ impl <S: State> Vm<S> {
                             let code_pos = closure.class.code_offset as usize;
                             let expected_arg_count = closure.class.arg_count;
                             let local_defines_count = closure.class.local_defines_count;
+                            let new_namespace = closure.class.namespace;
 
                             if closure.class.has_rest_params { unimplemented!(); }
 
@@ -545,15 +552,22 @@ impl <S: State> Vm<S> {
                                 });
                             }
 
-                            return_stack.push(Return {
-                                code_pos: *i,
-                                stack_frame: *stack_frame,
-                                namespace: *current_ns,
+                            {
+                                let last_item_on_stack = frames.last_mut().unwrap();
+                                last_item_on_stack.resume_code_pos = *i;
+                            }
+
+                            println!("{:?}", stack);
+                            println!("len: {}, ac: {}", stack.len(), arg_count);
+
+                            frames.push(Frame {
+                                resume_code_pos: 0,
+                                stack_frame: stack.len() as u32 - arg_count as u32,
+                                namespace: new_namespace, //
                                 reset_symbols: closure.reset_symbols.borrow().clone(),
                             });
 
                             *i = code_pos.wrapping_sub(1);
-                            *stack_frame = stack.len() as u32 - arg_count as u32;
 
                             for v in &closure.upvars {
                                 try!(stack.push(v.clone()));
@@ -563,7 +577,8 @@ impl <S: State> Vm<S> {
                                 try!(stack.push(Value::Nil));
                             }
                         }
-                        Value::Continuation(ref c) => {
+                        Value::Continuation(ref _c) => {
+                            /*
                             let &Continuation{
                                 instruction_pos,
                                 ref saved_stack,
@@ -602,6 +617,7 @@ impl <S: State> Vm<S> {
 
                             *i = (instruction_pos as usize).wrapping_sub(1);
                             *stack_frame = last_stack_frame;
+                            */
                         }
                         o => panic!("tried to call value ({:?})", o),
                     }
@@ -619,29 +635,38 @@ impl <S: State> Vm<S> {
                 &Instr::Call(position) => {
                     let arg_count = try!(try!(stack.pop()).expect_int());
                     let offset = position as usize;
-                    return_stack.push(Return {
-                        code_pos: *i,
-                        stack_frame: *stack_frame,
-                        namespace: *current_ns,
+                    let ns = frames.last().unwrap().namespace;
+
+                    {
+                        frames.last_mut().unwrap().resume_code_pos = *i;
+                    }
+
+                    frames.push(Frame {
+                        resume_code_pos: 0,
+                        stack_frame: stack.len() as u32 - arg_count as u32,
+                        namespace: ns,
                         reset_symbols: None,
                     });
+
                     *i = offset.wrapping_sub(1);
-                    *stack_frame = stack.len() as u32 - arg_count as u32;
                 }
                 &Instr::Ret => {
-                    let return_info = match return_stack.pop() {
-                        None => return Ok(false),
-                        Some(r) => r,
-                    };
+                    let cur = frames.pop().unwrap();
+                    let truncate_to = cur.stack_frame;
+                    if frames.len() == 0 {
+                        return Ok(false);
+                    }
 
-                    let Return { code_pos, stack_frame: sf, namespace, .. } = return_info;
+                    let &Frame { resume_code_pos, .. } = frames.last().unwrap();
 
-                    *i = code_pos;
+                    *i = resume_code_pos;
+                    println!("ret to {}", *i);
                     let return_value = try!(stack.pop());
-                    try!(stack.truncate(*stack_frame as usize));
+
+                    println!("truncating to {}", truncate_to);
+                    try!(stack.truncate(truncate_to as usize));
+
                     try!(stack.push(return_value));
-                    *stack_frame = sf;
-                    *current_ns = namespace;
                 }
                 &Instr::If => {
                     let b = try!(try!(stack.pop()).expect_bool());
@@ -663,9 +688,9 @@ impl <S: State> Vm<S> {
 
         let &mut Vm {
             ref mut stack,
-            ref mut return_stack,
             ref mut interner,
             ref mut globals,
+            ref mut frames,
             ref code,
             ref compile_context,
             ..
@@ -693,12 +718,10 @@ impl <S: State> Vm<S> {
                 &mut i,
                 code,
                 stack,
-                &mut stack_frame,
                 globals,
-                &mut current_ns,
                 interner,
                 compile_context,
-                return_stack,
+                frames,
                 state) {
 
                 Ok(true) => {}

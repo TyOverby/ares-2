@@ -6,7 +6,7 @@ fn assumptions() {
     use std::mem::size_of;
     assert_eq!(4, size_of::<Symbol>());
     assert_eq!(8, size_of::<Instr>());
-    assert_eq!(32, size_of::<Value>());
+    assert_eq!(24, size_of::<Value>());
 }
 
 #[test]
@@ -415,6 +415,7 @@ fn basic_lambdas() {
         local_defines_count: 0,
         upvars_count: 0,
         has_rest_params: false,
+        namespace: Default::default(),
     });
 
     vm.load_and_execute(&[
@@ -438,6 +439,7 @@ fn one_arg_lambda() {
         local_defines_count: 0,
         upvars_count: 0,
         has_rest_params: false,
+        namespace: Default::default(),
     });
 
     vm.load_and_execute(&[

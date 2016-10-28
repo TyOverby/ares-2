@@ -5,19 +5,21 @@ use compiler::parse::Ast;
 use compiler::binding::{Bound, BoundRef, SymbolBindSource, LambdaBindings};
 use compiler::CompileContext;
 use vm::{Instr, ClosureClass};
+use ares_syntax::SymbolIntern;
 
 pub use self::error::EmitError;
 pub use self::emit_buffer::EmitBuffer;
 
 pub fn emit_all<'bound, 'ast: 'bound, I> (bound: I,
                     compile_context: &mut CompileContext,
+                    symbol_intern: &SymbolIntern,
                     out: &mut EmitBuffer,
                     inside_lambda: Option<&LambdaBindings>)
                     -> Result<bool, EmitError>
 where I: IntoIterator<Item=BoundRef<'bound, 'ast>> {
     let mut last = false;
     for bound in bound {
-        last = try!(emit(&bound, compile_context, out, inside_lambda));
+        last = try!(emit(&bound, compile_context, symbol_intern, out, inside_lambda));
         if last {
             out.push(Instr::Pop);
         }
@@ -35,77 +37,78 @@ where I: IntoIterator<Item=BoundRef<'bound, 'ast>> {
 #[allow(unused_variables)]
 pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                     compile_context: &mut CompileContext,
+                    symbol_intern: &SymbolIntern,
                     out: &mut EmitBuffer,
                     inside_lambda: Option<&LambdaBindings>)
                     -> Result<bool, EmitError> {
     match bound {
         &Bound::BlockExpression(ref bound_bodies, _) => {
-            assert!(try!(emit_all(bound_bodies.iter().map(|&a|a), compile_context, out, inside_lambda)));
+            assert!(try!(emit_all(bound_bodies.iter().map(|&a|a), compile_context, symbol_intern, out, inside_lambda)));
             Ok(true)
         }
         &Bound::BlockStatement(ref bound_bodies, _) => {
-            if try!(emit_all(bound_bodies.iter().map(|&a|a), compile_context, out, inside_lambda)) {
+            if try!(emit_all(bound_bodies.iter().map(|&a|a), compile_context, symbol_intern, out, inside_lambda)) {
                 out.push(Instr::Pop);
             }
             Ok(false)
         }
         &Bound::Add(ref l, ref r, _) => {
-            try!(emit(l, compile_context, out, inside_lambda));
-            try!(emit(r, compile_context, out, inside_lambda));
+            try!(emit(l, compile_context, symbol_intern, out, inside_lambda));
+            try!(emit(r, compile_context, symbol_intern, out, inside_lambda));
             out.push(Instr::AddInt);
             Ok(true)
         }
         &Bound::Sub(ref l, ref r, _) => {
-            try!(emit(l, compile_context, out, inside_lambda));
-            try!(emit(r, compile_context, out, inside_lambda));
+            try!(emit(l, compile_context, symbol_intern, out, inside_lambda));
+            try!(emit(r, compile_context, symbol_intern, out, inside_lambda));
             out.push(Instr::SubInt);
             Ok(true)
         }
         &Bound::Mul(ref l, ref r, _) => {
-            try!(emit(l, compile_context, out, inside_lambda));
-            try!(emit(r, compile_context, out, inside_lambda));
+            try!(emit(l, compile_context, symbol_intern, out, inside_lambda));
+            try!(emit(r, compile_context, symbol_intern, out, inside_lambda));
             out.push(Instr::MulInt);
             Ok(true)
         }
         &Bound::Div(ref l, ref r, _) => {
-            try!(emit(l, compile_context, out, inside_lambda));
-            try!(emit(r, compile_context, out, inside_lambda));
+            try!(emit(l, compile_context, symbol_intern, out, inside_lambda));
+            try!(emit(r, compile_context, symbol_intern, out, inside_lambda));
             out.push(Instr::DivInt);
             Ok(true)
         }
         &Bound::LessThan(ref l, ref r, _) => {
-            try!(emit(l, compile_context, out, inside_lambda));
-            try!(emit(r, compile_context, out, inside_lambda));
+            try!(emit(l, compile_context, symbol_intern, out, inside_lambda));
+            try!(emit(r, compile_context, symbol_intern, out, inside_lambda));
             out.push(Instr::Lt);
             Ok(true)
         }
         &Bound::LessThanOrEqual(ref l, ref r, _) => {
-            try!(emit(l, compile_context, out, inside_lambda));
-            try!(emit(r, compile_context, out, inside_lambda));
+            try!(emit(l, compile_context, symbol_intern, out, inside_lambda));
+            try!(emit(r, compile_context, symbol_intern, out, inside_lambda));
             out.push(Instr::Lte);
             Ok(true)
         }
         &Bound::GreaterThan(ref l, ref r, _) => {
-            try!(emit(l, compile_context, out, inside_lambda));
-            try!(emit(r, compile_context, out, inside_lambda));
+            try!(emit(l, compile_context, symbol_intern, out, inside_lambda));
+            try!(emit(r, compile_context, symbol_intern, out, inside_lambda));
             out.push(Instr::Gt);
             Ok(true)
         }
         &Bound::GreaterThanOrEqual(ref l, ref r, _) => {
-            try!(emit(l, compile_context, out, inside_lambda));
-            try!(emit(r, compile_context, out, inside_lambda));
+            try!(emit(l, compile_context, symbol_intern, out, inside_lambda));
+            try!(emit(r, compile_context, symbol_intern, out, inside_lambda));
             out.push(Instr::Gte);
             Ok(true)
         }
         &Bound::Equal(ref l, ref r, _) => {
-            try!(emit(l, compile_context, out, inside_lambda));
-            try!(emit(r, compile_context, out, inside_lambda));
+            try!(emit(l, compile_context, symbol_intern, out, inside_lambda));
+            try!(emit(r, compile_context, symbol_intern, out, inside_lambda));
             out.push(Instr::Eq);
             Ok(true)
         }
         &Bound::NotEqual(ref l, ref r, _) => {
-            try!(emit(l, compile_context, out, inside_lambda));
-            try!(emit(r, compile_context, out, inside_lambda));
+            try!(emit(l, compile_context, symbol_intern, out, inside_lambda));
+            try!(emit(r, compile_context, symbol_intern, out, inside_lambda));
             out.push(Instr::Neq);
             Ok(true)
         }
@@ -137,19 +140,19 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
         }
         &Bound::IfExpression(ref cond, ref tru, ref fals, _) => {
 
-            try!(emit(&**cond, compile_context, out, inside_lambda));
+            try!(emit(&**cond, compile_context, symbol_intern, out, inside_lambda));
 
             out.push(Instr::Ifn);
             let (false_pos, fulfill_false) = out.standin();
             out.push_standin(false_pos);
 
             let mut true_code = EmitBuffer::new(out.offset());
-            try!(emit(&**tru, compile_context, &mut true_code, inside_lambda));
+            try!(emit(&**tru, compile_context, symbol_intern,  &mut true_code, inside_lambda));
             let (hop_standin, hop_fulfil) = true_code.standin();
             true_code.push_standin(hop_standin);
 
             let mut false_code = EmitBuffer::new(true_code.offset());
-            try!(emit(&**fals, compile_context, &mut false_code, inside_lambda));
+            try!(emit(&**fals, compile_context, symbol_intern, &mut false_code, inside_lambda));
 
             // The true branch needs to jump past the end
             // of the false branch.
@@ -164,19 +167,19 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
         }
         &Bound::IfStatement(ref cond, ref tru, ref fals, _) => {
 
-            try!(emit(&**cond, compile_context, out, inside_lambda));
+            try!(emit(&**cond, compile_context, symbol_intern, out, inside_lambda));
             out.push(Instr::Ifn);
             let (false_pos, fulfill_false) = out.standin();
             out.push_standin(false_pos);
 
             let mut true_code = EmitBuffer::new(out.offset());
             // Emit true code
-            try!(emit(tru, compile_context, &mut true_code, inside_lambda));
+            try!(emit(tru, compile_context, symbol_intern, &mut true_code, inside_lambda));
 
             let mut false_code = EmitBuffer::new(true_code.offset() + 1);
             // Emit false code
             let false_length = if let &Some(ref fals) = fals {
-                try!(emit(fals, compile_context, &mut false_code, inside_lambda));
+                try!(emit(fals, compile_context, symbol_intern, &mut false_code, inside_lambda));
                 false_code.offset()
             } else { 0 };
 
@@ -213,6 +216,7 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                 local_defines_count: bindings.num_declarations,
                 upvars_count: bindings.num_upvars,
                 has_rest_params: false,
+                namespace: symbol_intern.precomputed.default_namespace,
             };
 
             let cc_id = compile_context.add_closure_class(closure_class);
@@ -230,7 +234,7 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                 }
             }
 
-            if !try!(emit(body, compile_context, out, Some(bindings))) {
+            if !try!(emit(body, compile_context, symbol_intern, out, Some(bindings))) {
                 // If the body was a statement, return nil
                 out.push(Instr::NilLit);
             }
@@ -242,9 +246,9 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
         }
         &Bound::FnCall(ref funclike, ref args, _) => {
             for arg in args {
-                try!(emit(arg, compile_context, out, inside_lambda));
+                try!(emit(arg, compile_context, symbol_intern, out, inside_lambda));
             }
-            try!(emit(funclike, compile_context, out, inside_lambda));
+            try!(emit(funclike, compile_context, symbol_intern, out, inside_lambda));
             out.push(Instr::Execute(args.len() as u32));
             Ok(true)
         }
@@ -274,17 +278,17 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             match source {
                 &SymbolBindSource::Arg{..} | &SymbolBindSource::LocalDefine{..} => {
                     let binder = inside_lambda.unwrap();
-                    try!(emit(value, compile_context, out, inside_lambda));
+                    try!(emit(value, compile_context, symbol_intern, out, inside_lambda));
                     out.push(Instr::DupTop);
                     out.push(Instr::Assign(binder.compute_stack_offset(source)));
                 }
                 &SymbolBindSource::Global(symbol) => {
-                    try!(emit(value, compile_context, out, inside_lambda));
+                    try!(emit(value, compile_context, symbol_intern, out, inside_lambda));
                     out.push(Instr::PutGlobal(symbol));
                 }
                 &SymbolBindSource::Upvar{..} => {
                     let binder = inside_lambda.unwrap();
-                    try!(emit(value, compile_context, out, inside_lambda));
+                    try!(emit(value, compile_context, symbol_intern, out, inside_lambda));
                     out.push(Instr::SetCell(binder.compute_stack_offset(source)))
                 }
             }
@@ -296,18 +300,18 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                 &SymbolBindSource::LocalDefine{ref upvar, ..} if upvar.get() => {
                     let binder = inside_lambda.unwrap();
                     let stack_offset = binder.compute_stack_offset(&source);
-                    try!(emit(value, compile_context, out, inside_lambda));
+                    try!(emit(value, compile_context, symbol_intern, out, inside_lambda));
                     out.push(Instr::WrapCell);
                     out.push(Instr::Assign(stack_offset));
                 }
                 &SymbolBindSource::Arg{ref upvar, ..} |
                 &SymbolBindSource::LocalDefine{ref upvar, ..} => {
                     let binder = inside_lambda.unwrap();
-                    try!(emit(value, compile_context, out, inside_lambda));
+                    try!(emit(value, compile_context, symbol_intern, out, inside_lambda));
                     out.push(Instr::Assign(binder.compute_stack_offset(&source)));
                 }
                 &SymbolBindSource::Global(symbol) => {
-                    try!(emit(value, compile_context, out, inside_lambda));
+                    try!(emit(value, compile_context, symbol_intern, out, inside_lambda));
                     out.push(Instr::PutGlobal(symbol));
                 }
                 &SymbolBindSource::Upvar{..} => panic!("defining an upvar should be impossible"),
@@ -315,10 +319,10 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             Ok(false)
         }
         &Bound::Reset(ref symbols, ref closure, _) => {
-            try!(emit(closure, compile_context, out, inside_lambda));
+            try!(emit(closure, compile_context, symbol_intern, out, inside_lambda));
 
             for symbol_expr in symbols {
-                try!(emit(symbol_expr, compile_context, out, inside_lambda));
+                try!(emit(symbol_expr, compile_context, symbol_intern, out, inside_lambda));
             }
 
             out.push(Instr::Reset(symbols.len() as u32));
@@ -328,13 +332,13 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
         }
         &Bound::Shift(ref symbols, ref closure, _) => {
             for symbol_expr in symbols {
-                try!(emit(symbol_expr, compile_context, out, inside_lambda));
+                try!(emit(symbol_expr, compile_context, symbol_intern, out, inside_lambda));
             }
 
             let (s, f) = out.standin();
             out.push_standin(s);
             out.push(Instr::Shift(symbols.len() as u32));
-            try!(emit(closure, compile_context, out, inside_lambda));
+            try!(emit(closure, compile_context, symbol_intern, out, inside_lambda));
 
             // at this point the stack looks like
             // Int (jump here)
