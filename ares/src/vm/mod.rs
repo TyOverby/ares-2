@@ -324,7 +324,7 @@ impl <S: State> Vm<S> {
                     let closure = try!(try!(stack.peek()).expect_closure_mut());
                     *closure.reset_symbols.borrow_mut() = Some(symbols);
                 }
-                &Instr::Shift(_n) => {
+                &Instr::Shift(n) => {
                     fn symbols_intersect(xs: &[Symbol], ys: &[Symbol]) -> bool {
                         for &x in xs {
                             if ys.iter().any(|&y| x == y) {
@@ -334,7 +334,6 @@ impl <S: State> Vm<S> {
                         return false;
                     }
 
-                    /*
                     let resume_at = try!(try!(stack.pop()).expect_int());
 
                     let n = n as usize;
@@ -343,12 +342,12 @@ impl <S: State> Vm<S> {
                         shifting_symbols.push(try!(value.expect_symbol()));
                     }
 
-                    let mut saved_return_stack = Vec::new();
+                    let mut saved_frames = Vec::new();
                     let saved_instruction_pos: u32;
                     let saved_stack_len: u32;
 
                     loop {
-                        let next = frames.pop().expect("ran out of items on the utility stack");
+                        let next = frames.pop().expect("ran out of frames");
                         let done = match &next.reset_symbols {
                             &Some(ref s) => symbols_intersect(s, &shifting_symbols),
                             &None => false
@@ -356,27 +355,26 @@ impl <S: State> Vm<S> {
 
                         if done {
                             saved_stack_len = next.stack_frame;
-                            saved_instruction_pos = next.code_pos as u32;
-                            saved_return_stack.push(next);
+                            saved_instruction_pos = next.resume_code_pos as u32;
+                            saved_frames.push(next);
                             break;
                         } else {
-                            saved_return_stack.push(next);
+                            saved_frames.push(next);
                         }
                     }
 
-                    saved_return_stack.reverse();
+                    saved_frames.reverse();
 
                     let saved_stack = try!(stack.keep(saved_stack_len));
 
                     let cont = Continuation {
                         instruction_pos: resume_at as u32,
                         saved_stack: saved_stack,
-                        saved_return_stack: saved_return_stack,
+                        saved_return_stack: saved_frames,
                     };
 
-                    try!(stack.push(Value::Int((saved_instruction_pos + 1)as i64)));
+                    try!(stack.push(Value::Int((saved_instruction_pos + 1) as i64)));
                     try!(stack.push(Value::Continuation(Gc::new(cont))));
-                    */
                 }
                 &Instr::Nop => {}
                 &Instr::Print => {
@@ -420,7 +418,6 @@ impl <S: State> Vm<S> {
                     *slot = value;
                 }
                 &Instr::GetGlobal(symbol) => {
-                    //println!("globals: {:#?}", globals);
                     if let Some(value) = globals.get(frames.last().unwrap().namespace, symbol).cloned() {
                         try!(stack.push(value));
                     } else {
@@ -554,9 +551,6 @@ impl <S: State> Vm<S> {
                                 last_item_on_stack.resume_code_pos = *i;
                             }
 
-                            println!("{:?}", stack);
-                            println!("len: {}, ac: {}", stack.len(), arg_count);
-
                             frames.push(Frame {
                                 resume_code_pos: 0,
                                 stack_frame: stack.len() as u32 - arg_count as u32,
@@ -574,8 +568,7 @@ impl <S: State> Vm<S> {
                                 try!(stack.push(Value::Nil));
                             }
                         }
-                        Value::Continuation(ref _c) => {
-                            /*
+                        Value::Continuation(ref c) => {
                             let &Continuation{
                                 instruction_pos,
                                 ref saved_stack,
@@ -597,24 +590,11 @@ impl <S: State> Vm<S> {
 
                             try!(stack.push(arg));
 
-                            let mut first_stack_frame = 0;
-                            let mut last_stack_frame = 0;
-                            for (k, r) in saved_return_stack.into_iter().enumerate() {
-                                let mut r = r.clone();
-                                if k == 0 {
-                                    r.code_pos = *i;
-                                    first_stack_frame = r.stack_frame;
-                                    r.stack_frame = *stack_frame;
-                                } else {
-                                    r.stack_frame = *stack_frame + (r.stack_frame - first_stack_frame);
-                                    last_stack_frame = r.stack_frame;
-                                }
-                                return_stack.push(r);
+                            for r in saved_return_stack.into_iter() {
+                                frames.push(r.clone());
                             }
 
                             *i = (instruction_pos as usize).wrapping_sub(1);
-                            *stack_frame = last_stack_frame;
-                            */
                         }
                         o => panic!("tried to call value ({:?})", o),
                     }
@@ -657,12 +637,9 @@ impl <S: State> Vm<S> {
                     let &Frame { resume_code_pos, .. } = frames.last().unwrap();
 
                     *i = resume_code_pos;
-                    println!("ret to {}", *i);
                     let return_value = try!(stack.pop());
 
-                    println!("truncating to {}", truncate_to);
                     try!(stack.truncate(truncate_to as usize));
-
                     try!(stack.push(return_value));
                 }
                 &Instr::If => {
