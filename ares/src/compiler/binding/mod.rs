@@ -369,6 +369,7 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             &Ast::StringLit(_, _) |
             &Ast::FloatLit(_, _) |
             &Ast::SymbolLit(_, _) |
+            &Ast::NilLit(_) |
             &Ast::IntLit(_, _) => Bound::Literal(ast),
             &Ast::ListLit(ref elements, _) => {
                 Bound::ListLit(try!(elements.iter()

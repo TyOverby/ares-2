@@ -132,7 +132,10 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                     out.push(compile_context.add_constant(f.into()));
                 }
                 &Ast::SymbolLit(s, _) => {
-                    out.push(Instr::SymbolLit(s))
+                    out.push(Instr::SymbolLit(s));
+                }
+                &Ast::NilLit(_) => {
+                    out.push(Instr::NilLit);
                 }
                 _ => panic!("non-literal ast found in Bound::Literal {:?}", ast),
             }

@@ -1,10 +1,11 @@
+
 use std::str::FromStr;
 use super::{Ast, Span};
-use std::boxed::Box;
 use typed_arena::Arena;
 use ::{SymbolIntern, Symbol};
 
-grammar<'a>(arena: &'a Arena<Ast<'a>>, interner: &mut SymbolIntern)["LALR(1)"];
+#[LALR]
+grammar<'a>(arena: &'a Arena<Ast<'a>>, interner: &mut SymbolIntern);
 
 Comma<T>: Vec<T> = {
     <v:(<T> ",")*> <e:T?> => match e { 
@@ -28,6 +29,7 @@ PrimaryExpression: Ast<'a> = {
     BoolLit,
     StringLit,
     SymbolLit,
+    "nil" => Ast::NilLit(Span(0, 0)),
     Identifier  => Ast::Identifier(<>, Span(0, 0)),
     "(" <e: Expr> ")" => e,
     BlockExpression,
@@ -194,7 +196,7 @@ pub Statement: Ast<'a> = {
 };
 
 
-pub BlockStatement: Ast<'a> = {
+BlockStatement: Ast<'a> = {
     "{" <s:Statement*> "}" => Ast::BlockStatement(s, Span(0, 0)),
 };
 

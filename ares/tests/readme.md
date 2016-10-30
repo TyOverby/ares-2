@@ -29,7 +29,7 @@
 | ./tests/closure.artest/incrementor argument                                  |                    | :heavy_check_mark: |                    |                    |
 | ./tests/closure.artest/fibonacci                                             |                    |                    | :heavy_check_mark: |                    |
 | ./tests/closure.artest/combination of upvars =                               |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/closure.artest/abomination                                           |                    |                    |                    | :heavy_check_mark: |
+| ./tests/closure.artest/abomination                                           |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/closure.artest/y combinator                                          |                    |                    | :heavy_check_mark: |                    |
 | ./tests/comparison.artest/less than                                          | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/comparison.artest/less than 2                                        |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
@@ -68,6 +68,7 @@
 | ./tests/literals.artest/float literal                                        |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/literals.artest/bool literal: true                                   |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/literals.artest/bool literal: false                                  |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/literals.artest/nil literal                                          |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/math.artest/addition                                                 | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/math.artest/subtraction                                              | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/math.artest/multiplication                                           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |

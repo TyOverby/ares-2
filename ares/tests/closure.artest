@@ -218,7 +218,6 @@ f(5, 7)(11, 14)
 -129360
 
 #test abomination
-var nil = print("");
 var cons = fn(a, b) {
   fn (left_or_right) {
     if left_or_right then a else b

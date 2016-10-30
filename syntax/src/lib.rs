@@ -5,7 +5,6 @@ mod syntax;
 
 pub use intern::*;
 pub use syntax::{parse_Expr, parse_Statement, parse_Program};
-use typed_arena::Arena;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Span(u32, u32);
@@ -26,6 +25,7 @@ pub enum Ast<'ast> {
     IntLit(i64, Span),
     FloatLit(f64, Span),
     SymbolLit(Symbol, Span),
+    NilLit(Span),
 
     ListLit(Vec<AstRef<'ast>>, Span),
     MapLit(Vec<(AstRef<'ast>, AstRef<'ast>)>, Span),
@@ -67,6 +67,7 @@ impl <'ast> Ast<'ast> {
             Ast::IntLit(_, s) |
             Ast::FloatLit(_, s) |
             Ast::SymbolLit(_, s) |
+            Ast::NilLit(s) |
             Ast::Identifier(_, s) |
             Ast::ListLit(_,  s) |
             Ast::MapLit(_, s) |
@@ -101,6 +102,7 @@ impl <'ast> Ast<'ast> {
             BoolLit(a, _) => BoolLit(a, Span::dummy()),
             StringLit(a, _) => StringLit(a, Span::dummy()),
             IntLit(a, _) => IntLit(a, Span::dummy()),
+            NilLit(_) => NilLit(Span::dummy()),
             FloatLit(a, _) => FloatLit(a, Span::dummy()),
             SymbolLit(a, _) => SymbolLit(a, Span::dummy()),
             Identifier(a, _) => Identifier(a, Span::dummy()),

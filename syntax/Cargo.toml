@@ -13,7 +13,7 @@ itertools = "*"
 typed-arena = "1.0.*"
 
 [dependencies.lalrpop-util]
-version = "0.9.0"
+version = "0.12.0"
 
 [build-dependencies.lalrpop]
-version = "0.9.0"
+version = "0.12.0"
