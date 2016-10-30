@@ -1,4 +1,4 @@
-#test [skip] print upvar in shift
+#test print upvar in shift
 reset('a) {
     (fn(value) {
         shift('a) k {
@@ -9,7 +9,7 @@ reset('a) {
 #output
 5
 
-#test [skip] return upvar in shift
+#test return upvar in shift
 reset('a) {
     (fn(value) {
         shift('a) k {

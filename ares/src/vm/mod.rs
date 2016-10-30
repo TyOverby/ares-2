@@ -384,7 +384,7 @@ impl <S: State> Vm<S> {
 
                     let saved_instruction_pos = frames.last().unwrap().resume_code_pos;
 
-                    try!(stack.push(Value::Int((saved_instruction_pos + 1) as i64)));
+                    // try!(stack.push(Value::Int((saved_instruction_pos + 1) as i64)));
                     try!(stack.push(Value::Continuation(Gc::new(cont))));
                 }
                 &Instr::Nop => {}

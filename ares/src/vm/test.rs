@@ -415,6 +415,7 @@ fn basic_lambdas() {
         local_defines_count: 0,
         upvars_count: 0,
         has_rest_params: false,
+        is_shifter: false,
         namespace: Default::default(),
     });
 
@@ -439,6 +440,7 @@ fn one_arg_lambda() {
         local_defines_count: 0,
         upvars_count: 0,
         has_rest_params: false,
+        is_shifter: false,
         namespace: Default::default(),
     });
 

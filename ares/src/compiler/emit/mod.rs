@@ -220,7 +220,7 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                 upvars_count: bindings.num_upvars,
                 has_rest_params: false,
                 namespace: symbol_intern.precomputed.default_namespace,
-                is_shifter: *is_shifter,
+                is_shifter: is_shifter.get(),
             };
 
             let cc_id = compile_context.add_closure_class(closure_class);
@@ -340,18 +340,19 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             }
 
 
+            // Push (a standin for) the continuation
             let (s, f) = out.standin();
             out.push_standin(s);
+
+            // Emit the shift-closure
             try!(emit(closure, compile_context, symbol_intern, out, inside_lambda));
 
-            // at this point the stack looks like
-            // Int (jump here)
-            // Continuation
-            // Closure
+            // Execute the closure with the continuation as the argument
             out.push(Instr::Execute(1));
 
             let cur_len = out.offset() as i64;
 
+            // When this shift is over, continue at return_pos
             let shift_id = compile_context.add_shift_meta(ShiftMeta {
                 return_pos: out.offset() as u32,
                 num_symbols: symbols.len() as u32,
