@@ -1,3 +1,23 @@
+#test [skip] print upvar in shift
+reset('a) {
+    (fn(value) {
+        shift('a) k {
+            print(value);
+        }
+    })(5)
+}
+#output
+5
+
+#test [skip] return upvar in shift
+reset('a) {
+    (fn(value) {
+        shift('a) k {
+            k(value)
+        }
+    })(5)
+}
+
 #test no args reset
 reset {  }
 #bind
@@ -337,23 +357,3 @@ k();
 #output
 resumed
 resumed
-
-#test print upvar in shift
-reset('a) {
-    (fn(value) {
-        shift('a) k {
-            print(value);
-        }
-    })(5)
-}
-#output
-5
-
-#test return upvar in shift
-reset('a) {
-    (fn(value) {
-        shift('a) k {
-            k(value)
-        }
-    })(5)
-}

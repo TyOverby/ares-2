@@ -3,7 +3,7 @@ mod emit_buffer;
 
 use compiler::parse::Ast;
 use compiler::binding::{Bound, BoundRef, SymbolBindSource, LambdaBindings};
-use compiler::CompileContext;
+use compiler::{CompileContext, ShiftMeta};
 use vm::{Instr, ClosureClass};
 use ares_syntax::SymbolIntern;
 
@@ -198,7 +198,7 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
 
             Ok(false)
         },
-        &Bound::Lambda { ref arg_symbols, ref body, ref bindings, ref upvar_list, ..} => {
+        &Bound::Lambda { ref arg_symbols, ref body, ref bindings, ref upvar_list, ref is_shifter, ..} => {
             // Push all needed upvars onto the stack for the closure to take hold of.
             if !upvar_list.is_empty() {
                 let binder = inside_lambda.unwrap();
@@ -220,6 +220,7 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                 upvars_count: bindings.num_upvars,
                 has_rest_params: false,
                 namespace: symbol_intern.precomputed.default_namespace,
+                is_shifter: *is_shifter,
             };
 
             let cc_id = compile_context.add_closure_class(closure_class);
@@ -338,9 +339,9 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                 try!(emit(symbol_expr, compile_context, symbol_intern, out, inside_lambda));
             }
 
+
             let (s, f) = out.standin();
             out.push_standin(s);
-            out.push(Instr::Shift(symbols.len() as u32));
             try!(emit(closure, compile_context, symbol_intern, out, inside_lambda));
 
             // at this point the stack looks like
@@ -349,18 +350,14 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             // Closure
             out.push(Instr::Execute(1));
 
-            // at this point the stack looks like
-            // Int (jump here)
-            // <return value>
-            out.push(Instr::Swap);
-            
-            // at this point the stack looks like
-            // <return value>
-            // Int (jump here)
-            out.push(Instr::JumpTo);
-
             let cur_len = out.offset() as i64;
-            out.fulfill(f, compile_context.add_constant(cur_len.into()));
+
+            let shift_id = compile_context.add_shift_meta(ShiftMeta {
+                return_pos: out.offset() as u32,
+                num_symbols: symbols.len() as u32,
+            });
+
+            out.fulfill(f, Instr::Shift(shift_id));
 
             Ok(true)
         }

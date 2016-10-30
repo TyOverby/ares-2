@@ -37,6 +37,18 @@ impl Phase {
 }
 
 fn run_these(name: String, program: String, phases: Vec<Phase>) -> TestRunResults {
+    if name.contains("[skip]") {
+        return TestRunResults {
+            name: name,
+            program: program,
+            binding_test: TestResult::NotRan,
+            emit_test: TestResult::NotRan,
+            output_test: TestResult::NotRan,
+            result_test: TestResult::NotRan,
+            any_output: false,
+        };
+    }
+
     let mut binding = None;
     let mut emitting = None;
     let mut output = None;

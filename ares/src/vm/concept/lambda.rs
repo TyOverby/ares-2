@@ -11,6 +11,8 @@ pub struct ClosureClass {
     pub upvars_count: u32,
     pub has_rest_params: bool,
     pub namespace: Symbol,
+
+    pub is_shifter: bool,
 }
 
 #[derive(Debug, PartialEq, Clone)]

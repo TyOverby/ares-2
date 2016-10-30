@@ -11,7 +11,7 @@ use compiler::emit::EmitBuffer;
 use ares_syntax::SymbolIntern;
 use vm::{Instr, Modules};
 
-pub use self::compile_context::CompileContext;
+pub use self::compile_context::{CompileContext, ShiftMeta};
 
 pub fn compile(source: &str,
                compile_context: &mut CompileContext,

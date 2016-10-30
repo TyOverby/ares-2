@@ -81,6 +81,7 @@ pub enum Bound<'bound, 'ast: 'bound> {
         ast: AstRef<'ast>,
         bindings: LambdaBindings,
         upvar_list: Vec<SymbolBindSource>,
+        is_shifter: bool,
     },
     BlockExpression(Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
     BlockStatement(Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
@@ -401,7 +402,7 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                     None => return Err(BindingError::CouldNotBind(symbol, span)),
                 };
 
-                println!("source for {} is {:?}", interner.lookup_or_anon(symbol), source);
+                //println!("source for {} is {:?}", interner.lookup_or_anon(symbol), source);
 
                 Bound::Symbol {
                     symbol: symbol,
@@ -488,6 +489,7 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                     ast: ast,
                     bindings: new_binder.bindings,
                     upvar_list: new_binder.upvar_list,
+                    is_shifter: false,
                 }
             }
             &Ast::BlockExpression(ref bodies, _) => {
@@ -525,13 +527,18 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             }
             &Ast::Shift(ref symbols, ref closure, _) => {
                 let bound_symbols = try!(Bound::bind_all(symbols, arena, binder, modules, interner));
-                println!("binding shift {:?}", closure);
+                //println!("binding shift {:?}", closure);
                 let bound_closure = try!(Bound::bind(closure, arena, binder, modules, interner));
+                if let &mut Bound::Lambda{ ref mut is_shifter, .. } = &mut bound_closure {
+                    *is_shifter = true;
+                } else {
+                    panic!("shift called without lambda body");
+                }
                 Bound::Shift(bound_symbols, bound_closure, ast)
             }
             &Ast::Reset(ref symbols, ref closure, _) => {
                 let bound_symbols = try!(Bound::bind_all(symbols, arena, binder, modules, interner));
-                println!("binding reset {:?}", closure);
+                //println!("binding reset {:?}", closure);
                 let bound_closure = try!(Bound::bind(closure, arena, binder, modules, interner));
                 Bound::Reset(bound_symbols, bound_closure, ast)
             }

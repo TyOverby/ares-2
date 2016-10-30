@@ -7,7 +7,7 @@ mod test;
 use std::marker::PhantomData;
 use std::cell::RefCell;
 
-use compiler::CompileContext;
+use compiler::{CompileContext, ShiftMeta};
 use host::{State, EphemeralContext};
 
 pub use vm::value::*;
@@ -20,7 +20,7 @@ pub use gc::Gc;
 
 use ares_syntax::*;
 
-const SHOULD_PRINT: bool = true;
+const SHOULD_PRINT: bool = false;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum InterpError {
@@ -336,7 +336,7 @@ impl <S: State> Vm<S> {
                     let closure = try!(try!(stack.peek()).expect_closure_mut());
                     *closure.reset_symbols.borrow_mut() = Some(symbols);
                 }
-                &Instr::Shift(n) => {
+                &Instr::Shift(shift_id) => {
                     fn symbols_intersect(xs: &[Symbol], ys: &[Symbol]) -> bool {
                         for &x in xs {
                             if ys.iter().any(|&y| x == y) {
@@ -346,11 +346,10 @@ impl <S: State> Vm<S> {
                         return false;
                     }
 
-                    let resume_at = try!(try!(stack.pop()).expect_int());
+                    let ShiftMeta{ num_symbols, return_pos } = compile_context.get_shift_meta(shift_id);
 
-                    let n = n as usize;
-                    let mut shifting_symbols = Vec::with_capacity(n);
-                    for value in try!(stack.pop_n(n)) {
+                    let mut shifting_symbols = Vec::with_capacity(num_symbols as usize);
+                    for value in try!(stack.pop_n(num_symbols as usize)) {
                         shifting_symbols.push(try!(value.expect_symbol()));
                     }
 
@@ -378,7 +377,7 @@ impl <S: State> Vm<S> {
                     let saved_stack = try!(stack.keep(saved_stack_len));
 
                     let cont = Continuation {
-                        instruction_pos: resume_at as u32,
+                        instruction_pos: return_pos,
                         saved_stack: saved_stack,
                         saved_stack_frames: saved_frames,
                     };
@@ -569,7 +568,7 @@ impl <S: State> Vm<S> {
                                 });
                             }
 
-                            {
+                            if !closure.class.is_shifter {
                                 let last_item_on_stack = frames.last_mut().unwrap();
                                 last_item_on_stack.resume_code_pos = *i;
                             }
