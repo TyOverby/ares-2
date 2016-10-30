@@ -27,8 +27,8 @@ pub enum Ast<'ast> {
     SymbolLit(Symbol, Span),
     NilLit(Span),
 
-    ListLit(Vec<AstRef<'ast>>, Span),
-    MapLit(Vec<(AstRef<'ast>, AstRef<'ast>)>, Span),
+    ListLit(Vec<Ast<'ast>>, Span),
+    MapLit(Vec<(Ast<'ast>, AstRef<'ast>)>, Span),
 
     Add(AstRef<'ast>, AstRef<'ast>, Span),
     Sub(AstRef<'ast>, AstRef<'ast>, Span),

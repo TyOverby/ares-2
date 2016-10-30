@@ -69,6 +69,8 @@
 | ./tests/literals.artest/bool literal: true                                   |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/literals.artest/bool literal: false                                  |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/literals.artest/nil literal                                          |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/literals.artest/list literal                                         |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/literals.artest/nested list literal                                  |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/math.artest/addition                                                 | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/math.artest/subtraction                                              | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/math.artest/multiplication                                           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |

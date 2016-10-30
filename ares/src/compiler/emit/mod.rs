@@ -364,7 +364,13 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
 
             Ok(true)
         }
-        &Bound::ListLit(..) |
+        &Bound::ListLit(ref exprs, _) => {
+            for expr in exprs {
+                try!(emit(expr, compile_context, symbol_intern, out, inside_lambda));
+            }
+            out.push(Instr::ConstructList(exprs.len() as u32));
+            Ok(true)
+        }
         &Bound::MapLit(..) 
         => unimplemented!(),
     }

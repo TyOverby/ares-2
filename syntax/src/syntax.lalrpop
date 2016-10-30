@@ -23,6 +23,11 @@ BlockExpression: Ast<'a> = {
     "{" <e: BlockInner> "}" => Ast::BlockExpression(e, Span(0, 0)),
 };
 
+#[inline]
+ListExpression: Ast<'a> = {
+    "[" <e: Comma<Expr>> "]" => Ast::ListLit(e, Span(0, 0)),
+};
+
 PrimaryExpression: Ast<'a> = {
     FloatLit,
     IntLit,
@@ -33,6 +38,7 @@ PrimaryExpression: Ast<'a> = {
     Identifier  => Ast::Identifier(<>, Span(0, 0)),
     "(" <e: Expr> ")" => e,
     BlockExpression,
+    ListExpression,
     Closure,
 };
 

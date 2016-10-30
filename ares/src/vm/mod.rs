@@ -159,6 +159,10 @@ pub enum Instr {
     Eq,
     Neq,
 
+    /// Create a list of the given size by popping
+    /// that many elements off the stack
+    ConstructList(u32),
+
     /// Execute a lambda on the top of the stack with
     /// a specified number of arguments
     Execute(u32),
@@ -418,6 +422,11 @@ impl <S: State> Vm<S> {
                         value.clone()
                     };
                     *slot = value;
+                }
+                &Instr::ConstructList(n) => {
+                    let elements = try!(stack.take_top(n));
+                    let list = Gc::new(elements);
+                    try!(stack.push(Value::List(list)));
                 }
                 &Instr::GetGlobal(symbol) => {
                     if let Some(value) = globals.get(frames.last().unwrap().namespace, symbol).cloned() {

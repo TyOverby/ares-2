@@ -44,3 +44,18 @@ false
 nil
 #result
 nil
+
+#test list literal
+[1, 2, 3]
+#result
+[1, 2, 3]
+
+#test nested list literal
+[1, 2, [3, 4, [5]]]
+#result
+[1, 2, [3, 4, [5]]]
+
+#test empty list
+[]
+#result
+[]
