@@ -1,5 +1,21 @@
 | name                                                                         | binding            | emit               | output             | result             |
 |---|---|---|---|---|
+| ./tests/aa_continuation.artest/no args reset                                 | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_continuation.artest/no args reset with value                      | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_continuation.artest/one arg reset no body                         | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_continuation.artest/reset and shift                               | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_continuation.artest/nested resets                                 |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_continuation.artest/nested resets with shift                      |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_continuation.artest/nested resets with shift 2                    |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_continuation.artest/nested shifts                                 |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_continuation.artest/resume 1                                      |                    |                    | :heavy_check_mark: |                    |
+| ./tests/aa_continuation.artest/resume 2                                      |                    |                    | :heavy_check_mark: |                    |
+| ./tests/aa_continuation.artest/pauses                                        |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_continuation.artest/resume with value                             |                    |                    | :heavy_check_mark: |                    |
+| ./tests/aa_continuation.artest/stack messiness                               |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_continuation.artest/shift internal                                |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_continuation.artest/multiple-shift internal                       |                    |                    | :heavy_check_mark: |                    |
+| ./tests/aa_continuation.artest/external resume                               |                    |                    | :heavy_check_mark: |                    |
 | ./tests/assignment.artest/local assignment                                   | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/assignment.artest/assignment to argument                             | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/block.artest/basic block expression                                  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |

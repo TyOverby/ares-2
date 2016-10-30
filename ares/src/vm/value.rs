@@ -327,7 +327,7 @@ impl ::std::hash::Hash for Value {
             &Value::Continuation(ref c) => {
                 c.instruction_pos.hash(state);
                 c.saved_stack.len().hash(state);
-                c.saved_return_stack.len().hash(state);
+                c.saved_stack_frames.len().hash(state);
             }
             &Value::Closure(ref c) => state.write_usize(unsafe {transmute(&*c)}),
             &Value::UserFn(ref f) => {

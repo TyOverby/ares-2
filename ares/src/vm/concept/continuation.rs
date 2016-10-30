@@ -5,7 +5,7 @@ use vm::{Value, Frame};
 pub struct Continuation {
     pub instruction_pos: u32,
     pub saved_stack: Vec<Value>,
-    pub saved_return_stack: Vec<Frame>,
+    pub saved_stack_frames: Vec<Frame>,
 }
 
 unsafe impl Trace for Continuation {

@@ -216,7 +216,9 @@ impl <S: State> Vm<S> {
         self.frames.push(base_frame);
 
         self.code.extend(code.iter().cloned());
-        self.execute(start, state)
+        let r = self.execute(start, state);
+        self.frames.pop();
+        r
     }
 
     fn execute(&mut self,
@@ -343,7 +345,6 @@ impl <S: State> Vm<S> {
                     }
 
                     let mut saved_frames = Vec::new();
-                    let saved_instruction_pos: u32;
                     let saved_stack_len: u32;
 
                     loop {
@@ -355,7 +356,6 @@ impl <S: State> Vm<S> {
 
                         if done {
                             saved_stack_len = next.stack_frame;
-                            saved_instruction_pos = next.resume_code_pos as u32;
                             saved_frames.push(next);
                             break;
                         } else {
@@ -370,8 +370,10 @@ impl <S: State> Vm<S> {
                     let cont = Continuation {
                         instruction_pos: resume_at as u32,
                         saved_stack: saved_stack,
-                        saved_return_stack: saved_frames,
+                        saved_stack_frames: saved_frames,
                     };
+
+                    let saved_instruction_pos = frames.last().unwrap().resume_code_pos;
 
                     try!(stack.push(Value::Int((saved_instruction_pos + 1) as i64)));
                     try!(stack.push(Value::Continuation(Gc::new(cont))));
@@ -572,7 +574,7 @@ impl <S: State> Vm<S> {
                             let &Continuation{
                                 instruction_pos,
                                 ref saved_stack,
-                                ref saved_return_stack,
+                                ref saved_stack_frames,
                             } = &**c;
 
                             // The continuation can be resumed with either 0 args or
@@ -584,14 +586,25 @@ impl <S: State> Vm<S> {
                                 Value::Nil
                             };
 
+                            {
+                                let last_item_on_stack = frames.last_mut().unwrap();
+                                last_item_on_stack.resume_code_pos = *i;
+                            }
+
+                            let current_top = stack.len();
+                            let prev_top = saved_stack_frames.first().map(|sf| sf.stack_frame).unwrap_or(0);
                             for v in saved_stack {
-                                try!(stack.push(v.clone()));
+                                let v = v.clone();
+                                try!(stack.push(v));
                             }
 
                             try!(stack.push(arg));
 
-                            for r in saved_return_stack.into_iter() {
-                                frames.push(r.clone());
+                            for r in saved_stack_frames.into_iter() {
+                                let mut r = r.clone();
+                                r.stack_frame -= prev_top;
+                                r.stack_frame += current_top;
+                                frames.push(r);
                             }
 
                             *i = (instruction_pos as usize).wrapping_sub(1);
@@ -678,15 +691,14 @@ impl <S: State> Vm<S> {
                 println!("  {:?}", value);
             }
             println!("RETURN-STACK");
-            for value in return_stack.as_slice() {
+            for value in frames.as_slice() {
                 println!("  {:?}", value);
             }
             println!("INSTRUCTIONS");
             for (k, instr) in code.iter().enumerate() {
                 let padding = if i == k { "> " } else { "  " };
                 println!("{:02}{}{:?}", k, padding, instr);
-            }
-            */
+            }*/
 
             match step::<S>(
                 &mut i,

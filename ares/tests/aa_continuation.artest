@@ -294,6 +294,46 @@ var k = reset('a) {
     a + b
 };
 print(k(1)(2));
+#output
+3
 
 #test stack messiness
 1 + (reset('a) { shift('a) k { k } })(3)
+#result
+4
+
+#test shift internal
+reset('a) {
+    shift('a) k {
+        k()
+    };
+    5
+}
+#result
+5
+
+#test multiple-shift internal
+reset('a) {
+    shift('a) k {
+        k();
+        k();
+    };
+    print("hello");
+}
+#output
+hello
+hello
+
+#test external resume
+var k = 0;
+reset('a) {
+    shift('a) c {
+        k = c;
+    };
+    print("resumed");
+};
+k();
+k();
+#output
+resumed
+resumed
