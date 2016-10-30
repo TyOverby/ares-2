@@ -47,15 +47,31 @@ nil
 
 #test list literal
 [1, 2, 3]
+#emit
+IntLit(1)
+IntLit(2)
+IntLit(3)
+ConstructList(3)
 #result
 [1, 2, 3]
 
 #test nested list literal
 [1, 2, [3, 4, [5]]]
+#emit
+IntLit(1)
+IntLit(2)
+IntLit(3)
+IntLit(4)
+IntLit(5)
+ConstructList(1)
+ConstructList(3)
+ConstructList(3)
 #result
 [1, 2, [3, 4, [5]]]
 
 #test empty list
 []
+#emit
+ConstructList(0)
 #result
 []

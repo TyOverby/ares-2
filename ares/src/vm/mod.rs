@@ -163,6 +163,10 @@ pub enum Instr {
     /// that many elements off the stack
     ConstructList(u32),
 
+    /// Pops a number off the stack.  Pops a list off the stack.
+    /// Uses the number to index the list.
+    ListIndex,
+
     /// Execute a lambda on the top of the stack with
     /// a specified number of arguments
     Execute(u32),
@@ -427,6 +431,12 @@ impl <S: State> Vm<S> {
                     let elements = try!(stack.take_top(n));
                     let list = Gc::new(elements);
                     try!(stack.push(Value::List(list)));
+                }
+                &Instr::ListIndex => {
+                    let idx = try!(try!(stack.pop()).expect_int());
+                    let lst = try!(try!(stack.pop()).expect_list());
+                    let value = lst[idx as usize].clone();
+                    try!(stack.push(value));
                 }
                 &Instr::GetGlobal(symbol) => {
                     if let Some(value) = globals.get(frames.last().unwrap().namespace, symbol).cloned() {

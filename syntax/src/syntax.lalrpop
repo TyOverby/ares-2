@@ -43,7 +43,8 @@ PrimaryExpression: Ast<'a> = {
 };
 
 PostfixExpression: Ast<'a> = {
-    <r: PostfixExpression> "[" <e: Expr> "]" => unimplemented!(),
+    <r: PostfixExpression> "[" <e: Expr> "]" =>
+        Ast::ListAccess(arena.alloc(r), arena.alloc(e), Span(0, 0)),
     <r: PostfixExpression> "(" <e: Comma<Expr>> ")" =>
         Ast::FnCall(arena.alloc(r), e, Span(0, 0)),
     <r: PostfixExpression> "." <e: Identifier> => unimplemented!(),

@@ -267,6 +267,16 @@ where F: ::std::fmt::Write {
             }
             Ok(())
         }
+        &ListAccess(ref list, ref idx, _) => {
+            try!(label("LIST-ACCESS", level, f));
+
+            try!(label("LIST", level + 1, f));
+                try!(format(list, level + 2, interner, f));
+
+            try!(label("INDEX", level + 1, f));
+                try!(format(idx, level + 2, interner, f));
+            Ok(())
+        }
         &BlockStatement(ref bodies, _) => {
             try!(label("BLOCK-STATEMENT", level, f));
             for body in bodies {

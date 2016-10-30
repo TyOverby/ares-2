@@ -30,6 +30,8 @@ pub enum Ast<'ast> {
     ListLit(Vec<Ast<'ast>>, Span),
     MapLit(Vec<(Ast<'ast>, AstRef<'ast>)>, Span),
 
+    ListAccess(AstRef<'ast>, AstRef<'ast>, Span),
+
     Add(AstRef<'ast>, AstRef<'ast>, Span),
     Sub(AstRef<'ast>, AstRef<'ast>, Span),
     Mul(AstRef<'ast>, AstRef<'ast>, Span),
@@ -70,6 +72,7 @@ impl <'ast> Ast<'ast> {
             Ast::NilLit(s) |
             Ast::Identifier(_, s) |
             Ast::ListLit(_,  s) |
+            Ast::ListAccess(_,  _, s) |
             Ast::MapLit(_, s) |
             Ast::Add(_, _, s) |
             Ast::Sub(_, _, s) |
@@ -107,6 +110,7 @@ impl <'ast> Ast<'ast> {
             SymbolLit(a, _) => SymbolLit(a, Span::dummy()),
             Identifier(a, _) => Identifier(a, Span::dummy()),
             ListLit(a,  _) => ListLit(a, Span::dummy()),
+            ListAccess(a, b,  _) => ListAccess(a, b, Span::dummy()),
             MapLit(a, _) => MapLit(a, Span::dummy()),
             Add(l, r, _) => Add(l, r, Span::dummy()),
             Sub(l, r, _) => Sub(l, r, Span::dummy()),

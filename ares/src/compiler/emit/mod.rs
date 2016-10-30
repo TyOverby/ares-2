@@ -371,6 +371,12 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             out.push(Instr::ConstructList(exprs.len() as u32));
             Ok(true)
         }
+        &Bound::ListAccess(ref target, ref index, _) => {
+            try!(emit(target, compile_context, symbol_intern, out, inside_lambda));
+            try!(emit(index, compile_context, symbol_intern, out, inside_lambda));
+            out.push(Instr::ListIndex);
+            Ok(true)
+        }
         &Bound::MapLit(..) 
         => unimplemented!(),
     }

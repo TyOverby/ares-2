@@ -29,6 +29,7 @@ pub enum Bound<'bound, 'ast: 'bound> {
 
     ListLit(Vec<BoundRef<'bound, 'ast>>, AstRef<'ast>),
     MapLit(Vec<(BoundRef<'bound, 'ast>, BoundRef<'bound, 'ast>)>, AstRef<'ast>),
+    ListAccess(BoundRef<'bound, 'ast>, BoundRef<'bound, 'ast>, AstRef<'ast>),
     Add(BoundRef<'bound, 'ast>,
         BoundRef<'bound, 'ast>,
         AstRef<'ast>),
@@ -378,6 +379,12 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                                             })
                                             .collect::<Result<Vec<_>, _>>()),
                                ast)
+            }
+            &Ast::ListAccess(ref target, ref index, _) => {
+                Bound::ListAccess(
+                    try!(Bound::bind(target, arena, binder, modules, interner)),
+                    try!(Bound::bind(index, arena, binder, modules, interner)),
+                    ast)
             }
             &Ast::MapLit(ref elements, _) => {
                 let mut bound = Vec::with_capacity(elements.len());

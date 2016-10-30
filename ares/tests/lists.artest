@@ -1,0 +1,20 @@
+#test list access
+var arr = [1, 2, 3];
+arr[0]
+#emit
+IntLit(1)
+IntLit(2)
+IntLit(3)
+ConstructList(3)
+PutGlobal(Symbol(9))
+GetGlobal(Symbol(9))
+IntLit(0)
+ListIndex
+#result
+1
+
+#test computed index
+var arr = [1, 2, 3];
+arr[1 + 1]
+#result
+3

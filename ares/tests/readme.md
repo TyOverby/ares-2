@@ -1,21 +1,5 @@
 | name                                                                         | binding            | emit               | output             | result             |
 |---|---|---|---|---|
-| ./tests/aa_continuation.artest/no args reset                                 | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/aa_continuation.artest/no args reset with value                      | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/aa_continuation.artest/one arg reset no body                         | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/aa_continuation.artest/reset and shift                               | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/aa_continuation.artest/nested resets                                 |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/aa_continuation.artest/nested resets with shift                      |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/aa_continuation.artest/nested resets with shift 2                    |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/aa_continuation.artest/nested shifts                                 |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/aa_continuation.artest/resume 1                                      |                    |                    | :heavy_check_mark: |                    |
-| ./tests/aa_continuation.artest/resume 2                                      |                    |                    | :heavy_check_mark: |                    |
-| ./tests/aa_continuation.artest/pauses                                        |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/aa_continuation.artest/resume with value                             |                    |                    | :heavy_check_mark: |                    |
-| ./tests/aa_continuation.artest/stack messiness                               |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/aa_continuation.artest/shift internal                                |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/aa_continuation.artest/multiple-shift internal                       |                    |                    | :heavy_check_mark: |                    |
-| ./tests/aa_continuation.artest/external resume                               |                    |                    | :heavy_check_mark: |                    |
 | ./tests/assignment.artest/local assignment                                   | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/assignment.artest/assignment to argument                             | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/block.artest/basic block expression                                  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
@@ -45,6 +29,22 @@
 | ./tests/comparison.artest/greater than 2                                     |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/comparison.artest/eq                                                 |                    |                    | :heavy_check_mark: |                    |
 | ./tests/comparison.artest/neq                                                |                    |                    | :heavy_check_mark: |                    |
+| ./tests/continuation.artest/no args reset                                    | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/no args reset with value                         | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/one arg reset no body                            | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/reset and shift                                  | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/nested resets                                    |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/nested resets with shift                         |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/nested resets with shift 2                       |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/nested shifts                                    |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/resume 1                                         |                    |                    | :heavy_check_mark: |                    |
+| ./tests/continuation.artest/resume 2                                         |                    |                    | :heavy_check_mark: |                    |
+| ./tests/continuation.artest/pauses                                           |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/resume with value                                |                    |                    | :heavy_check_mark: |                    |
+| ./tests/continuation.artest/stack messiness                                  |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/shift internal                                   |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/continuation.artest/multiple-shift internal                          |                    |                    | :heavy_check_mark: |                    |
+| ./tests/continuation.artest/external resume                                  |                    |                    | :heavy_check_mark: |                    |
 | ./tests/examples.artest/recursion                                            | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |                    |
 | ./tests/examples.artest/fibb                                                 |                    |                    | :heavy_check_mark: |                    |
 | ./tests/function_call.artest/anonymous function call                         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
@@ -62,6 +62,8 @@
 | ./tests/lambda.artest/one-arg statement lambda                               | :heavy_check_mark: | :heavy_check_mark: |                    |                    |
 | ./tests/lambda.artest/2-arg expression lambda                                | :heavy_check_mark: | :heavy_check_mark: |                    |                    |
 | ./tests/lambda.artest/empty closure                                          |                    | :heavy_check_mark: |                    |                    |
+| ./tests/lists.artest/list access                                             |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/lists.artest/computed index                                          |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/literals.artest/int literal                                          |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/literals.artest/string literal                                       |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/literals.artest/symbol literal                                       |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
@@ -69,8 +71,9 @@
 | ./tests/literals.artest/bool literal: true                                   |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/literals.artest/bool literal: false                                  |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/literals.artest/nil literal                                          |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/literals.artest/list literal                                         |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/literals.artest/nested list literal                                  |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/literals.artest/list literal                                         |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/literals.artest/nested list literal                                  |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/literals.artest/empty list                                           |                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/math.artest/addition                                                 | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/math.artest/subtraction                                              | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/math.artest/multiplication                                           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
