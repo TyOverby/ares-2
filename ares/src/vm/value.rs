@@ -234,7 +234,7 @@ pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
             let name = f.name().unwrap_or("{anon}");
             format!("<UserFn {}>", name)
         }
-        &Value::Cell(ref t) => to_string_helper(&*t.borrow(), interner),
+        &Value::Cell(ref t) => format!("c {}", to_string_helper(&*t.borrow(), interner)),
 
         &ref l@Value::List(_) | &ref l@Value::Map(_) => {
             fn format_singles(vec: &Gc<Vec<Value>>,

@@ -277,3 +277,15 @@ print(fib(10));
 21
 34
 55
+
+#test print upvar from arglist
+(fn(value) {
+    (fn() {
+        print(value);
+        value
+    })()
+})(5)
+#output
+5
+#result
+5

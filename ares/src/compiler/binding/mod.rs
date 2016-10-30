@@ -401,6 +401,8 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                     None => return Err(BindingError::CouldNotBind(symbol, span)),
                 };
 
+                println!("source for {} is {:?}", interner.lookup_or_anon(symbol), source);
+
                 Bound::Symbol {
                     symbol: symbol,
                     ast: ast,
@@ -476,6 +478,7 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             }
             &Ast::Closure(ref _name, ref args, ref body_block, _) => {
                 // TODO: Bind name to "this function"
+                // args.len() must be 1 for now because that's how many argument lists there are.
                 assert!(args.len() == 1);
                 let mut new_binder = LambdaBinder::new(binder, &args[0]);
                 let bound_body = try!(Bound::bind(body_block, arena, &mut new_binder, modules, interner));
@@ -522,11 +525,13 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             }
             &Ast::Shift(ref symbols, ref closure, _) => {
                 let bound_symbols = try!(Bound::bind_all(symbols, arena, binder, modules, interner));
+                println!("binding shift {:?}", closure);
                 let bound_closure = try!(Bound::bind(closure, arena, binder, modules, interner));
                 Bound::Shift(bound_symbols, bound_closure, ast)
             }
             &Ast::Reset(ref symbols, ref closure, _) => {
                 let bound_symbols = try!(Bound::bind_all(symbols, arena, binder, modules, interner));
+                println!("binding reset {:?}", closure);
                 let bound_closure = try!(Bound::bind(closure, arena, binder, modules, interner));
                 Bound::Reset(bound_symbols, bound_closure, ast)
             }

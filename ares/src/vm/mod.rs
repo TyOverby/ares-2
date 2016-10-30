@@ -20,6 +20,8 @@ pub use gc::Gc;
 
 use ares_syntax::*;
 
+const SHOULD_PRINT: bool = true;
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum InterpError {
     InternalInterpError(String),
@@ -704,20 +706,21 @@ impl <S: State> Vm<S> {
 
         let mut i = start_at as usize;
         while i < code.len(){
-            /*
-            println!("\n\nSTACK");
-            for value in stack.as_slice() {
-                println!("  {:?}", value);
+            if SHOULD_PRINT {
+                println!("\n\nSTACK");
+                for value in stack.as_slice() {
+                    println!("  {:?}", value);
+                }
+                println!("RETURN-STACK");
+                for value in frames.as_slice() {
+                    println!("  {:?}", value);
+                }
+                println!("INSTRUCTIONS");
+                for (k, instr) in code.iter().enumerate() {
+                    let padding = if i == k { "> " } else { "  " };
+                    println!("{:02}{}{:?}", k, padding, instr);
+                }
             }
-            println!("RETURN-STACK");
-            for value in frames.as_slice() {
-                println!("  {:?}", value);
-            }
-            println!("INSTRUCTIONS");
-            for (k, instr) in code.iter().enumerate() {
-                let padding = if i == k { "> " } else { "  " };
-                println!("{:02}{}{:?}", k, padding, instr);
-            }*/
 
             match step::<S>(
                 &mut i,

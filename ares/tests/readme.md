@@ -15,6 +15,7 @@
 | ./tests/closure.artest/combination of upvars =                               |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/closure.artest/abomination                                           |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/closure.artest/y combinator                                          |                    |                    | :heavy_check_mark: |                    |
+| ./tests/closure.artest/print upvar from arglist                              |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/comparison.artest/less than                                          | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/comparison.artest/less than 2                                        |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/comparison.artest/less than 3                                        |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
@@ -45,6 +46,101 @@
 | ./tests/continuation.artest/shift internal                                   |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/continuation.artest/multiple-shift internal                          |                    |                    | :heavy_check_mark: |                    |
 | ./tests/continuation.artest/external resume                                  |                    |                    | :heavy_check_mark: |                    |
+| ./tests/continuation.artest/print upvar in shift                             | actual has more lines: RESET: 
+ actual:
+RESET:
+    SYMBOLS:
+        LITERAL:
+            'a
+    LAMBDA:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                0
+            ARGS:
+            BODY:
+                BLOCK-EXPRESSION:
+                    FN-CALL:
+                        RECEIVER:
+                            LAMBDA:
+                                NUM-ARGS:
+                                    1
+                                NUM-UPVARS:
+                                    0
+                                NUM-DECLARATIONS:
+                                    0
+                                ARGS:
+                                    value
+                                BODY:
+                                    BLOCK-EXPRESSION:
+                                        SHIFT:
+                                            SYMBOLS:
+                                                LITERAL:
+                                                    'a
+                                            LAMBDA:
+                                                LAMBDA:
+                                                    NUM-ARGS:
+                                                        1
+                                                    NUM-UPVARS:
+                                                        1
+                                                    NUM-DECLARATIONS:
+                                                        0
+                                                    ARGS:
+                                                        k
+                                                    BODY:
+                                                        BLOCK-STATEMENT:
+                                                            FN-CALL:
+                                                                RECEIVER:
+                                                                    SYMBOL:
+                                                                        NAME:
+                                                                            print
+                                                                        SOURCE:
+                                                                            GLOBAL:
+                                                                                print
+                                                                ARGS:
+                                                                    SYMBOL:
+                                                                        NAME:
+                                                                            value
+                                                                        SOURCE:
+                                                                            UPVAR:
+                                                                                0
+                                                    BINDINGS:
+                                                        BINDING:
+                                                            SYMBOL:
+                                                                k
+                                                            SOURCE:
+                                                                ARG:
+                                                                    0
+                                                        BINDING:
+                                                            SYMBOL:
+                                                                value
+                                                            SOURCE:
+                                                                UPVAR:
+                                                                    0
+                                                    UPVAR-LIST:
+                                                        0
+                                                            ARG:
+                                                                0
+                                                                Is an upvar
+                                BINDINGS:
+                                    BINDING:
+                                        SYMBOL:
+                                            value
+                                        SOURCE:
+                                            ARG:
+                                                0
+                                                Is an upvar
+                        ARGS:
+                            LITERAL:
+                                5
+            BINDINGS:
+
+=====
+expected:
+ |                    |                    |                    |
 | ./tests/examples.artest/recursion                                            | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |                    |
 | ./tests/examples.artest/fibb                                                 |                    |                    | :heavy_check_mark: |                    |
 | ./tests/function_call.artest/anonymous function call                         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
