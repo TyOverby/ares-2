@@ -17,6 +17,8 @@ reset('a) {
         }
     })(5)
 }
+#result
+5
 
 #test no args reset
 reset {  }
@@ -378,7 +380,7 @@ var generator = fn(f) {
     var ret = cont[0];
     var next = cont[1];
 
-    thunk = fn(){ next() };
+    thunk = next;
     ret
   }
 };
@@ -412,3 +414,49 @@ print(g());
 3
 4
 5
+
+#test delimited cons
+var cons = fn(a, b) {
+	[a, b]
+};
+
+var yield = fn(v) {
+    shift('a) k {
+		cons(v, k())
+    }
+};
+
+reset('a) {
+    yield(1);
+    yield(2);
+    yield(3);
+    yield(4);
+    nil
+}
+#result
+[1, [2, [3, [4, nil]]]]
+
+#test recursive continuation call
+10 + (reset('a) {
+	2 + (shift('a) k {
+		100 + k(k(3))
+    })
+})
+#result
+117
+
+#test multi-resume
+var run_the_rest_twice = fn() {
+	shift('a) k {
+		k();
+		k();
+	}
+};
+
+reset('a) {
+	run_the_rest_twice();
+	print("hello");
+};
+#output
+hello
+hello
