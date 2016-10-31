@@ -340,17 +340,15 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             }
 
 
+            // Emit the shift-closure
+            try!(emit(closure, compile_context, symbol_intern, out, inside_lambda));
+
             // Push (a standin for) the continuation
             let (s, f) = out.standin();
             out.push_standin(s);
 
-            // Emit the shift-closure
-            try!(emit(closure, compile_context, symbol_intern, out, inside_lambda));
-
             // Execute the closure with the continuation as the argument
             out.push(Instr::Execute(1));
-
-            let cur_len = out.offset() as i64;
 
             // When this shift is over, continue at return_pos
             let shift_id = compile_context.add_shift_meta(ShiftMeta {

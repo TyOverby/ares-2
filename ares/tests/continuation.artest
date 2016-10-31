@@ -357,3 +357,58 @@ k();
 #output
 resumed
 resumed
+
+#test generator
+var done = nil;
+done = fn() {
+  [nil, done]
+};
+
+var generator = fn(f) {
+  var thunk = fn() {
+    reset('generator) {
+      f();
+      done()
+    }
+  };
+
+  fn () {
+    var cont = thunk();
+
+    var ret = cont[0];
+    var next = cont[1];
+
+    thunk = fn(){ next() };
+    ret
+  }
+};
+
+var yield = fn(value) {
+  shift('generator) k {
+    [value, k]
+  }
+};
+
+var f = fn() {
+   yield(3);
+   yield(4);
+};
+
+var g = generator(fn() {
+  yield(1);
+  yield(2);
+  f();
+  yield(5);
+});
+
+print(g());
+print(g());
+print(g());
+print(g());
+print(g());
+#output
+1
+2
+3
+4
+5

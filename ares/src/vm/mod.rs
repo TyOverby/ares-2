@@ -348,6 +348,11 @@ impl <S: State> Vm<S> {
 
                     let ShiftMeta{ num_symbols, return_pos } = compile_context.get_shift_meta(shift_id);
 
+                    // The top item on the stack will be a closure, and we want it to stay on the
+                    // top, so we'll pop it, then pop our symbols, *then* put it back on at the
+                    // very end.
+                    let closure = try!(stack.pop());
+
                     let mut shifting_symbols = Vec::with_capacity(num_symbols as usize);
                     for value in try!(stack.pop_n(num_symbols as usize)) {
                         shifting_symbols.push(try!(value.expect_symbol()));
@@ -382,10 +387,8 @@ impl <S: State> Vm<S> {
                         saved_stack_frames: saved_frames,
                     };
 
-                    let saved_instruction_pos = frames.last().unwrap().resume_code_pos;
-
-                    // try!(stack.push(Value::Int((saved_instruction_pos + 1) as i64)));
                     try!(stack.push(Value::Continuation(Gc::new(cont))));
+                    try!(stack.push(closure));
                 }
                 &Instr::Nop => {}
                 &Instr::Print => {
@@ -708,16 +711,16 @@ impl <S: State> Vm<S> {
             if SHOULD_PRINT {
                 println!("\n\nSTACK");
                 for value in stack.as_slice() {
-                    println!("  {:?}", value);
+                    println!("*  {:?}", value);
                 }
                 println!("RETURN-STACK");
                 for value in frames.as_slice() {
-                    println!("  {:?}", value);
+                    println!("*  {:?}", value);
                 }
                 println!("INSTRUCTIONS");
                 for (k, instr) in code.iter().enumerate() {
                     let padding = if i == k { "> " } else { "  " };
-                    println!("{:02}{}{:?}", k, padding, instr);
+                    println!("{:03}{}{:?}", k, padding, instr);
                 }
             }
 
