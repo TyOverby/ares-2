@@ -495,3 +495,50 @@ var r = try(fn() {
 1
 exception
 5
+
+#test resumable exceptions
+var try = fn(f, h) {
+    var result = nil;
+    
+    var status = reset('exception) {
+        result = f();
+        'ok
+    };
+
+    var check = nil;
+    check = fn() {
+        if status == 'ok then {
+            result
+        } else {
+            h(status[0], fn(v) {
+                status = status[1](v);
+                check()
+            })
+        }
+    };
+    check()
+};
+
+
+
+var throw = fn(excpt) {
+    shift('exception) k {
+        [excpt, k]
+    }
+};
+
+var r = try(fn() {
+    print(1);
+    print(throw("MY EXCEPTION"));
+    print(2);
+}, fn(error, resume_with) {
+    print("got exception");
+    print(error);
+    resume_with("HANDLE");
+});
+#output
+1
+got exception
+MY EXCEPTION
+HANDLE
+2
