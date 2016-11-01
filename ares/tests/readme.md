@@ -1,5 +1,16 @@
 | name                                                                         | binding            | emit               | output             | result             |
 |---|---|---|---|---|
+| ./tests/aa_closure.artest/detect upvar nested                                |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_closure.artest/close over local                                   | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_closure.artest/closure counters                                   |                    |                    | :heavy_check_mark: |                    |
+| ./tests/aa_closure.artest/toggler                                            |                    |                    | :heavy_check_mark: |                    |
+| ./tests/aa_closure.artest/incrementor argument                               |                    | :heavy_check_mark: |                    |                    |
+| ./tests/aa_closure.artest/fibonacci                                          |                    |                    | :heavy_check_mark: |                    |
+| ./tests/aa_closure.artest/combination of upvars =                            |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_closure.artest/abomination                                        |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_closure.artest/y combinator                                       |                    |                    | :heavy_check_mark: |                    |
+| ./tests/aa_closure.artest/print upvar from arglist                           |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
+| ./tests/aa_closure.artest/bad upvar                                          | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/assignment.artest/local assignment                                   | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/assignment.artest/assignment to argument                             | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/block.artest/basic block expression                                  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
@@ -7,15 +18,6 @@
 | ./tests/block.artest/block expression with statement in expression           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/block.artest/block expression with statement in expression           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/block.artest/block statement                                         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/closure.artest/close over local                                      | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/closure.artest/closure counters                                      |                    |                    | :heavy_check_mark: |                    |
-| ./tests/closure.artest/toggler                                               |                    |                    | :heavy_check_mark: |                    |
-| ./tests/closure.artest/incrementor argument                                  |                    | :heavy_check_mark: |                    |                    |
-| ./tests/closure.artest/fibonacci                                             |                    |                    | :heavy_check_mark: |                    |
-| ./tests/closure.artest/combination of upvars =                               |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/closure.artest/abomination                                           |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
-| ./tests/closure.artest/y combinator                                          |                    |                    | :heavy_check_mark: |                    |
-| ./tests/closure.artest/print upvar from arglist                              |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/comparison.artest/less than                                          | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/comparison.artest/less than 2                                        |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/comparison.artest/less than 3                                        |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
@@ -52,6 +54,7 @@
 | ./tests/continuation.artest/delimited cons                                   |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/continuation.artest/recursive continuation call                      |                    |                    | :heavy_check_mark: | :heavy_check_mark: |
 | ./tests/continuation.artest/multi-resume                                     |                    |                    | :heavy_check_mark: |                    |
+| ./tests/continuation.artest/basic exceptions                                 |                    |                    | :heavy_check_mark: |                    |
 | ./tests/examples.artest/recursion                                            | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |                    |
 | ./tests/examples.artest/fibb                                                 |                    |                    | :heavy_check_mark: |                    |
 | ./tests/function_call.artest/anonymous function call                         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |

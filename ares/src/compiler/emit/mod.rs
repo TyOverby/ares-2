@@ -283,8 +283,9 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
                 &SymbolBindSource::Arg{ref upvar, ..} | &SymbolBindSource::LocalDefine{ref upvar, ..} if upvar.get() => {
                     let binder = inside_lambda.unwrap();
                     try!(emit(value, compile_context, symbol_intern, out, inside_lambda));
-                    out.push(Instr::WrapCell);
-                    out.push(Instr::Assign(binder.compute_stack_offset(source)));
+                    //out.push(Instr::WrapCell);
+                    //out.push(Instr::Assign(binder.compute_stack_offset(source)));
+                    out.push(Instr::SetCell(binder.compute_stack_offset(source)));
                 }
                 &SymbolBindSource::Arg{..} | &SymbolBindSource::LocalDefine{..} => {
                     let binder = inside_lambda.unwrap();

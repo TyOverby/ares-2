@@ -187,6 +187,17 @@ pub enum Instr {
     Ifn,
 }
 
+impl Instr {
+	fn smart_print(&self, interner: &SymbolIntern) -> String {
+        match self {
+            &Instr::SymbolLit(s) => format!("SymbolLit({})", interner.lookup_or_anon(s)),
+            &Instr::GetGlobal(s) => format!("GetGlobal({})", interner.lookup_or_anon(s)),
+            &Instr::PutGlobal(s) => format!("PutGlobal({})", interner.lookup_or_anon(s)),
+            other => format!("{:?}", other),
+        }
+	}
+}
+
 fn compare<I, F>(a: &Value, b: Value, i: I, f: F) -> Result<bool, InterpError>
 where I: FnOnce(i64, i64) -> bool,
       F: FnOnce(f64, f64) -> bool {
@@ -720,7 +731,7 @@ impl <S: State> Vm<S> {
                 println!("INSTRUCTIONS");
                 for (k, instr) in code.iter().enumerate() {
                     let padding = if i == k { "> " } else { "  " };
-                    println!("{:03}{}{:?}", k, padding, instr);
+                    println!("{:03}{}{}", k, padding, instr.smart_print(interner));
                 }
             }
 

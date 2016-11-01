@@ -1,3 +1,25 @@
+#test detect upvar nested
+var toggle = false;
+var h = fn(f) {
+    f()
+};
+var g = fn() {
+    var foo = nil;
+    foo = fn() {
+        if toggle then {
+            "done"
+        } else {
+            toggle = true;
+            h(fn() { foo() })
+        }
+    };
+    foo()
+};
+
+g()
+#result
+done
+
 #test close over local
 var f = fn () {
     var x = 10;
@@ -391,3 +413,4 @@ FN-CALL:
     ARGS:
 #result
 1
+

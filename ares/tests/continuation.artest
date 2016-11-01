@@ -460,3 +460,38 @@ reset('a) {
 #output
 hello
 hello
+
+#test basic exceptions
+var try = fn(f, h) {
+    var result = nil;
+    
+    var status = reset('exception) {
+        result = f();
+        'ok
+    };
+
+    if status == 'ok then {
+        result
+    } else {
+        h(status)
+    }
+};
+
+var throw = fn(excpt) {
+    shift('exception) k {
+        excpt
+    }
+};
+
+var r = try(fn() {
+    print(1);
+    throw(5);
+    print(2);
+}, fn(e) {
+    print("exception");
+    print(e);
+});
+#output
+1
+exception
+5

@@ -227,7 +227,7 @@ pub fn to_string_helper(value: &Value, interner: &SymbolIntern) -> String {
         &Value::String(ref s) => (&**s).clone(),
         &Value::Bool(b) => format!("{}", b),
         &Value::Symbol(s) => format!("'{}", interner.lookup_or_anon(s)),
-        &Value::Closure(ref c) => format!("<Closure {:?}>", c),
+        &Value::Closure(ref c) => format!("<Closure {}>", c.class.code_offset),
         &Value::Continuation(ref c) => format!("<Continuation {:?}>", c),
         &Value::UserFn(ref f) => {
             let f = f.borrow();
