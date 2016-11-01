@@ -79,6 +79,7 @@ where F: ::std::fmt::Write {
                 &Ast::FloatLit(fl, _)  => f.write_str(&format!("{}\n", fl)),
                 &Ast::SymbolLit(s, _)  => f.write_str(&format!("'{}\n", interner.lookup_or_anon(s))),
                 &Ast::IntLit(i, _)  => f.write_str(&format!("{}\n", i)),
+                &Ast::NilLit(_)  => f.write_str(&format!("nil\n")),
                 _ => panic!("non-literal found in Bound::Literal")
             }
         }

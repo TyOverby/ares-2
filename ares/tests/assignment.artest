@@ -2,11 +2,10 @@
 (fn() {var x = 5; x = 10; print(x); x})()
 #emit
 CreateClosure(0)
-Jump(13)
+Jump(12)
 IntLit(5)
 Assign(0)
 IntLit(10)
-DupTop
 Assign(0)
 Dup(0)
 GetGlobal(Symbol(8))

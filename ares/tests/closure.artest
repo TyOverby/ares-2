@@ -289,3 +289,105 @@ print(fib(10));
 5
 #result
 5
+
+#test bad upvar
+(fn() {
+    var foo = nil;
+    foo = fn() {
+        if true then { 1 } else { foo() }
+    };
+    foo()
+})()
+#bind
+FN-CALL:
+    RECEIVER:
+        LAMBDA:
+            NUM-ARGS:
+                0
+            NUM-UPVARS:
+                0
+            NUM-DECLARATIONS:
+                1
+            ARGS:
+            BODY:
+                BLOCK-EXPRESSION:
+                    DEFINE:
+                        NAME:
+                            foo
+                        SOURCE:
+                            LOCAL-DEFINE:
+                                0
+                                Is an upvar
+                        VALUE:
+                            LITERAL:
+                                nil
+                    ASSIGN:
+                        NAME:
+                            foo
+                        SOURCE:
+                            LOCAL-DEFINE:
+                                0
+                                Is an upvar
+                        VALUE:
+                        LAMBDA:
+                            NUM-ARGS:
+                                0
+                            NUM-UPVARS:
+                                1
+                            NUM-DECLARATIONS:
+                                0
+                            ARGS:
+                            BODY:
+                                BLOCK-EXPRESSION:
+                                    IF-EXPRESSION:
+                                        COND:
+                                            LITERAL:
+                                                true
+                                        TRUE:
+                                            BLOCK-EXPRESSION:
+                                                LITERAL:
+                                                    1
+                                        FALSE:
+                                            BLOCK-EXPRESSION:
+                                                FN-CALL:
+                                                    RECEIVER:
+                                                        SYMBOL:
+                                                            NAME:
+                                                                foo
+                                                            SOURCE:
+                                                                UPVAR:
+                                                                    0
+                                                    ARGS:
+                            BINDINGS:
+                                BINDING:
+                                    SYMBOL:
+                                        foo
+                                    SOURCE:
+                                        UPVAR:
+                                            0
+                            UPVAR-LIST:
+                                0
+                                    LOCAL-DEFINE:
+                                        0
+                                        Is an upvar
+                    FN-CALL:
+                        RECEIVER:
+                            SYMBOL:
+                                NAME:
+                                    foo
+                                SOURCE:
+                                    LOCAL-DEFINE:
+                                        0
+                                        Is an upvar
+                        ARGS:
+            BINDINGS:
+                BINDING:
+                    SYMBOL:
+                        s10
+                    SOURCE:
+                        LOCAL-DEFINE:
+                            0
+                            Is an upvar
+    ARGS:
+#result
+1

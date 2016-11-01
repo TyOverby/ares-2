@@ -13,6 +13,7 @@ pub struct EmitBuffer {
     starting_at: usize,
     next_standin_id: i32,
     code: Vec<Instr>,
+    spans: Vec<(u32, u32)>,
     // Standin values -> the spot that they need
     // to be rewritten to.
     rewrite: Vec<(Standin, usize)>,
@@ -29,6 +30,7 @@ impl EmitBuffer {
             starting_at: starting_at,
             next_standin_id: 0,
             code: Vec::new(),
+            spans: Vec::new(),
             rewrite: Vec::new(),
             fulfilled: HashMap::new(),
             relative_instrs: Vec::new(),
