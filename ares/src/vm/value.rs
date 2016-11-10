@@ -104,6 +104,9 @@ unsafe impl Trace for Value {
             &Value::Map(ref gc) => mark(gc),
             &Value::String(ref gc) => mark(gc),
             &Value::Closure(ref gc) => mark(gc),
+            &Value::UserFn(ref gc) => mark(gc),
+            &Value::Cell(ref gc) => mark(gc),
+            &Value::Continuation(ref gc) => mark(gc),
             _ => {}
         }
     });
@@ -165,10 +168,6 @@ impl Value {
         }
     }
 
-    /*
-    Cell(Gc<GcCell<Value>>),
-    Continuation(Gc<Continuation>),
-     */
     gen_expect!(expect_string, expect_string_ref, expect_string_mut, Value::String, Gc<String>, ValueKind::String);
     gen_expect!(expect_list, expect_list_ref, expect_list_mut, Value::List, Gc<Vec<Value>>, ValueKind::List);
     gen_expect!(expect_map, expect_map_ref, expect_map_mut, Value::Map, Gc<MapWrapper>, ValueKind::Map);

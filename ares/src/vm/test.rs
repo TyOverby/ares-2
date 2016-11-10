@@ -6,7 +6,7 @@ fn assumptions() {
     use std::mem::size_of;
     assert_eq!(4, size_of::<Symbol>());
     assert_eq!(8, size_of::<Instr>());
-    assert_eq!(24, size_of::<Value>());
+    assert_eq!(16, size_of::<Value>());
 }
 
 #[test]
