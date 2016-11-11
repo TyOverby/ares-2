@@ -374,24 +374,24 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             &Ast::NilLit(_) |
             &Ast::IntLit(_, _) => Bound::Literal(ast),
             &Ast::ListLit(ref elements, _) => {
-                Bound::ListLit(try!(elements.iter()
+                Bound::ListLit(elements.iter()
                                             .map(|element| {
                                                 Bound::bind(element, arena, binder, modules, interner)
                                             })
-                                            .collect::<Result<Vec<_>, _>>()),
+                                            .collect::<Result<Vec<_>, _>>()?,
                                ast)
             }
             &Ast::ListAccess(ref target, ref index, _) => {
                 Bound::ListAccess(
-                    try!(Bound::bind(target, arena, binder, modules, interner)),
-                    try!(Bound::bind(index, arena, binder, modules, interner)),
+                    Bound::bind(target, arena, binder, modules, interner)?,
+                    Bound::bind(index, arena, binder, modules, interner)?,
                     ast)
             }
             &Ast::MapLit(ref elements, _) => {
                 let mut bound = Vec::with_capacity(elements.len());
                 for &(ref k, ref v) in elements {
-                    let k = try!(Bound::bind(k, arena, binder, modules, interner));
-                    let v = try!(Bound::bind(v, arena, binder, modules, interner));
+                    let k = Bound::bind(k, arena, binder, modules, interner)?;
+                    let v = Bound::bind(v, arena, binder, modules, interner)?;
                     bound.push((k, v));
                 }
                 Bound::MapLit(bound, ast)
@@ -411,70 +411,70 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 }
             }
             &Ast::Add(ref left, ref right, _) => {
-                Bound::Add(try!(Bound::bind(left, arena, binder, modules, interner)),
-                           try!(Bound::bind(right, arena, binder, modules, interner)),
+                Bound::Add(Bound::bind(left, arena, binder, modules, interner)?,
+                           Bound::bind(right, arena, binder, modules, interner)?,
                            ast)
             }
             &Ast::Sub(ref left, ref right, _) => {
-                Bound::Sub(try!(Bound::bind(left, arena, binder, modules, interner)),
-                           try!(Bound::bind(right, arena, binder, modules, interner)),
+                Bound::Sub(Bound::bind(left, arena, binder, modules, interner)?,
+                           Bound::bind(right, arena, binder, modules, interner)?,
                            ast)
             }
             &Ast::Mul(ref left, ref right, _) => {
-                Bound::Mul(try!(Bound::bind(left, arena, binder, modules, interner)),
-                           try!(Bound::bind(right, arena, binder, modules, interner)),
+                Bound::Mul(Bound::bind(left, arena, binder, modules, interner)?,
+                           Bound::bind(right, arena, binder, modules, interner)?,
                            ast)
             }
             &Ast::Div(ref left, ref right, _) => {
-                Bound::Div(try!(Bound::bind(left, arena, binder, modules, interner)),
-                           try!(Bound::bind(right, arena, binder, modules, interner)),
+                Bound::Div(Bound::bind(left, arena, binder, modules, interner)?,
+                           Bound::bind(right, arena, binder, modules, interner)?,
                            ast)
             }
             &Ast::LessThan(ref left, ref right, _) => {
-                Bound::LessThan(try!(Bound::bind(left, arena, binder, modules, interner)),
-                                try!(Bound::bind(right, arena, binder, modules, interner)),
+                Bound::LessThan(Bound::bind(left, arena, binder, modules, interner)?,
+                                Bound::bind(right, arena, binder, modules, interner)?,
                                 ast)
             }
             &Ast::LessThanOrEqual(ref left, ref right, _) => {
-                Bound::LessThanOrEqual(try!(Bound::bind(left, arena, binder, modules, interner)),
-                                try!(Bound::bind(right, arena, binder, modules, interner)),
+                Bound::LessThanOrEqual(Bound::bind(left, arena, binder, modules, interner)?,
+                                Bound::bind(right, arena, binder, modules, interner)?,
                                 ast)
             }
             &Ast::GreaterThan(ref left, ref right, _) => {
-                Bound::GreaterThan(try!(Bound::bind(left, arena, binder, modules, interner)),
-                                try!(Bound::bind(right, arena, binder, modules, interner)),
+                Bound::GreaterThan(Bound::bind(left, arena, binder, modules, interner)?,
+                                Bound::bind(right, arena, binder, modules, interner)?,
                                 ast)
             }
             &Ast::GreaterThanOrEqual(ref left, ref right, _) => {
-                Bound::GreaterThanOrEqual(try!(Bound::bind(left, arena, binder, modules, interner)),
-                                try!(Bound::bind(right, arena, binder, modules, interner)),
+                Bound::GreaterThanOrEqual(Bound::bind(left, arena, binder, modules, interner)?,
+                                Bound::bind(right, arena, binder, modules, interner)?,
                                 ast)
             }
             &Ast::Equal(ref left, ref right, _) => {
-                Bound::Equal(try!(Bound::bind(left, arena, binder, modules, interner)),
-                                try!(Bound::bind(right, arena, binder, modules, interner)),
+                Bound::Equal(Bound::bind(left, arena, binder, modules, interner)?,
+                                Bound::bind(right, arena, binder, modules, interner)?,
                                 ast)
             }
             &Ast::NotEqual(ref left, ref right, _) => {
-                Bound::NotEqual(try!(Bound::bind(left, arena, binder, modules, interner)),
-                                try!(Bound::bind(right, arena, binder, modules, interner)),
+                Bound::NotEqual(Bound::bind(left, arena, binder, modules, interner)?,
+                                Bound::bind(right, arena, binder, modules, interner)?,
                                 ast)
             }
             &Ast::FnCall(ref receiver, ref arguments, _) => {
-                let bound_receiver = try!(Bound::bind(receiver, arena, binder, modules, interner));
-                let bound_arguments = try!(Bound::bind_all(arguments, arena, binder, modules, interner));
+                let bound_receiver = Bound::bind(receiver, arena, binder, modules, interner)?;
+                let bound_arguments = Bound::bind_all(arguments, arena, binder, modules, interner)?;
                 Bound::FnCall(bound_receiver, bound_arguments, ast)
             }
             &Ast::IfExpression(ref a, ref b, ref c, _) => {
-                Bound::IfExpression(try!(Bound::bind(a, arena, binder, modules, interner)) as &_,
-                          try!(Bound::bind(b, arena, binder, modules, interner)) as &_,
-                          try!(Bound::bind(c, arena, binder, modules, interner)) as &_,
+                Bound::IfExpression(Bound::bind(a, arena, binder, modules, interner)? as &_,
+                          Bound::bind(b, arena, binder, modules, interner)? as &_,
+                          Bound::bind(c, arena, binder, modules, interner)? as &_,
                           ast)
             }
             &Ast::IfStatement(ref a, ref b, ref c, _) => {
-                Bound::IfStatement(try!(Bound::bind(a, arena, binder, modules, interner)) as &_,
-                          try!(Bound::bind(b, arena, binder, modules, interner)),
-                          try!(rearrange(c.map(|c| Bound::bind(c, arena, binder, modules, interner)))),
+                Bound::IfStatement(Bound::bind(a, arena, binder, modules, interner)? as &_,
+                          Bound::bind(b, arena, binder, modules, interner)?,
+                          rearrange(c.map(|c| Bound::bind(c, arena, binder, modules, interner)))?,
                           ast)
             }
             &Ast::Closure(ref _name, ref args, ref body_block, _) => {
@@ -482,7 +482,7 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 // args.len() must be 1 for now because that's how many argument lists there are.
                 assert!(args.len() == 1);
                 let mut new_binder = LambdaBinder::new(binder, &args[0]);
-                let bound_body = try!(Bound::bind(body_block, arena, &mut new_binder, modules, interner));
+                let bound_body = Bound::bind(body_block, arena, &mut new_binder, modules, interner)?;
                 Bound::Lambda {
                     arg_symbols: args[0].clone(),
                     body: bound_body,
@@ -494,12 +494,12 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             }
             &Ast::BlockExpression(ref bodies, _) => {
                 let mut new_binder = BlockBinder::new(binder);
-                let bound_bodies = try!(Bound::bind_all(bodies, arena, &mut new_binder, modules, interner));
+                let bound_bodies = Bound::bind_all(bodies, arena, &mut new_binder, modules, interner)?;
                 Bound::BlockExpression(bound_bodies, ast)
             }
             &Ast::BlockStatement(ref bodies, _) => {
                 let mut new_binder = BlockBinder::new(binder);
-                let bound_bodies = try!(Bound::bind_all(bodies, arena, &mut new_binder, modules, interner));
+                let bound_bodies = Bound::bind_all(bodies, arena, &mut new_binder, modules, interner)?;
                 Bound::BlockStatement(bound_bodies, ast)
             }
             &Ast::Assign(symbol, value, _) => {
@@ -507,11 +507,11 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                     Some(source@SymbolBindSource::LocalDefine{..}) |
                     Some(source@SymbolBindSource::Arg{..}) |
                     Some(source@SymbolBindSource::Upvar{..}) => {
-                        let value = try!(Bound::bind(value, arena, binder, modules, interner));
+                        let value = Bound::bind(value, arena, binder, modules, interner)?;
                         Bound::Assign(symbol, source, value, ast)
                     }
                     Some(source@SymbolBindSource::Global(_)) => {
-                        let value = try!(Bound::bind(value, arena, binder, modules, interner));
+                        let value = Bound::bind(value, arena, binder, modules, interner)?;
                         Bound::Assign(symbol, source, value, ast)
                     }
                     None => return Err(BindingError::CouldNotBind(symbol, ast.span()))
@@ -522,13 +522,12 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                     return Err(BindingError::AlreadyDefined(symbol));
                 }
                 let source = binder.add_declaration(symbol, interner);
-                let bound_value = try!(Bound::bind(value, arena, binder, modules, interner));
+                let bound_value = Bound::bind(value, arena, binder, modules, interner)?;
                 Bound::Define(symbol, source, bound_value, ast)
             }
             &Ast::Shift(ref symbols, ref closure, _) => {
-                let bound_symbols = try!(Bound::bind_all(symbols, arena, binder, modules, interner));
-                //println!("binding shift {:?}", closure);
-                let bound_closure = try!(Bound::bind(closure, arena, binder, modules, interner));
+                let bound_symbols = Bound::bind_all(symbols, arena, binder, modules, interner)?;
+                let bound_closure = Bound::bind(closure, arena, binder, modules, interner)?;
                 if let &Bound::Lambda{ ref is_shifter, .. } = bound_closure {
                     is_shifter.set(true);
                 } else {
@@ -537,9 +536,8 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
                 Bound::Shift(bound_symbols, bound_closure, ast)
             }
             &Ast::Reset(ref symbols, ref closure, _) => {
-                let bound_symbols = try!(Bound::bind_all(symbols, arena, binder, modules, interner));
-                //println!("binding reset {:?}", closure);
-                let bound_closure = try!(Bound::bind(closure, arena, binder, modules, interner));
+                let bound_symbols = Bound::bind_all(symbols, arena, binder, modules, interner)?;
+                let bound_closure = Bound::bind(closure, arena, binder, modules, interner)?;
                 Bound::Reset(bound_symbols, bound_closure, ast)
             }
         }))

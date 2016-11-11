@@ -41,7 +41,7 @@ fn do_binding<'bound, 'ast: 'bound>(
     interner: &mut SymbolIntern,
     modules: Option<&Modules>) -> AresResult<Vec<BoundRef<'bound, 'ast>>> {
 
-    let asts = try!(do_parsing(program, parse_arena, interner));
+    let asts = do_parsing(program, parse_arena, interner)?;
     let asts = asts.into_iter().map(|ast| parse_arena.alloc(ast) as &_);
     let asts: Vec<_> = asts.collect();
     let bound = match Bound::bind_top(&asts, bind_arena, modules, interner) {
@@ -61,7 +61,7 @@ fn do_emitting<'bound, 'ast: 'bound>(
     compile_context: &mut CompileContext,
     emit_buffer: &mut EmitBuffer) -> AresResult<()> {
 
-    let bound = try!(do_binding(program, parse_arena, bind_arena, interner, modules));
+    let bound = do_binding(program, parse_arena, bind_arena, interner, modules)?;
     if let Err(error) = emit_all(bound, compile_context, interner, emit_buffer, None) {
         return Err(From::<CompileError>::from(From::from(error)));
     }
