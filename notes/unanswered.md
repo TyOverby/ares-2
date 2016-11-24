@@ -33,3 +33,7 @@ let f = fn recurse(a) { // have another name be visable.
 }
 // a should be undefined here.
 ```
+
+### Solution:
+
+Have all blocks do name-mangling on variables defined within.

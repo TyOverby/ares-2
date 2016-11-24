@@ -246,16 +246,31 @@ impl <S: State> Vm<S> {
                    start_at: u32,
                    state: &mut S)
                    -> Result<(), InterpError> {
+
+        struct ExecCtx<'a, S: State + 'a> {
+            i: &'a mut usize,
+            code: &'a [Instr],
+            stack: &'a mut Stack,
+            globals: &'a mut Modules,
+            interner: &'a mut SymbolIntern,
+            compile_context: &'a CompileContext,
+            frames: &'a mut Vec<Frame>,
+            state: &'a mut S,
+        }
+
         #[inline(always)]
-        fn step<S: State>(
-            i: &mut usize,
-            code: &[Instr],
-            stack: &mut Stack,
-            globals: &mut Modules,
-            interner: &mut SymbolIntern,
-            compile_context: &CompileContext,
-            frames: &mut Vec<Frame>,
-            state: &mut S) -> Result<bool, InterpError> {
+        fn step<'a, S: State>(ctx: &mut ExecCtx<'a, S>) -> Result<bool, InterpError> {
+            let &mut ExecCtx {
+                ref mut i,
+                ref code,
+                ref mut stack,
+                ref mut globals,
+                ref mut interner,
+                ref compile_context,
+                ref mut frames,
+                ref mut state
+            } = ctx;
+            let i: &mut usize = *i;
 
             let current_instruction = &code[*i];
             let after_current = code.get(*i + 1);
@@ -707,48 +722,41 @@ impl <S: State> Vm<S> {
             Ok(true)
         }
 
-        let &mut Vm {
-            ref mut stack,
-            ref mut interner,
-            ref mut globals,
-            ref mut frames,
-            ref code,
-            ref compile_context,
-            ..
-        } = self;
-
         let mut i = start_at as usize;
-        while i < code.len(){
+
+        let mut ctx = ExecCtx {
+            i: &mut i,
+            code: &self.code,
+            stack: &mut self.stack,
+            globals: &mut self.globals,
+            interner: &mut self.interner,
+            compile_context: &self.compile_context,
+            frames: &mut self.frames,
+            state: state,
+        };
+
+        while *(ctx.i) < ctx.code.len(){
             if SHOULD_PRINT {
                 println!("\n\nSTACK");
-                for value in stack.as_slice() {
+                for value in ctx.stack.as_slice() {
                     println!("*  {:?}", value);
                 }
                 println!("RETURN-STACK");
-                for value in frames.as_slice() {
+                for value in ctx.frames.as_slice() {
                     println!("*  {:?}", value);
                 }
                 println!("INSTRUCTIONS");
-                for (k, instr) in code.iter().enumerate() {
-                    let padding = if i == k { "> " } else { "  " };
-                    println!("{:03}{}{}", k, padding, instr.smart_print(interner));
+                for (k, instr) in ctx.code.iter().enumerate() {
+                    let padding = if *ctx.i == k { "> " } else { "  " };
+                    println!("{:03}{}{}", k, padding, instr.smart_print(ctx.interner));
                 }
             }
 
-            match step::<S>(
-                &mut i,
-                code,
-                stack,
-                globals,
-                interner,
-                compile_context,
-                frames,
-                state) {
-
+            match step(&mut ctx) {
                 Ok(true) => {}
                 Ok(false) => { break; }
                 Err(e) => {
-                    self.last_code_position = i;
+                    self.last_code_position = *ctx.i;
                     return Err(e);
                 }
             }
