@@ -8,13 +8,8 @@ mod state;
 pub use self::error::*;
 pub use self::state::State;
 
-pub struct UnloadedContext<S: State> {
+pub struct Context<S: State> {
     pub(crate) vm: Vm<S>,
-}
-
-pub struct LoadedContext<'a, S: State + 'a> {
-    pub(crate) context: &'a mut UnloadedContext<S>,
-    pub(crate) state: &'a mut S
 }
 
 pub struct EphemeralContext<'a, S: ?Sized + State + 'a> {
@@ -27,7 +22,7 @@ pub trait GlobalPath {
     fn into(self, default_symbol: Symbol, interner: &mut SymbolIntern) -> (Symbol, Symbol);
 }
 
-pub trait Context<S: State> {
+pub trait ContextLike<S: State> {
     fn modules(&self) -> &Modules;
     fn modules_mut(&mut self) -> &mut Modules;
     fn interner(&self) -> &SymbolIntern;
@@ -109,15 +104,11 @@ impl <'a, S: State> EphemeralContext<'a, S> {
     }
 }
 
-impl <S: State> UnloadedContext<S> {
-    pub fn new() -> UnloadedContext<S> {
-        UnloadedContext {
+impl <S: State> Context<S> {
+    pub fn new() -> Context<S> {
+        Context {
             vm: Vm::new(),
         }
-    }
-
-    pub fn load<'a>(&'a mut self, state: &'a mut S) -> LoadedContext<'a, S> {
-        LoadedContext::new(self, state)
     }
 
     pub(crate) fn dump_vm_internals(&self) -> (Vec<Value>, Vec<::vm::Instr>, usize) {
@@ -127,24 +118,51 @@ impl <S: State> UnloadedContext<S> {
 
         (stack, instructions, instruction_pointer)
     }
+
+    pub fn eval(&mut self, state: &mut S, program: &str) -> AresResult<Option<Value>> {
+        let emitted_code_size = self.vm.code.len();
+
+        let instrs = {
+            let &mut Vm{ ref mut compile_context, ref mut interner, ref globals, .. }
+                = &mut self.vm;
+            try!(::compiler::compile(program, compile_context, Some(globals), interner, emitted_code_size))
+        };
+
+        let previous_stack_size = self.vm.stack.len();
+        try!(self.vm.load_and_execute(&instrs[..], 0, state));
+        let new_stack_size = self.vm.stack.len();
+        assert!(new_stack_size == previous_stack_size ||
+                new_stack_size == previous_stack_size + 1);
+
+        if new_stack_size == previous_stack_size + 1 {
+            let result = try!(self.vm.stack.pop());
+            Ok(Some(result))
+        } else {
+            Ok(None)
+        }
+    }
 }
 
-impl <S: State> Context<S> for UnloadedContext<S> {
+impl <S: State> ContextLike<S> for Context<S> {
     fn modules(&self) -> &Modules {
         &self.vm.globals
     }
+
     fn modules_mut(&mut self) -> &mut Modules {
         &mut self.vm.globals
     }
+
     fn interner(&self) -> &SymbolIntern {
         &self.vm.interner
     }
+
     fn interner_mut(&mut self) -> &mut SymbolIntern {
         &mut self.vm.interner
     }
+
 }
 
-impl <'a, S: State> Context<S> for EphemeralContext<'a, S> {
+impl <'a, S: State> ContextLike<S> for EphemeralContext<'a, S> {
     fn modules(&self) -> &Modules {
         &self.globals
     }
@@ -156,65 +174,6 @@ impl <'a, S: State> Context<S> for EphemeralContext<'a, S> {
     }
     fn interner_mut(&mut self) -> &mut SymbolIntern {
         &mut self.interner
-    }
-}
-
-impl <'a, S: State> LoadedContext<'a, S> {
-    fn new(ctx: &'a mut UnloadedContext<S>, state: &'a mut S) -> LoadedContext<'a, S> {
-        LoadedContext {
-            context: ctx,
-            state: state
-        }
-    }
-
-    pub(crate) fn dump_vm_internals(&self) -> (Vec<Value>, Vec<::vm::Instr>, usize) {
-        self.context.dump_vm_internals()
-    }
-
-    pub fn state(&self) -> &S {
-        &self.state
-    }
-
-    pub fn state_mut(&mut self) -> &mut S {
-        &mut self.state
-    }
-
-    pub fn eval(&mut self, program: &str) -> AresResult<Option<Value>> {
-        let emitted_code_size = self.context.vm.code.len();
-
-        let instrs = {
-            let &mut Vm{ ref mut compile_context, ref mut interner, ref globals, .. }
-                = &mut self.context.vm;
-            try!(::compiler::compile(program, compile_context, Some(globals), interner, emitted_code_size))
-        };
-
-        let previous_stack_size = self.context.vm.stack.len();
-        try!(self.context.vm.load_and_execute(&instrs[..], 0, self.state));
-        let new_stack_size = self.context.vm.stack.len();
-        assert!(new_stack_size == previous_stack_size ||
-                new_stack_size == previous_stack_size + 1);
-
-        if new_stack_size == previous_stack_size + 1 {
-            let result = try!(self.context.vm.stack.pop());
-            Ok(Some(result))
-        } else {
-            Ok(None)
-        }
-    }
-}
-
-impl <'a, S: State> Context<S> for LoadedContext<'a, S> {
-    fn modules(&self) -> &Modules {
-        &self.context.vm.globals
-    }
-    fn modules_mut(&mut self) -> &mut Modules {
-        &mut self.context.vm.globals
-    }
-    fn interner(&self) -> &SymbolIntern {
-        &self.context.vm.interner
-    }
-    fn interner_mut(&mut self) -> &mut SymbolIntern {
-        &mut self.context.vm.interner
     }
 }
 
@@ -245,14 +204,13 @@ impl <'a> GlobalPath for &'a str {
 #[test]
 fn basic_context() {
     let mut state = ();
-    let mut ctx = UnloadedContext::new();
-    let mut lctx = ctx.load(&mut state);
-    assert_eq!(lctx.eval("1 + 2 + 3"), Ok(Some(6.into())));
+    let mut ctx = Context::new();
+    assert_eq!(ctx.eval(&mut state, "1 + 2 + 3"), Ok(Some(6.into())));
 }
 
 #[test]
 fn test_globals() {
-    let mut ctx = UnloadedContext::<()>::new();
+    let mut ctx = Context::<()>::new();
 
     ctx.set_global("foo", Value::Int(5));
     assert_eq!(ctx.get_global("foo").cloned().unwrap(), 5.into());
@@ -267,7 +225,7 @@ fn test_globals() {
 fn context_with_user_fn() {
     use vm::user_function;
     let mut state = 0i64;
-    let mut ctx = UnloadedContext::new();
+    let mut ctx = Context::new();
     ctx.set_global("foo", user_function(None,
         |_, state: &mut i64, _| {
             *state += 1;
@@ -276,14 +234,12 @@ fn context_with_user_fn() {
     ));
 
     {
-        let mut lctx = ctx.load(&mut state);
-        let res = lctx.eval("foo()");
+        let res = ctx.eval(&mut state, "foo()");
         assert_eq!(res.unwrap(), Some(1.into()));
     }
     assert_eq!(state, 1);
     {
-        let mut lctx = ctx.load(&mut state);
-        let res = lctx.eval("foo()");
+        let res = ctx.eval(&mut state, "foo()");
         assert_eq!(res.unwrap(), Some(2.into()));
     }
     assert_eq!(state, 2);

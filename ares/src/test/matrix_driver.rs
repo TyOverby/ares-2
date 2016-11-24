@@ -40,8 +40,8 @@ pub fn assert_compilation_steps(
         any_output: true,
     };
 
-    fn get_vm() -> UnloadedContext<Vec<String>> {
-        let mut ctx: UnloadedContext<Vec<String>> = UnloadedContext::new();
+    fn get_vm() -> Context<Vec<String>> {
+        let mut ctx: Context<Vec<String>> = Context::new();
 
         ctx.set_global("print", user_function(None, |args, state: &mut Vec<String>, ctx| {
             assert!(args.len() == 1);
@@ -55,22 +55,20 @@ pub fn assert_compilation_steps(
 
     // Binding
     if let Some(bound) = bound {
-        let UnloadedContext{vm: Vm {ref mut interner, ref mut globals, ..}} = get_vm();
+        let Context{vm: Vm {ref mut interner, ref mut globals, ..}} = get_vm();
         test_run_results.binding_test = test_binding(program, &bound, Some(globals), interner);
     }
 
     if let Some(instr) = instr {
-        let UnloadedContext{vm: Vm {ref mut interner, ref mut globals, ..}} = get_vm();
+        let Context{vm: Vm {ref mut interner, ref mut globals, ..}} = get_vm();
         test_run_results.emit_test = test_emit(program, &instr, interner, Some(globals));
     }
 
     if output.is_some() || result.is_some() {
         let mut ctx = get_vm();
-
         let mut actual_output = vec![];
         let actual_result = {
-            let mut ctx = ctx.load(&mut actual_output);
-            match ctx.eval(&program) {
+            match ctx.eval(&mut actual_output, &program) {
                 Ok(value) => value,
                 Err(err) => {
                     println!("{}", ctx.format_error(err));

@@ -12,7 +12,7 @@ use colored::*;
 fn main() {
     linenoise::set_multiline(3);
 
-    let mut ctx = UnloadedContext::<bool>::new();
+    let mut ctx = Context::<bool>::new();
 
     ctx.set_global("print", user_function::<bool, _>(None,
         |args, _, ctx| {
@@ -29,16 +29,15 @@ fn main() {
     ));
 
     let mut exit_requested = false;
-    let mut ctx = ctx.load(&mut exit_requested);
     let mut expr_iter = 0;
 
     let mut buildup = String::new();
-    while !*ctx.state() {
+    while !exit_requested {
         while let Some(input) = linenoise::input(&format!("{}", (if buildup.len() > 0 {"----> "} else {"ares> "}).cyan())) {
             buildup.push_str(&input);
             buildup.push('\n');
 
-            match ctx.eval(&buildup) {
+            match ctx.eval(&mut exit_requested ,&buildup) {
                 Ok(None) => {
                     linenoise::history_add(&buildup);
                     buildup.clear();
@@ -63,7 +62,7 @@ fn main() {
                 }
             }
 
-            if *ctx.state() {
+            if exit_requested {
                 break;
             }
         }
