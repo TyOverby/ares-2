@@ -284,57 +284,57 @@ impl <S: State> Vm<S> {
                     (&Instr::LoadConstant(_), &Instr::Pop) => {}
 
                     (&Instr::IntLit(added_with), &Instr::AddInt) => {
-                        let cur = try!(try!(stack.peek()).expect_int_mut());
+                        let cur = stack.peek()?.expect_int_mut()?;
                         *cur = *cur + added_with as i64;
                     }
                     (&Instr::IntLit(subtract_by), &Instr::SubInt) => {
-                        let cur = try!(try!(stack.peek()).expect_int_mut());
+                        let cur = stack.peek()?.expect_int_mut()?;
                         *cur = *cur - subtract_by as i64;
                     }
                     (&Instr::IntLit(multiply_by), &Instr::MulInt) => {
-                        let cur = try!(try!(stack.peek()).expect_int_mut());
+                        let cur = stack.peek()?.expect_int_mut()?;
                         *cur = *cur * multiply_by as i64;
                     }
                     (&Instr::IntLit(divide_by), &Instr::DivInt) => {
-                        let cur = try!(try!(stack.peek()).expect_int_mut());
+                        let cur = stack.peek()?.expect_int_mut()?;
                         *cur = *cur / divide_by as i64;
                     }
                     (&Instr::IntLit(value), &Instr::Eq) => {
-                        let cur = try!(stack.peek());
+                        let cur = stack.peek()?;
                         *cur = Value::Bool(*cur == Value::Int(value as i64));
                     }
                     (&Instr::BoolLit(value), &Instr::Eq) => {
-                        let cur = try!(stack.peek());
+                        let cur = stack.peek()?;
                         *cur = Value::Bool(*cur == Value::Bool(value));
                     }
                     (&Instr::SymbolLit(value), &Instr::Eq) => {
-                        let cur = try!(stack.peek());
+                        let cur = stack.peek()?;
                         *cur = Value::Bool(*cur == Value::Symbol(value));
                     }
                     (&Instr::Or, &Instr::If) => {
-                        let a = try!(try!(stack.pop()).expect_bool());
-                        let b = try!(try!(stack.pop()).expect_bool());
+                        let a = stack.pop()?.expect_bool()?;
+                        let b = stack.pop()?.expect_bool()?;
                         if !(a || b) {
                             *i += 1;
                         }
                     }
                     (&Instr::Or, &Instr::Ifn) => {
-                        let a = try!(try!(stack.pop()).expect_bool());
-                        let b = try!(try!(stack.pop()).expect_bool());
+                        let a = stack.pop()?.expect_bool()?;
+                        let b = stack.pop()?.expect_bool()?;
                         if a || b {
                             *i += 1;
                         }
                     }
                     (&Instr::And, &Instr::If) => {
-                        let a = try!(try!(stack.pop()).expect_bool());
-                        let b = try!(try!(stack.pop()).expect_bool());
+                        let a = stack.pop()?.expect_bool()?;
+                        let b = stack.pop()?.expect_bool()?;
                         if !(a && b) {
                             *i += 1;
                         }
                     }
                     (&Instr::And, &Instr::Ifn) => {
-                        let a = try!(try!(stack.pop()).expect_bool());
-                        let b = try!(try!(stack.pop()).expect_bool());
+                        let a = stack.pop()?.expect_bool()?;
+                        let b = stack.pop()?.expect_bool()?;
                         if a && b {
                             *i += 1;
                         }
@@ -355,11 +355,11 @@ impl <S: State> Vm<S> {
                 &Instr::Reset(n) => {
                     let n = n as usize;
                     let mut symbols = Vec::with_capacity(n);
-                    for value in try!(stack.pop_n(n)) {
-                        symbols.push(try!(value.expect_symbol()));
+                    for value in stack.pop_n(n)? {
+                        symbols.push(value.expect_symbol()?);
                     }
 
-                    let closure = try!(try!(stack.peek()).expect_closure_mut());
+                    let closure = stack.peek()?.expect_closure_mut()?;
                     *closure.reset_symbols.borrow_mut() = Some(symbols);
                 }
                 &Instr::Shift(shift_id) => {
@@ -377,11 +377,11 @@ impl <S: State> Vm<S> {
                     // The top item on the stack will be a closure, and we want it to stay on the
                     // top, so we'll pop it, then pop our symbols, *then* put it back on at the
                     // very end.
-                    let closure = try!(stack.pop());
+                    let closure = stack.pop()?;
 
                     let mut shifting_symbols = Vec::with_capacity(num_symbols as usize);
-                    for value in try!(stack.pop_n(num_symbols as usize)) {
-                        shifting_symbols.push(try!(value.expect_symbol()));
+                    for value in stack.pop_n(num_symbols as usize)? {
+                        shifting_symbols.push(value.expect_symbol()?);
                     }
 
                     let mut saved_frames = Vec::new();
@@ -405,7 +405,7 @@ impl <S: State> Vm<S> {
 
                     saved_frames.reverse();
 
-                    let saved_stack = try!(stack.keep(saved_stack_len));
+                    let saved_stack = stack.keep(saved_stack_len)?;
 
                     let cont = Continuation {
                         instruction_pos: return_pos,
@@ -413,35 +413,35 @@ impl <S: State> Vm<S> {
                         saved_stack_frames: saved_frames,
                     };
 
-                    try!(stack.push(Value::Continuation(Gc::new(cont))));
-                    try!(stack.push(closure));
+                    stack.push(Value::Continuation(Gc::new(cont)))?;
+                    stack.push(closure)?;
                 }
                 &Instr::Nop => {}
                 &Instr::Print => {
-                    println!("{:?}", try!(stack.peek()));
+                    println!("{:?}", stack.peek()?);
                 }
                 &Instr::Dbg => {
                     print!("{:?} - ", &stack.as_slice()[.. frames.last().unwrap().stack_frame as usize]);
                     println!("{:?}", &stack.as_slice()[frames.last().unwrap().stack_frame as usize..]);
                 }
                 &Instr::Dup(stack_pos) => {
-                    let value = try!(stack.peek_n_up(frames.last().unwrap().stack_frame as usize + stack_pos as usize))
-                                    .clone();
-                    try!(stack.push(value));
+                    let peek_position = frames.last().unwrap().stack_frame as usize + stack_pos as usize;
+                    let value = stack.peek_n_up(peek_position)?.clone();
+                    stack.push(value)?;
                 }
                 &Instr::DupTop => {
-                    let value = try!(stack.peek()).clone();
-                    try!(stack.push(value));
+                    let value = stack.peek()?.clone();
+                    stack.push(value)?;
                 }
                 &Instr::SetCell(frame_pos) => {
-                    let value = try!(stack.pop());
-                    let cell = try!(stack.peek_n_up(frames.last().unwrap().stack_frame as usize + frame_pos as usize));
-                    let cell = try!(cell.expect_cell_ref());
+                    let value = stack.pop()?;
+                    let cell = stack.peek_n_up(frames.last().unwrap().stack_frame as usize + frame_pos as usize)?;
+                    let cell = cell.expect_cell_ref()?;
                     let mut borrow = cell.borrow_mut();
                     *borrow = value;
                 }
                 &Instr::WrapCell => {
-                    let value = try!(stack.peek());
+                    let value = stack.peek()?;
                     let mut swap = Value::Nil;
                     ::std::mem::swap(value, &mut swap);
                     swap = swap.cellify();
@@ -449,63 +449,63 @@ impl <S: State> Vm<S> {
                     ::std::mem::forget(swap);
                 }
                 &Instr::UnwrapCell => {
-                    let slot = try!(stack.peek());
+                    let slot = stack.peek()?;
                     let value = {
-                        let cell = try!(slot.expect_cell_ref());
+                        let cell = slot.expect_cell_ref()?;
                         let value: &Value = &*cell.borrow();
                         value.clone()
                     };
                     *slot = value;
                 }
                 &Instr::ConstructList(n) => {
-                    let elements = try!(stack.take_top(n));
+                    let elements = stack.take_top(n)?;
                     let list = Gc::new(elements);
-                    try!(stack.push(Value::List(list)));
+                    stack.push(Value::List(list))?;
                 }
                 &Instr::ListIndex => {
-                    let idx = try!(try!(stack.pop()).expect_int());
-                    let lst = try!(try!(stack.pop()).expect_list());
+                    let idx = stack.pop()?.expect_int()?;
+                    let lst = stack.pop()?.expect_list()?;
                     let value = lst[idx as usize].clone();
-                    try!(stack.push(value));
+                    stack.push(value)?;
                 }
                 &Instr::GetGlobal(symbol) => {
                     if let Some(value) = globals.get(frames.last().unwrap().namespace, symbol).cloned() {
-                        try!(stack.push(value));
+                        stack.push(value)?;
                     } else {
                         return Err(InterpError::VariableNotFound(
                                        interner.lookup_or_anon(symbol)))
                     }
                 }
                 &Instr::PutGlobal(symbol) => {
-                    let value = try!(stack.pop());
+                    let value = stack.pop()?;
                     globals.set(frames.last().unwrap().namespace, symbol, value);
                 }
                 &Instr::Assign(frame_pos) => {
-                    let value = try!(stack.pop());
-                    let cell = try!(stack.peek_n_up(frames.last().unwrap().stack_frame as usize + frame_pos as usize));
+                    let value = stack.pop()?;
+                    let cell = stack.peek_n_up(frames.last().unwrap().stack_frame as usize + frame_pos as usize)?;
                     *cell = value;
                 }
                 &Instr::Pop => {
-                    try!(stack.pop());
+                    stack.pop()?;
                 }
                 &Instr::Swap => {
                     let len = stack.len();
-                    try!(stack.swap(len - 1, len - 2));
+                    stack.swap(len - 1, len - 2)?;
                 }
                 &Instr::NilLit => {
-                    try!(stack.push(Value::Nil));
+                    stack.push(Value::Nil)?;
                 }
                 &Instr::BoolLit(b) => {
-                    try!(stack.push(Value::Bool(b)));
+                    stack.push(Value::Bool(b))?;
                 }
                 &Instr::SymbolLit(symbol) => {
-                    try!(stack.push(Value::Symbol(symbol)));
+                    stack.push(Value::Symbol(symbol))?;
                 }
                 &Instr::IntLit(int) => {
-                    try!(stack.push(Value::Int(int as i64)));
+                    stack.push(Value::Int(int as i64))?;
                 }
                 &Instr::LoadConstant(c_id) => {
-                    try!(stack.push(compile_context.get_constant(c_id)));
+                    stack.push(compile_context.get_constant(c_id))?;
                 }
                 &Instr::Jump(location) => {
                     // subtract one because we'll be bumping
@@ -513,74 +513,74 @@ impl <S: State> Vm<S> {
                     *i = location.wrapping_sub(1) as usize;
                 }
                 &Instr::JumpTo => {
-                    let location = try!(try!(stack.pop()).expect_int());
+                    let location = stack.pop()?.expect_int()?;
                     *i = location.wrapping_sub(1) as usize;
                 }
                 &Instr::AddInt => {
-                    try!(stack.binop_int(|a, b| a + b));
+                    stack.binop_int(|a, b| a + b)?;
                 }
                 &Instr::SubInt => {
-                    try!(stack.binop_int(|a, b| a - b));
+                    stack.binop_int(|a, b| a - b)?;
                 }
                 &Instr::MulInt => {
-                    try!(stack.binop_int(|a, b| a * b));
+                    stack.binop_int(|a, b| a * b)?;
                 }
                 &Instr::DivInt => {
-                    try!(stack.binop_int(|a, b| a / b));
+                    stack.binop_int(|a, b| a / b)?;
                 }
                 &Instr::And => {
-                    let a = try!(try!(stack.pop()).expect_bool());
-                    let b = try!(try!(stack.peek()).expect_bool_mut());
+                    let a = stack.pop()?.expect_bool()?;
+                    let b = stack.peek()?.expect_bool_mut()?;
                     *b = a && *b;
                 }
                 &Instr::Or => {
-                    let a = try!(try!(stack.pop()).expect_bool());
-                    let b = try!(try!(stack.peek()).expect_bool_mut());
+                    let a = stack.pop()?.expect_bool()?;
+                    let b = stack.peek()?.expect_bool_mut()?;
                     *b = a || *b;
                 }
                 &Instr::Lt => {
-                    let a = try!(stack.pop());
-                    let b = try!(stack.peek());
-                    *b = Value::Bool(try!(compare(b, a, |a, b| a < b, |a, b| a < b)));
+                    let a = stack.pop()?;
+                    let b = stack.peek()?;
+                    *b = Value::Bool(compare(b, a, |a, b| a < b, |a, b| a < b)?);
                 }
                 &Instr::Lte => {
-                    let a = try!(stack.pop());
-                    let b = try!(stack.peek());
-                    *b = Value::Bool(try!(compare(b, a, |a, b| a <= b, |a, b| a <= b)));
+                    let a = stack.pop()?;
+                    let b = stack.peek()?;
+                    *b = Value::Bool(compare(b, a, |a, b| a <= b, |a, b| a <= b)?);
                 }
                 &Instr::Gt => {
-                    let a = try!(stack.pop());
-                    let b = try!(stack.peek());
-                    *b = Value::Bool(try!(compare(b, a, |a, b| a > b, |a, b| a > b)));
+                    let a = stack.pop()?;
+                    let b = stack.peek()?;
+                    *b = Value::Bool(compare(b, a, |a, b| a > b, |a, b| a > b)?);
                 }
                 &Instr::Gte => {
-                    let a = try!(stack.pop());
-                    let b = try!(stack.peek());
-                    *b = Value::Bool(try!(compare(b, a, |a, b| a >= b, |a, b| a >= b)));
+                    let a = stack.pop()?;
+                    let b = stack.peek()?;
+                    *b = Value::Bool(compare(b, a, |a, b| a >= b, |a, b| a >= b)?);
                 }
                 &Instr::Eq => {
-                    let a = try!(stack.pop());
-                    let b = try!(stack.peek());
+                    let a = stack.pop()?;
+                    let b = stack.peek()?;
                     *b = Value::Bool(&a == b);
                 }
                 &Instr::Neq => {
-                    let a = try!(stack.pop());
-                    let b = try!(stack.peek());
+                    let a = stack.pop()?;
+                    let b = stack.peek()?;
                     *b = Value::Bool(&a != b);
                 }
                 &Instr::Execute(arg_count) => {
-                    let callable = try!(stack.pop());
+                    let callable = stack.pop()?;
                     let callable = callable.decell();
                     match callable {
                         Value::UserFn(ref gccell) => {
-                            let args = try!(stack.take_top(arg_count));
+                            let args = stack.take_top(arg_count)?;
                             let mut user_fn = gccell.borrow_mut();
                             let user_fn = user_fn.correct::<S>();
-                            let mut user_fn = try!(user_fn.or(Err(
-                                InterpError::UserFnWithWrongStateType)));
+                            let mut user_fn = user_fn.or(Err(
+                                InterpError::UserFnWithWrongStateType))?;
                             let mut ctx = EphemeralContext::new(globals, interner);
                             let result = user_fn.call(state, args, &mut ctx);
-                            try!(stack.push(result));
+                            stack.push(result)?;
                         }
                         Value::Closure(ref closure) => {
                             let code_pos = closure.class.code_offset as usize;
@@ -612,11 +612,11 @@ impl <S: State> Vm<S> {
                             *i = code_pos.wrapping_sub(1);
 
                             for v in &closure.upvars {
-                                try!(stack.push(v.clone()));
+                                stack.push(v.clone())?;
                             }
 
                             for _ in 0 .. local_defines_count {
-                                try!(stack.push(Value::Nil));
+                                stack.push(Value::Nil)?;
                             }
                         }
                         Value::Continuation(ref c) => {
@@ -630,7 +630,7 @@ impl <S: State> Vm<S> {
                             // 1 argument.  If we have no args passed, resume with
                             // a nil.
                             let arg = if arg_count == 1 {
-                                try!(stack.pop())
+                                stack.pop()?
                             } else {
                                 Value::Nil
                             };
@@ -644,10 +644,10 @@ impl <S: State> Vm<S> {
                             let prev_top = saved_stack_frames.first().map(|sf| sf.stack_frame).unwrap_or(0);
                             for v in saved_stack {
                                 let v = v.clone();
-                                try!(stack.push(v));
+                                stack.push(v)?;
                             }
 
-                            try!(stack.push(arg));
+                            stack.push(arg)?;
 
                             for r in saved_stack_frames.into_iter() {
                                 let mut r = r.clone();
@@ -664,15 +664,15 @@ impl <S: State> Vm<S> {
                 &Instr::CreateClosure(class_id) => {
                     let class = compile_context.get_lambda_class(class_id);
                     let upvar_nums = class.upvars_count;
-                    let values = try!(stack.pop_n(upvar_nums as usize));
+                    let values = stack.pop_n(upvar_nums as usize)?;
                     let instance = Closure { class: class, upvars: values, reset_symbols: RefCell::new(None)};
-                    try!(stack.push(instance.into()));
+                    stack.push(instance.into())?;
                 }
                 &Instr::ExecuteN => {
                     unimplemented!();
                 }
                 &Instr::Call(position) => {
-                    let arg_count = try!(try!(stack.pop()).expect_int());
+                    let arg_count = stack.pop()?.expect_int()?;
                     let offset = position as usize;
                     let ns = frames.last().unwrap().namespace;
 
@@ -699,19 +699,19 @@ impl <S: State> Vm<S> {
                     let &Frame { resume_code_pos, .. } = frames.last().unwrap();
 
                     *i = resume_code_pos;
-                    let return_value = try!(stack.pop());
+                    let return_value = stack.pop()?;
 
-                    try!(stack.truncate(truncate_to as usize));
-                    try!(stack.push(return_value));
+                    stack.truncate(truncate_to as usize)?;
+                    stack.push(return_value)?;
                 }
                 &Instr::If => {
-                    let b = try!(try!(stack.pop()).expect_bool());
+                    let b = stack.pop()?.expect_bool()?;
                     if !b {
                         *i += 1
                     }
                 }
                 &Instr::Ifn => {
-                    let b = try!(try!(stack.pop()).expect_bool());
+                    let b = stack.pop()?.expect_bool()?;
                     if b {
                         *i += 1
                     }
