@@ -339,6 +339,41 @@ where F: ::std::fmt::Write {
             try!(format(lambda, level + 2, interner, f));
             Ok(())
         }
+        &Import{ref defines, ref namespace, ref version, ..} => {
+            try!(label("IMPORT", level, f));
+
+            try!(label("NAMESPACE", level + 1, f));
+            try!(f.write_str(&gen_indent(level + 2)));
+            try!(f.write_str(&interner.lookup_or_anon(*namespace)));
+
+            try!(label("VERSION", level + 1, f));
+            try!(f.write_str(&gen_indent(level + 2)));
+            try!(f.write_str(version));
+
+            try!(label("DEFINES", level + 1, f));
+            for define in defines {
+                try!(format(define, level + 2, interner, f))
+            }
+
+            Ok(())
+        }
+        &ImportThis{ ref name, ref namespace, ref version, } => {
+            try!(label("IMPORT-THIS", level, f));
+
+            try!(label("NAME", level+1, f));
+            try!(f.write_str(&gen_indent(level + 2)));
+            try!(f.write_str(&interner.lookup_or_anon(*name)));
+
+            try!(label("NAMESPACE", level+1, f));
+            try!(f.write_str(&gen_indent(level + 2)));
+            try!(f.write_str(&interner.lookup_or_anon(*namespace)));
+
+            try!(label("VERSION", level+1, f));
+            try!(f.write_str(&gen_indent(level + 2)));
+            try!(f.write_str(version));
+
+            Ok(())
+        }
     }
     
 }

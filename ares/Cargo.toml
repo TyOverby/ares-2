@@ -17,9 +17,7 @@ itertools = "*"
 typed-arena = "1.0.*"
 colored = "1.2"
 linenoise-rust = "0.2.0"
-
-[dependencies.gc]
-git = "https://github.com/Manishearth/rust-gc.git"
+gc = "0.3.0"
 
 [dependencies.ares-syntax]
 path = "../syntax"

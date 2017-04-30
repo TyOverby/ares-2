@@ -23,10 +23,28 @@ pub trait GlobalPath {
 }
 
 pub trait ContextLike<S: State> {
-    fn modules(&self) -> &Modules;
-    fn modules_mut(&mut self) -> &mut Modules;
-    fn interner(&self) -> &SymbolIntern;
-    fn interner_mut(&mut self) -> &mut SymbolIntern;
+    fn internals(&self) -> (&Modules, &SymbolIntern);
+    fn internals_mut(&mut self) -> (&mut Modules, &mut SymbolIntern);
+
+    fn modules(&self) -> &Modules {
+        let (m, _) = self.internals();
+        m
+    }
+
+    fn modules_mut(&mut self) -> &mut Modules {
+        let (m, _) = self.internals_mut();
+        m
+    }
+
+    fn interner(&self) -> &SymbolIntern {
+        let (_, i) = self.internals();
+        i
+    }
+
+    fn interner_mut(&mut self) -> &mut SymbolIntern {
+        let (_, i) = self.internals_mut();
+        i
+    }
 
     fn has_global<P: GlobalPath>(&mut self, path: P) -> bool {
         let default_namespace = self.interner_mut().precomputed.default_namespace;
@@ -35,21 +53,27 @@ pub trait ContextLike<S: State> {
     }
 
     fn set_global<P: GlobalPath>(&mut self, path: P, value: Value) -> Option<Value> {
-        let default_namespace = self.interner_mut().precomputed.default_namespace;
+        let default_namespace = self.interner().precomputed.default_namespace;
         let (namespace, name) = path.into(default_namespace, self.interner_mut());
         self.modules_mut().set(namespace, name, value)
     }
 
     fn get_global<P: GlobalPath>(&mut self, path: P) -> Option<&Value> {
-        let default_namespace = self.interner_mut().precomputed.default_namespace;
+        let default_namespace = self.interner().precomputed.default_namespace;
         let (namespace, name) = path.into(default_namespace, self.interner_mut());
         self.modules_mut().get(namespace, name)
     }
 
     fn get_global_mut<P: GlobalPath>(&mut self, path: P) -> Option<&mut Value> {
-        let default_namespace = self.interner_mut().precomputed.default_namespace;
+        let default_namespace = self.interner().precomputed.default_namespace;
         let (namespace, name) = path.into(default_namespace, self.interner_mut());
         self.modules_mut().get_mut(namespace, name)
+    }
+
+    fn load_library<N, V, Sr>(&mut self, namespace: N, version: V, source: Sr) -> Symbol
+    where N: Into<String>, V: Into<String>, Sr: Into<String> {
+        let (modules, interner) = self.internals_mut();
+        modules.load_library(namespace.into(), version.into(), source.into(), interner)
     }
 
     fn format_value(&self, value: &Value) -> String {
@@ -123,8 +147,7 @@ impl <S: State> Context<S> {
         let emitted_code_size = self.vm.code.len();
 
         let instrs = {
-            let &mut Vm{ ref mut compile_context, ref mut interner, ref globals, .. }
-                = &mut self.vm;
+            let &mut Vm{ ref mut compile_context, ref mut interner, ref globals, .. } = &mut self.vm;
             try!(::compiler::compile(program, compile_context, Some(globals), interner, emitted_code_size))
         };
 
@@ -144,36 +167,22 @@ impl <S: State> Context<S> {
 }
 
 impl <S: State> ContextLike<S> for Context<S> {
-    fn modules(&self) -> &Modules {
-        &self.vm.globals
+    fn internals(&self) -> (&Modules, &SymbolIntern) {
+        (&self.vm.globals, &self.vm.interner)
     }
 
-    fn modules_mut(&mut self) -> &mut Modules {
-        &mut self.vm.globals
+    fn internals_mut(&mut self) -> (&mut Modules, &mut SymbolIntern) {
+        (&mut self.vm.globals, &mut self.vm.interner)
     }
-
-    fn interner(&self) -> &SymbolIntern {
-        &self.vm.interner
-    }
-
-    fn interner_mut(&mut self) -> &mut SymbolIntern {
-        &mut self.vm.interner
-    }
-
 }
 
 impl <'a, S: State> ContextLike<S> for EphemeralContext<'a, S> {
-    fn modules(&self) -> &Modules {
-        &self.globals
+    fn internals(&self) -> (&Modules, &SymbolIntern) {
+        (&self.globals, &self.interner)
     }
-    fn modules_mut(&mut self) -> &mut Modules {
-        &mut self.globals
-    }
-    fn interner(&self) -> &SymbolIntern {
-        &self.interner
-    }
-    fn interner_mut(&mut self) -> &mut SymbolIntern {
-        &mut self.interner
+
+    fn internals_mut(&mut self) -> (&mut Modules, &mut SymbolIntern) {
+        (self.globals, self.interner)
     }
 }
 

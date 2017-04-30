@@ -89,6 +89,17 @@ pub enum Bound<'bound, 'ast: 'bound> {
     Define(Symbol, SymbolBindSource, BoundRef<'bound, 'ast>, AstRef<'ast>),
     Shift(Vec<BoundRef<'bound, 'ast>>, BoundRef<'bound, 'ast>, AstRef<'ast>),
     Reset(Vec<BoundRef<'bound, 'ast>>, BoundRef<'bound, 'ast>, AstRef<'ast>),
+    Import {
+        defines: Vec<Bound<'bound, 'ast>>,
+        namespace: Symbol,
+        version: String,
+        ast: AstRef<'ast>,
+    },
+    ImportThis {
+        name: Symbol,
+        namespace: Symbol,
+        version: String,
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
@@ -527,7 +538,6 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             }
             &Ast::Shift(ref symbols, ref closure, _) => {
                 let bound_symbols = try!(Bound::bind_all(symbols, arena, binder, modules, interner));
-                //println!("binding shift {:?}", closure);
                 let bound_closure = try!(Bound::bind(closure, arena, binder, modules, interner));
                 if let &Bound::Lambda{ ref is_shifter, .. } = bound_closure {
                     is_shifter.set(true);
@@ -538,9 +548,40 @@ impl<'bound, 'ast: 'bound> Bound<'bound, 'ast> {
             }
             &Ast::Reset(ref symbols, ref closure, _) => {
                 let bound_symbols = try!(Bound::bind_all(symbols, arena, binder, modules, interner));
-                //println!("binding reset {:?}", closure);
                 let bound_closure = try!(Bound::bind(closure, arena, binder, modules, interner));
                 Bound::Reset(bound_symbols, bound_closure, ast)
+            }
+            &Ast::Import(ref names, ref namespace, ref version, _) => {
+                let mut sources = vec![];
+                for name in names.iter().cloned() {
+                    if binder.already_binds(name) {
+                        return Err(BindingError::AlreadyDefined(name));
+                    }
+
+                    let source = binder.add_declaration(name, interner);
+                    sources.push(source);
+                }
+
+                let version = match (*version).clone() {
+                    Ast::StringLit(s, _) => s,
+                    _ => panic!("version not string"),
+                };
+
+                Bound::Import {
+                    defines: names.iter().cloned().zip(sources.into_iter()).map(|(name, source)| {
+                        let import_this = Bound::ImportThis {
+                            name: name,
+                            namespace: *namespace,
+                            version: version.clone(),
+                        };
+
+                        Bound::Define(name, source, arena.alloc(import_this), ast)
+                    }).collect(),
+
+                    namespace: namespace.clone(),
+                    version: version,
+                    ast: ast
+                }
             }
         }))
     }

@@ -379,8 +379,17 @@ pub fn emit<'bound, 'ast: 'bound>(bound: &'bound Bound<'bound, 'ast>,
             out.push(Instr::ListIndex);
             Ok(true)
         }
-        &Bound::MapLit(..) 
-        => unimplemented!(),
+        &Bound::Import {ref defines, ref namespace, ref version, ..} => {
+            for define in defines {
+                try!(emit(define, compile_context, symbol_intern, out, inside_lambda));
+            }
+
+            Ok(false)
+        }
+        &Bound::ImportThis { ref name, ref namespace, ref version } => {
+            Ok(true)
+        },
+        &Bound::MapLit(..) => unimplemented!(),
     }
 }
 

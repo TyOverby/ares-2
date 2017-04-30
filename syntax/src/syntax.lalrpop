@@ -1,4 +1,3 @@
-
 use std::str::FromStr;
 use super::{Ast, Span};
 use typed_arena::Arena;
@@ -199,6 +198,7 @@ pub Statement: Ast<'a> = {
         Ast::IfStatement(arena.alloc(a), arena.alloc(trs), None, Span(0, 0)),
     <e: BlockStatement> => e,
     <e: DefineStatement> => e,
+    <e: Import> => e,
     <e: AssignmentExpression> ";" => e,
 };
 
@@ -224,6 +224,12 @@ pub Program: Vec<Ast<'a>> = {
             s.push(e);
         }
         s
+    }
+};
+
+Import: Ast<'a> = {
+    "import" "(" <i: Comma<Identifier>> ")" "from" <ns: Identifier> "at" <v: StringLit> => {
+        Ast::Import(i, ns, arena.alloc(v), Span::dummy())
     }
 };
 

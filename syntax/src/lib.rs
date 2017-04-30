@@ -52,6 +52,7 @@ pub enum Ast<'ast> {
     Define(Symbol, AstRef<'ast>, Span),
     BlockExpression(Vec<Ast<'ast>>, Span),
     BlockStatement(Vec<Ast<'ast>>, Span),
+    Import(Vec<Symbol>, Symbol, AstRef<'ast>, Span),
 
     Reset(Vec<Ast<'ast>>, AstRef<'ast>, Span),
     Shift(Vec<Ast<'ast>>, AstRef<'ast>, Span),
@@ -95,7 +96,8 @@ impl <'ast> Ast<'ast> {
             Ast::BlockExpression(_, s) |
             Ast::BlockStatement(_, s) |
             Ast::Shift(_, _, s) |
-            Ast::Reset(_, _, s)  => s
+            Ast::Reset(_, _, s)  |
+            Ast::Import(_, _, _, s)  => s
         }
     }
 
@@ -132,6 +134,7 @@ impl <'ast> Ast<'ast> {
             BlockStatement(b, _) => BlockStatement(b, Span::dummy()),
             Shift(a, b, _) => Shift(a, b, Span::dummy()),
             Reset(a, b, _) => Reset(a, b, Span::dummy()),
+            Import(a, b, c, _) => Import(a, b, c, Span::dummy()),
         }
     }
 
