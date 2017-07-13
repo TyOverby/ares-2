@@ -1,13 +1,16 @@
 use std::any::TypeId;
 
-use gc::{Trace, Gc, GcCell};
+use gc::{Gc, GcCell};
 
 use ::host::{State, EphemeralContext};
 use ::vm::Value;
 
+#[derive(Trace, Finalize)]
 pub struct UserFunction<S: State + ?Sized> {
     name: Option<String>,
+    #[unsafe_ignore_trace]
     f: Box<FnMut(Vec<Value>, &mut S, &mut EphemeralContext<S>) -> Value + 'static>,
+    #[unsafe_ignore_trace]
     state_typeid: TypeId,
 }
 
@@ -46,9 +49,4 @@ impl UserFunction<()> {
             Err(self)
         }
     }
-}
-
-
-unsafe impl Trace for UserFunction<()> {
-    unsafe_empty_trace!();
 }

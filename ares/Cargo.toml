@@ -14,16 +14,17 @@ path = "./src/lib.rs"
 [dependencies]
 libc = "*"
 itertools = "*"
-typed-arena = "1.0.*"
-colored = "1.2"
-linenoise-rust = "0.2.0"
-gc = "0.3.0"
+typed-arena = "*"
+colored = "*"
+linenoise-rust = "*"
+gc = "*"
+gc_derive = "*"
 
 [dependencies.ares-syntax]
 path = "../syntax"
 
 [dependencies.lalrpop-util]
-version = "0.12.0"
+version = "*"
 
 [dev-dependencies]
-latin = "0.1.5"
+latin = "*"

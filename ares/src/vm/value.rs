@@ -55,7 +55,7 @@ macro_rules! gen_from {
 }
 
 
-#[derive(Clone)]
+#[derive(Clone, Finalize)]
 pub enum Value {
     Nil,
     List(Gc<Vec<Value>>),
@@ -87,15 +87,8 @@ pub enum ValueKind {
     Continuation,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Finalize)]
 pub struct MapWrapper(HashMap<Value, Value>);
-
-impl Deref for MapWrapper {
-    type Target = HashMap<Value, Value>;
-    fn deref(&self) -> &HashMap<Value, Value> {
-        &self.0
-    }
-}
 
 unsafe impl Trace for Value {
     custom_trace!(this, {
@@ -119,6 +112,13 @@ unsafe impl Trace for MapWrapper {
             mark(v);
         }
     });
+}
+
+impl Deref for MapWrapper {
+    type Target = HashMap<Value, Value>;
+    fn deref(&self) -> &HashMap<Value, Value> {
+        &self.0
+    }
 }
 
 impl ::std::fmt::Debug for Value {

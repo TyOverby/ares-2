@@ -1,7 +1,16 @@
 use std::collections::HashMap;
+use gc::{Trace, Finalize};
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash, Default)]
 pub struct Symbol(u32);
+
+unsafe impl Trace for Symbol {
+    unsafe_empty_trace!();
+}
+
+impl Finalize for Symbol {
+
+}
 
 #[derive(Debug)]
 pub struct SymbolIntern {

@@ -10,10 +10,11 @@ path = "./src/lib.rs"
 
 [dependencies]
 itertools = "*"
-typed-arena = "1.0.*"
+typed-arena = "*"
+gc = "*"
 
 [dependencies.lalrpop-util]
-version = "0.12.0"
+version = "*"
 
 [build-dependencies.lalrpop]
-version = "0.12.0"
+version = "*"

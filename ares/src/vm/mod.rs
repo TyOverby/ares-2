@@ -41,7 +41,7 @@ pub enum InterpError {
     UserFnWithWrongStateType,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Trace, Finalize)]
 pub struct Frame {
     resume_code_pos: usize,
     stack_frame: u32,

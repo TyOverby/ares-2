@@ -1,9 +1,8 @@
-use gc::Trace;
 use vm::Value;
 use ares_syntax::Symbol;
 use std::cell::RefCell;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Trace, Finalize)]
 pub struct ClosureClass {
     pub code_offset: u32,
     pub arg_count: u32,
@@ -15,17 +14,10 @@ pub struct ClosureClass {
     pub is_shifter: bool,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Trace, Finalize)]
 pub struct Closure {
     pub class: ClosureClass,
     pub upvars: Vec<Value>,
+    #[unsafe_ignore_trace]
     pub reset_symbols: RefCell<Option<Vec<Symbol>>>,
-}
-
-unsafe impl Trace for Closure {
-    custom_trace!(this, {
-        for upvar in &this.upvars {
-            mark(upvar);
-        }
-    });
 }

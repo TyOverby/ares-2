@@ -1,4 +1,6 @@
 extern crate typed_arena;
+#[macro_use]
+extern crate gc;
 
 mod intern;
 mod syntax;
